@@ -1,0 +1,495 @@
+<title>Draft Maç Motoru</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: map on the left, scoreboard + match log on the right, results underneath. Single dark theme on purpose (night broadcast feel). */
+:root{
+  --bg:#0b1019; --panel:#131a28; --panel2:#19223a; --line:#27324c;
+  --fg:#e6e9f2; --muted:#8a94ad;
+  --blue:#4f8dff; --red:#ff5d61; --brass:#d9b65f; --good:#55c08a;
+  --map:#0f1a17; --lane:#2a3a33; --river:#173246;
+  --f-display:"Chakra Petch","Arial Narrow",sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+h1,h2{font-family:var(--f-display);margin:0;letter-spacing:.02em;text-wrap:balance}
+h1{font-size:1.6rem} h2{font-size:1.1rem}
+.eyebrow{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.14em;font-size:.72rem;color:var(--brass)}
+.muted{color:var(--muted)}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select,input{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px}
+button{cursor:pointer}
+button:hover{border-color:var(--brass)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.primary{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:600}
+input[type=number]{width:96px}
+label.chk{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--muted)}
+.main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px}
+@media (max-width:820px){.main{grid-template-columns:1fr}}
+.mapbox{position:relative;width:100%;max-width:100%;aspect-ratio:1/1}
+.mapbox svg{width:100%;height:100%;display:block;border-radius:10px;border:1px solid var(--line);background:var(--map)}
+.score{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;text-align:center}
+.score .k{font-family:var(--f-display);font-size:1.9rem}
+.score .b{color:var(--blue)} .score .r{color:var(--red)}
+.clock{font-family:var(--f-mono);font-size:1.05rem}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:.85rem}
+.meta div:nth-child(even){text-align:right}
+.teams{font-size:.8rem;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.teams .t{border-top:2px solid;padding-top:4px}
+.log{font-size:.86rem;display:flex;flex-direction:column;gap:3px;height:300px;overflow:auto;padding-right:4px}
+.log div{padding:3px 6px;border-radius:6px}
+.log .t{font-family:var(--f-mono);color:var(--muted);margin-right:6px}
+.log .blue{border-left:3px solid var(--blue)} .log .red{border-left:3px solid var(--red)} .log .neutral{border-left:3px solid var(--muted)}
+.log .big{background:var(--panel2);font-weight:600}
+.pct{color:var(--brass);font-family:var(--f-mono);font-size:.8rem}
+.devbar{font-size:.8rem;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.devbar div{background:var(--panel2);border-radius:6px;padding:4px}
+.bd{display:flex;flex-direction:column;gap:5px}
+.bdrow{display:grid;grid-template-columns:110px 1fr 1fr 64px;gap:8px;align-items:center;font-size:.86rem}
+.bdrow .l,.bdrow .rr{height:12px;position:relative}
+.bdrow .l span{position:absolute;right:0;top:0;bottom:0;background:var(--red);border-radius:3px 0 0 3px}
+.bdrow .rr span{position:absolute;left:0;top:0;bottom:0;background:var(--blue);border-radius:0 3px 3px 0}
+.bdrow .v{text-align:right}
+.result{font-family:var(--f-display);font-size:1.5rem}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.stat{background:var(--panel2);border-radius:8px;padding:10px}
+.stat .n{font-family:var(--f-display);font-size:1.5rem}
+.stat .s{font-size:.78rem;color:var(--muted)}
+details summary{cursor:pointer;color:var(--brass)}
+details li{color:var(--muted);font-size:.88rem}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">LoL draft oyunu · gizli puan motoru demosu</div>
+    <h1>Draft Maç Motoru</h1>
+    <p class="muted" style="margin:4px 0 0">Mavi erken bir kadro, Kırmızı geç oyun kadrosu. Arkada formüller dönüyor, ekranda sadece maçın kendisi görünüyor. Puan dökümü maç sonunda açılıyor.</p>
+  </header>
+
+  <div class="panel">
+    <div class="row">
+      <button class="primary" id="play" type="button">Duraklat</button>
+      <button id="skip" type="button">Sona atla</button>
+      <button id="newm" type="button">Yeni maç</button>
+      <label class="muted" for="seed">Seed</label><input id="seed" type="number" value="7">
+      <label class="muted" for="speed">Hız</label>
+      <select id="speed"><option value="20">1x (1 dk = 3 sn)</option><option value="40" selected>2x</option><option value="80">4x</option></select>
+      <label class="chk"><input type="checkbox" id="dev"> Matematiği göster</label>
+    </div>
+    <div class="teams">
+      <div class="t" style="border-color:var(--blue)"><b style="color:var(--blue)">Mavi · erken</b><br><span class="muted">Renekton, Lee Sin, LeBlanc, Draven, Leona</span></div>
+      <div class="t" style="border-color:var(--red)"><b style="color:var(--red)">Kırmızı · scale</b><br><span class="muted">Kayle, Sejuani, Kassadin, Jinx, Lulu</span></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="mapbox"><svg id="map" viewBox="0 0 600 600" role="img" aria-label="Maç haritası"></svg></div>
+    <div class="panel">
+      <div class="score">
+        <div class="k b num" id="kb">0</div>
+        <div><div class="clock" id="clock">00:00</div><div class="muted" style="font-size:.75rem">kill skoru</div></div>
+        <div class="k r num" id="kr">0</div>
+      </div>
+      <div class="meta">
+        <div>Altın farkı</div><div class="num" id="gold">eşit</div>
+        <div>Ejderler (Mavi / Kırmızı)</div><div class="num" id="drg">0 / 0</div>
+        <div>Yıkılan kule (Mavi / Kırmızı)</div><div class="num" id="twr">0 / 0</div>
+      </div>
+      <div class="devbar" id="devbar" hidden></div>
+      <div class="eyebrow">Maç akışı</div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="endp" hidden>
+    <div class="eyebrow">Maç sonu · neden kazandı?</div>
+    <div class="result" id="result"></div>
+    <div class="bd" id="bd"></div>
+    <p class="muted" style="margin:0;font-size:.82rem">Sağa uzanan çubuk Mavi'nin, sola uzanan Kırmızı'nın kazandığı puan. Pozitif toplam Mavi'nin galibiyeti demek.</p>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div><div class="eyebrow">Denge testi</div><h2>Aynı draft'ı 1000 kez oynat</h2></div>
+      <button class="primary" id="mc" type="button">1000 maç oynat</button>
+    </div>
+    <div class="stats" id="stats"><div class="muted">Butona bas, erken comp'un kaçta kaç kazandığını ve maçların kaç dakika sürdüğünü gör.</div></div>
+  </div>
+
+  <details class="panel">
+    <summary>Formüller</summary>
+    <ul>
+      <li>Başlangıç puanı draft sinerjisi: frontline +3 (yoksa −4), engage +2, AP payı %30-70 ise +2 (değilse −3), kombo +2.</li>
+      <li>Her dakika her koridor: 0,1 × (Mavi güç − Kırmızı güç) + matchup + gürültü (σ = 0,8). Güç, şampiyonun o fazdaki değeri (erken &lt;14 dk, orta 14-25, geç 25+).</li>
+      <li>Objektif ihtimali: 1 / (1 + e^(−Δ/15)), %10-90 arası. Δ = takım güçleri farkı + sinerji farkı + 0,2 × puan farkı. Ejder +4, Herald +4, Baron +8, Elder +12, son savaş +15. Gerideki takım kazanırsa ×1,25.</li>
+      <li>Anlatıcı bütçesi: koridorda biriken fark 3'te CS farkı, 5'te plaka (5-14 dk), 8'de kill, 10'da kule (14 dk sonrası) olarak görünür.</li>
+      <li>Maçı her zaman bir savaşı kazanan bitirir. 20. dakikadan sonra 45+ önde olan kuşatmaya gider: kazanırsa Nexus düşer, kaybederse rakip +10 alır (throw) ve 3 dk kuşatma yapılamaz. Uzayan maçta 35. dakikadaki son savaşı kazanan bitirir.</li><li>Nehir çatışmaları (8, 13, 18, 26. dk civarı): 2v2 veya 3v3, katılanların güç toplamına göre, kazanan +3. Lane fazında support %45 ihtimalle ormancıyla gank'a gider.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+/* ---------------- data ---------------- */
+const TEAMS={
+  blue:[
+    {id:'b0',n:'Renekton',ab:'RE',role:'top',e:9,m:6,l:4,fl:2,en:2,ap:0},
+    {id:'b1',n:'Lee Sin',ab:'LS',role:'jg',e:9,m:6,l:3,fl:0,en:2,ap:0},
+    {id:'b2',n:'LeBlanc',ab:'LB',role:'mid',e:8,m:7,l:4,fl:0,en:0,ap:1},
+    {id:'b3',n:'Draven',ab:'DR',role:'adc',e:9,m:6,l:5,fl:0,en:0,ap:0},
+    {id:'b4',n:'Leona',ab:'LE',role:'sup',e:8,m:6,l:5,fl:3,en:3,ap:1}],
+  red:[
+    {id:'r0',n:'Kayle',ab:'KA',role:'top',e:2,m:6,l:10,fl:0,en:0,ap:.5},
+    {id:'r1',n:'Sejuani',ab:'SE',role:'jg',e:5,m:7,l:7,fl:3,en:3,ap:1},
+    {id:'r2',n:'Kassadin',ab:'KS',role:'mid',e:3,m:6,l:10,fl:0,en:0,ap:1},
+    {id:'r3',n:'Jinx',ab:'JX',role:'adc',e:4,m:7,l:9,fl:0,en:0,ap:0},
+    {id:'r4',n:'Lulu',ab:'LU',role:'sup',e:6,m:6,l:7,fl:0,en:0,ap:1}]
+};
+const COMBOS=[['Kayle','Lulu','Lulu koruması + hiper taşıyıcı'],['Leona','Draven','Leona engage + Draven hasarı']];
+const MATCHUP={top:.1,mid:.05,bot:0};
+const LANES=['top','mid','bot'];
+const LANE_TR={top:'üst',mid:'orta',bot:'alt'};
+const TEAM_TR={blue:'Mavi',red:'Kırmızı'};
+const OBJ={6:'Ejder',11:'Ejder',14:'Herald',16:'Ejder',21:'Ejder',23:'Baron',27:'Ejder',30:'Elder',35:'Final'};
+const OBJ_VAL={Ejder:4,Herald:4,Baron:8,Elder:12,Final:15};
+const OBJ_KEY={Ejder:'ejder',Herald:'herald',Baron:'baron',Elder:'elder',Final:'final'};
+const OBJ_ACC={Ejder:'ejderi',Herald:"Herald'ı",Baron:"Baron'u",Elder:'Elder ejderini'};
+const CATS=[['sinerji','Draft sinerjisi'],['top','Üst koridor'],['mid','Orta koridor'],['bot','Alt koridor'],['orman','Orman'],['catisma','Nehir çatışmaları'],['kusatma','Kuşatmalar'],['ejder','Ejderler'],['herald','Herald'],['baron','Baron'],['elder','Elder'],['final','Son savaş'],['surpriz','Sürprizler']];
+const other=s=>s==='blue'?'red':'blue';
+const sgn=s=>s==='blue'?1:-1;
+
+/* ---------------- engine (pure, seeded) ---------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function synergy(team){
+  const items=[]; const fl=team.some(c=>c.fl>=2), en=team.some(c=>c.en>=2);
+  items.push(fl?['Frontline var',3]:['Frontline yok',-4]);
+  if(en)items.push(['Engage var',2]);
+  const apShare=team.reduce((s,c)=>s+c.ap,0)/team.length;
+  items.push(apShare>=.3&&apShare<=.7?[`Hasar dengeli (AP %${Math.round(apShare*100)})`,2]:[`Hasar tek tipe kaymış (AP %${Math.round(apShare*100)})`,-3]);
+  const names=team.map(c=>c.n);
+  for(const [a,b,d] of COMBOS) if(names.includes(a)&&names.includes(b)) items.push([d,2]);
+  return {total:items.reduce((s,i)=>s+i[1],0),items};
+}
+const G=(c,m)=>m<14?c.e:m<25?c.m:c.l;
+const byRole=(side,role)=>TEAMS[side].find(c=>c.role===role);
+const laneChamps=(side,lane)=>lane==='bot'?[byRole(side,'adc'),byRole(side,'sup')]:[byRole(side,lane)];
+const laneG=(side,lane,m)=>{const cs=laneChamps(side,lane);return cs.reduce((s,c)=>s+G(c,m),0)/cs.length;};
+const teamG=(side,m)=>TEAMS[side].reduce((s,c)=>s+G(c,m),0);
+
+function simulate(seed,withEvents=true){
+  const rng=mulberry32(seed);
+  const normal=()=>{let u=0,v=0;while(!u)u=rng();while(!v)v=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+  const clampP=p=>Math.min(.9,Math.max(.1,p));
+  const syn={blue:synergy(TEAMS.blue),red:synergy(TEAMS.red)};
+  const synDiff=syn.blue.total-syn.red.total;
+  const cat={};CATS.forEach(([k])=>cat[k]=0);
+  cat.sinerji=synDiff;
+  const lane={top:0,mid:0,bot:0}, budget={top:0,mid:0,bot:0}, lastCs={top:-9,mid:-9,bot:-9};
+  const towers={blue:{top:0,mid:0,bot:0},red:{top:0,mid:0,bot:0}};
+  const dead={}; let kills=0, lastSiege=-9;
+  const events=[], frames=[{m:0,lane:{...lane},total:cat.sinerji}];
+  const total=()=>Object.values(cat).reduce((s,v)=>s+v,0);
+  const ev=e=>{if(withEvents)events.push(e);};
+  const alive=(c,t)=>!(dead[c.id]>t);
+  const kill=(killerSide,killer,victim,t,text,extra={})=>{
+    const resp=10+t/60; dead[victim.id]=t+resp; kills++;
+    ev({t,type:'kill',side:killerSide,killer:killer.id,victim:victim.id,until:t+resp,
+        text:(kills===1?'İlk kan! ':'')+text,...extra});
+  };
+  const fightKills=(side,t,max)=>{
+    const winners=TEAMS[side].filter(c=>alive(c,t)), losers=TEAMS[other(side)].filter(c=>alive(c,t));
+    const nk=Math.min(losers.length,1+Math.floor(rng()*max));
+    for(let i=0;i<nk&&winners.length;i++){
+      const v=losers.splice(Math.floor(rng()*losers.length),1)[0], k=winners[Math.floor(rng()*winners.length)];
+      kill(side,k,v,t+2+i*1.5,`Takım savaşında ${v.n} düştü, kill ${k.n} aldı`);
+    }
+  };
+  // team fight probability for `side`
+  const fightP=(side,m)=>{const d=(teamG('blue',m)-teamG('red',m))+synDiff+.2*total();return clampP(1/(1+Math.exp(-sgn(side)*d/15)));};
+  let end=null;
+  for(let m=1;m<=35&&!end;m++){
+    const t0=(m-1)*60;
+    // lanes
+    for(const L of LANES){
+      const d=.1*(laneG('blue',L,m)-laneG('red',L,m))+MATCHUP[L]+normal()*.8;
+      cat[L]+=d; lane[L]+=d; budget[L]+=d;
+      if(rng()<.02){
+        const side=rng()<.5?'blue':'red', s=3+rng()*2, a=laneChamps(side,L)[0], b=laneChamps(other(side),L)[0];
+        cat.surpriz+=sgn(side)*s; lane[L]+=sgn(side)*s;
+        const txt=[`${a.n} beklenmedik bir outplay yaptı`,`${b.n} riskli bir dive denedi ve geri püskürtüldü`,`${a.n} rakibin ışınlanmasını boşa çıkardı`][Math.floor(rng()*3)];
+        ev({t:t0+5+rng()*20,type:'surprise',side,lane:L,text:`Sürpriz: ${txt}`,val:s});
+      }
+      // narrator budget
+      const side=budget[L]>=0?'blue':'red', b=Math.abs(budget[L]), t=t0+25+rng()*30;
+      const me=laneChamps(side,L), op=laneChamps(other(side),L);
+      if(b>=8&&alive(me[0],t)&&op.some(c=>alive(c,t))){
+        const al=op.filter(c=>alive(c,t)), v=al[Math.floor(rng()*al.length)];
+        kill(side,me[0],v,t,`${me[0].n} ${LANE_TR[L]} koridorda öne çıktı, ${v.n} düştü`,{lane:L});
+        budget[L]-=sgn(side)*8;
+      } else if(m>=14&&b>=10&&towers[side][L]<3){
+        const k=towers[side][L]++; budget[L]-=sgn(side)*10;
+        ev({t,type:'tower',side,lane:L,k,text:`${TEAM_TR[side]}, ${LANE_TR[L]} koridorda ${['dış kuleyi','iç kuleyi','inhibitörü'][k]} yıktı`});
+      } else if(m>=5&&m<14&&b>=5){
+        budget[L]-=sgn(side)*5;
+        ev({t,type:'plate',side,lane:L,text:`${me[0].n} ${LANE_TR[L]} kuleden plaka kopardı`});
+      } else if(b>=3&&m-lastCs[L]>=4){
+        lastCs[L]=m; budget[L]-=sgn(side)*3;
+        ev({t,type:'cs',side,lane:L,text:`${me[0].n} ${LANE_TR[L]} koridorda CS farkı açıyor`});
+      }
+    }
+    // jungle (+ support roam)
+    const jd=.05*(G(byRole('blue','jg'),m)-G(byRole('red','jg'),m))+normal()*.3;
+    cat.orman+=jd;
+    if([3,6,9,12,18,24].includes(m)){
+      const pB=1/(1+Math.exp(-(G(byRole('blue','jg'),m)-G(byRole('red','jg'),m))/4));
+      const side=rng()<pB?'blue':'red', L=LANES[Math.floor(rng()*3)], jg=byRole(side,'jg'), sup=byRole(side,'sup'), t=t0+40;
+      const victim=laneChamps(other(side),L).find(c=>alive(c,t));
+      if(victim&&alive(jg,t)){
+        const withSup=m<14&&L!=='bot'&&alive(sup,t)&&rng()<.45;
+        const parts=withSup?[jg.id,sup.id]:[jg.id];
+        ev({t,type:'move',parts,lane:L,lead:14,tail:4,text:''});
+        if(rng()<(withSup?.75:.6)){
+          cat.orman+=sgn(side)*(withSup?5:4); lane[L]+=sgn(side)*3;
+          kill(side,jg,victim,t,withSup?`${jg.n} ve ${sup.n} ${LANE_TR[L]} koridora baskın yaptı, ${victim.n} düştü`:`${jg.n} ${LANE_TR[L]} koridora gank attı, ${victim.n} düştü`,{lane:L});
+        } else {
+          cat.orman-=sgn(side)*2;
+          ev({t,type:'gankfail',side,lane:L,text:`${jg.n}${withSup?' ve '+sup.n:''} ${LANE_TR[L]} koridorda boşa gitti`});
+        }
+      }
+    }
+    // river skirmish 2v2 / 3v3
+    if([8,13,18,26].includes(m)&&rng()<.75){
+      const n=rng()<.5?2:3, t=t0+15+rng()*15;
+      const pick=s=>['jg','sup','mid','adc','top'].map(r=>byRole(s,r)).filter(c=>alive(c,t)).slice(0,n);
+      const A=pick('blue'),B=pick('red');
+      if(A.length&&B.length){
+        const d=A.reduce((s,c)=>s+G(c,m),0)-B.reduce((s,c)=>s+G(c,m),0)+.1*total();
+        const pB=clampP(1/(1+Math.exp(-d/6))), side=rng()<pB?'blue':'red';
+        cat.catisma+=sgn(side)*3;
+        const loc=rng()<.5?[255,345]:[345,255];
+        ev({t,type:'move',parts:[...A,...B].map(c=>c.id),loc,lead:14,tail:4,text:''});
+        ev({t,type:'skirmish',side,pct:Math.round((side==='blue'?pB:1-pB)*100),loc,
+            text:`Nehirde ${A.length}v${B.length} çatışma, ${TEAM_TR[side]} kazandı`});
+        const win=(side==='blue'?A:B), lose=[...(side==='blue'?B:A)];
+        const nk=1+Math.floor(rng()*Math.min(2,lose.length));
+        for(let i=0;i<nk;i++){const v=lose.splice(Math.floor(rng()*lose.length),1)[0],k=win[Math.floor(rng()*win.length)];kill(side,k,v,t+1+i*1.5,`${k.n}, ${v.n} karakterini nehirde yakaladı`);}
+      }
+    }
+    // objectives (Final ends the game)
+    const obj=OBJ[m];
+    if(obj){
+      const tot=total(), t=t0+30;
+      const pBlue=fightP('blue',m), side=rng()<pBlue?'blue':'red';
+      let val=OBJ_VAL[obj]; const behind=(tot>0&&side==='red')||(tot<0&&side==='blue');
+      if(behind)val*=1.25;
+      cat[OBJ_KEY[obj]]+=sgn(side)*val;
+      const pct=Math.round((side==='blue'?pBlue:1-pBlue)*100);
+      ev({t,type:'objective',obj,side,pct,text:obj==='Final'?`Son takım savaşını ${TEAM_TR[side]} kazandı`:`${TEAM_TR[side]} ${OBJ_ACC[obj]} aldı${behind?' (geri dönüş, ekstra puan)':''}`});
+      fightKills(side,t,obj==='Ejder'?2:obj==='Final'?4:3);
+      if(obj==='Final'){
+        end={m,side,type:'final',pct,leader:tot>=0?'blue':'red'};
+        ev({t:t+25,type:'siege',side,text:'',lead:20,tail:6});
+        ev({t:t+28,type:'nexus',side,text:`${TEAM_TR[side]} son savaştan sonra Nexus'a yürüdü, maç bitti`});
+      }
+    }
+    // siege: leader tries to end
+    const tot=total();
+    if(!end&&m>=20&&!obj&&Math.abs(tot)>=45&&m-lastSiege>=3){
+      lastSiege=m;
+      const side=tot>0?'blue':'red', t=t0+45, p=fightP(side,m), pct=Math.round(p*100);
+      ev({t,type:'siege',side,lead:20,tail:4,text:''});
+      if(rng()<p){
+        fightKills(side,t,4);
+        end={m,side,type:'nexus',pct};
+        ev({t:t+8,type:'nexus',side,pct,text:`${TEAM_TR[side]} kuşatmayı kazandı ve Nexus'u yıktı, maç ${m}. dakikada bitti`});
+      } else {
+        cat.kusatma+=sgn(other(side))*10;
+        fightKills(other(side),t,3);
+        ev({t:t+6,type:'throw',side:other(side),pct:100-pct,text:`${TEAM_TR[side]} bitirmeye gitti ama ${TEAM_TR[other(side)]} savunmayı tuttu. Throw!`});
+      }
+    }
+    frames.push({m,lane:{...lane},total:total()});
+  }
+  events.sort((a,b)=>a.t-b.t);
+  const nx=events.find(e=>e.type==='nexus');
+  if(nx)events.splice(0,events.length,...events.filter(e=>e.t<=nx.t));
+  return {events,frames,cat,syn,end,endT:Math.ceil(Math.max(...events.map(e=>e.t),end.m*60-30)+4),total:total()};
+}
+
+/* ---------------- map geometry ---------------- */
+const PATH={top:[[70,530],[70,70],[530,70]],mid:[[70,530],[530,70]],bot:[[70,530],[530,530],[530,70]]};
+function pathPoint(L,s){
+  const p=PATH[L];let segs=[],tot=0;
+  for(let i=0;i<p.length-1;i++){const d=Math.hypot(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);segs.push(d);tot+=d;}
+  let r=Math.max(0,Math.min(1,s))*tot;
+  for(let i=0;i<segs.length;i++){if(r<=segs[i]||i===segs.length-1){const f=segs[i]?r/segs[i]:0;return [p[i][0]+(p[i+1][0]-p[i][0])*f,p[i][1]+(p[i+1][1]-p[i][1])*f];}r-=segs[i];}
+}
+const BASE={blue:[78,522],red:[522,78]};
+const PIT={Ejder:[400,400],Elder:[400,400],Final:[300,300],Herald:[200,200],Baron:[200,200]};
+const CAMPS={blue:[[175,330],[250,455],[205,395]],red:[[425,270],[350,145],[395,205]]};
+const TOWER_S={blue:[.38,.26,.13],red:[.62,.74,.87]};
+
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('map');
+const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);parent.appendChild(e);return e;};
+let towerEls={}, champEls={}, popLayer;
+function drawMap(){
+  svg.innerHTML='';
+  el('path',{d:'M0 600 L600 0',stroke:'var(--river)','stroke-width':70,fill:'none'});
+  for(const L of LANES) el('polyline',{points:PATH[L].map(p=>p.join(',')).join(' '),fill:'none',stroke:'var(--lane)','stroke-width':26,'stroke-linejoin':'round','stroke-linecap':'round'});
+  el('circle',{cx:400,cy:400,r:22,fill:'none',stroke:'var(--muted)','stroke-dasharray':'3 4'});
+  el('text',{x:400,y:438,'text-anchor':'middle','font-size':11,fill:'var(--muted)'}).textContent='Ejder';
+  el('circle',{cx:200,cy:200,r:22,fill:'none',stroke:'var(--muted)','stroke-dasharray':'3 4'});
+  el('text',{x:200,y:170,'text-anchor':'middle','font-size':11,fill:'var(--muted)'}).textContent='Baron / Herald';
+  for(const s of ['blue','red']){
+    const [x,y]=BASE[s];
+    el('rect',{x:x-26,y:y-26,width:52,height:52,rx:10,fill:`var(--${s})`,'fill-opacity':.18,stroke:`var(--${s})`});
+    towerEls[s]={};
+    for(const L of LANES){towerEls[s][L]=TOWER_S[s].map(ts=>{const [tx,ty]=pathPoint(L,ts);return el('rect',{x:tx-6,y:ty-6,width:12,height:12,rx:2,fill:`var(--${s})`});});}
+  }
+  for(const side of ['blue','red']) for(const c of TEAMS[side]){
+    const g=el('g',{});
+    const circ=el('circle',{r:12,fill:'var(--panel)',stroke:`var(--${side})`,'stroke-width':2.5},g);
+    const tx=el('text',{'text-anchor':'middle',y:4,'font-size':10,'font-weight':600,fill:'var(--fg)','font-family':'IBM Plex Sans, sans-serif'},g);tx.textContent=c.ab;
+    const [bx,by]=BASE[side];
+    champEls[c.id]={g,circ,x:bx,y:by,side,c};
+  }
+  popLayer=el('g',{});
+}
+
+/* ---------------- playback ---------------- */
+let SIM, T=0, playing=true, idx=0, last=null, disp;
+const $=id=>document.getElementById(id);
+const fmt=t=>`${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`;
+function reset(seed){
+  SIM=simulate(seed); T=0; idx=0; playing=true; $('play').textContent='Duraklat';
+  disp={kb:0,kr:0,drg:{blue:0,red:0},tw:{blue:{top:0,mid:0,bot:0},red:{top:0,mid:0,bot:0}}};
+  drawMap(); $('log').innerHTML=''; $('endp').hidden=true; renderHud();
+}
+function laneFront(L,t){
+  const f=SIM.frames, m=Math.min(f.length-1,Math.floor(t/60)), n=Math.min(f.length-1,m+1), a=(t%60)/60;
+  const v=f[m].lane[L]*(1-a)+f[n].lane[L]*a;
+  return .5+Math.max(-.28,Math.min(.28,v/30));
+}
+function target(id,t){
+  const {side,c}=champEls[id];
+  const i=+id[1], o=side==='blue'?1:-1, m=t/60;
+  // dead → base
+  for(const e of SIM.events){ if(e.t>t)break; if(e.type==='kill'&&e.victim===id&&t<e.until){const [bx,by]=BASE[side];return [bx+(i%3-1)*14,by+(i<3?-8:10),true];} }
+  // event-driven moves
+  for(const e of SIM.events){
+    if(e.t>t+25)break;
+    if(e.type==='objective'&&t>=e.t-22&&t<=e.t+5){const [px,py]=PIT[e.obj];return [px-o*22+(i-2)*7,py+o*22-(i-2)*7,false];}
+    if(e.type==='siege'&&t>=e.t-e.lead&&t<=e.t+e.tail){
+      const def=other(e.side), [bx,by]=BASE[def], dx=def==='blue'?1:-1;
+      const fx=bx+dx*95, fy=by-dx*95;          // fight spot outside defender base
+      const mine=side===e.side?-1:1;           // attacker stands farther from base
+      return [fx+dx*mine*-18+(i-2)*8,fy-dx*mine*-18+(i-2)*6,false];}
+    if(e.type==='move'&&e.parts.includes(id)&&t>=e.t-e.lead&&t<=e.t+e.tail){
+      if(e.loc){return [e.loc[0]-o*14+(i-2)*6,e.loc[1]+o*14,false];}
+      const s=laneFront(e.lane,t);const [x,y]=pathPoint(e.lane,s-o*.03);return [x+(c.role==='sup'?-10:6),y+6,false];}
+  }
+  // recall cycles
+  const off=60*i+(side==='red'?25:0)+90;
+  if(t>off&&((t-off)%270)<14){const [bx,by]=BASE[side];return [bx+(i-2)*9,by+o*-4,false];}
+  // phase home
+  if(c.role==='jg'){
+    if(m>=14&&Math.floor(t/25)%2===0){const s=laneFront('mid',t);const [x,y]=pathPoint('mid',s-o*.09);return [x+o*-20,y+o*20,false];}
+    const camps=CAMPS[side], k=Math.floor(t/18)%camps.length; return [...camps[k],false];
+  }
+  let L=c.role==='adc'||c.role==='sup'?'bot':c.role;
+  if(m>=14&&c.role!=='top')L='mid';            // bot duo rotates mid after laning
+  let off2=(c.role==='sup'?.065:.035)*-o;
+  if(L==='mid'&&m>=14){const slot={mid:.03,adc:.05,sup:.07}[c.role]||.04;off2=slot*-o;}
+  if(m>=25&&c.role==='top')L=side==='blue'?'top':'bot'; // late: top splits a side lane
+  const s=laneFront(L,t);const [x,y]=pathPoint(L,s+off2);
+  const perp=L==='mid'&&m>=14?({mid:0,adc:9,sup:-9}[c.role]||0):(c.role==='sup'&&m<14?-8*o:0);
+  return [x+perp,y+perp,false];
+}
+function pop(text,x,y,color){
+  const g=el('g',{},popLayer);
+  const t=el('text',{x,y:y-18,'text-anchor':'middle','font-size':12,'font-weight':600,fill:color,stroke:'var(--bg)','stroke-width':3,'paint-order':'stroke'},g);t.textContent=text;
+  setTimeout(()=>g.remove(),1400);
+}
+function applyEvent(e,animate){
+  if(!e.text)return;
+  const d=document.createElement('div');
+  const big=['objective','nexus','tower','throw','skirmish'].includes(e.type)||(e.text||'').startsWith('İlk kan');
+  d.className=(e.side||'neutral')+(big?' big':'');
+  const devPct=$('dev').checked&&e.pct?` <span class="pct">%${e.pct}</span>`:'';
+  d.innerHTML=`<span class="t">${fmt(e.t)}</span>${e.text}${devPct}`;
+  $('log').prepend(d);
+  if(e.type==='kill'){ if(e.side==='blue')disp.kb++;else disp.kr++;
+    if(animate){const v=champEls[e.victim];pop('✕',v.x,v.y,`var(--${e.side})`);} }
+  if(e.type==='objective'&&e.obj==='Ejder')disp.drg[e.side]++;
+  if(e.type==='tower'){disp.tw[e.side][e.lane]=e.k+1;}
+  if(e.type==='objective'&&animate){const [px,py]=PIT[e.obj];pop(e.obj==='Final'?'Takım savaşı':e.obj,px,py-16,`var(--${e.side})`);}
+  if(e.type==='skirmish'&&animate){pop('Çatışma',e.loc[0],e.loc[1]-10,`var(--${e.side})`);}
+  if(e.type==='throw'&&animate){pop('Throw!',300,300,`var(--${e.side})`);}
+}
+function renderHud(){
+  $('clock').textContent=fmt(T); $('kb').textContent=disp.kb; $('kr').textContent=disp.kr;
+  const f=SIM.frames, m=Math.min(f.length-1,Math.floor(T/60));
+  const diff=f[m].total, gold=Math.round(diff*110/100)*100;
+  $('gold').innerHTML=gold===0?'eşit':`<span style="color:var(--${gold>0?'blue':'red'})">${gold>0?'Mavi':'Kırmızı'} +${Math.abs(gold).toLocaleString('tr-TR')}</span>`;
+  $('drg').textContent=`${disp.drg.blue} / ${disp.drg.red}`;
+  const tb=Object.values(disp.tw.blue).reduce((a,b)=>a+b,0), tr=Object.values(disp.tw.red).reduce((a,b)=>a+b,0);
+  $('twr').textContent=`${tb} / ${tr}`;
+  for(const s of ['blue','red'])for(const L of LANES)towerEls[s][L].forEach((r,k)=>r.setAttribute('fill-opacity',disp.tw[other(s)][L]>k?.12:1));
+  const dev=$('dev').checked; $('devbar').hidden=!dev;
+  if(dev){const fr=f[m];$('devbar').innerHTML=`<div>Toplam<br><b class="num">${fr.total>=0?'+':''}${fr.total.toFixed(1)}</b></div>`+LANES.map(L=>`<div>${LANE_TR[L]}<br><b class="num">${fr.lane[L]>=0?'+':''}${fr.lane[L].toFixed(1)}</b></div>`).join('');}
+}
+function showEnd(){
+  const {cat,end,syn}=SIM;
+  $('endp').hidden=false;
+  $('result').innerHTML=`<span style="color:var(--${end.side})">${TEAM_TR[end.side]} kazandı</span> <span class="muted" style="font-size:1rem">· ${end.m}. dakika · ${end.type==='nexus'?'kuşatmayla erken bitiş':'son savaşla'} · bu savaşı kazanma ihtimali %${end.pct} · puan toplamı ${SIM.total>=0?'+':''}${SIM.total.toFixed(1)}</span>`+((SIM.total>=0?'blue':'red')!==end.side?`<div class="muted" style="font-size:.9rem;font-family:var(--f-body)">Puanda ${TEAM_TR[end.side==='blue'?'red':'blue']} öndeydi ama son savaşı kaybetti. Puan sadece savaş ihtimalini artırır, maçı savaşı kazanan bitirir.</div>`:'');
+  const max=Math.max(5,...Object.values(cat).map(Math.abs));
+  $('bd').innerHTML=CATS.map(([k,n])=>{const v=cat[k];const w=Math.abs(v)/max*100;
+    return `<div class="bdrow"><span>${n}</span><div class="l">${v<0?`<span style="width:${w}%"></span>`:''}</div><div class="rr">${v>0?`<span style="width:${w}%"></span>`:''}</div><span class="v num" style="color:var(--${v>=0?'blue':'red'})">${v>=0?'+':''}${v.toFixed(1)}</span></div>`;}).join('')
+    +`<div class="muted" style="font-size:.8rem">Sinerji: Mavi ${syn.blue.items.map(i=>`${i[0]} (${i[1]>0?'+':''}${i[1]})`).join(', ')}. Kırmızı ${syn.red.items.map(i=>`${i[0]} (${i[1]>0?'+':''}${i[1]})`).join(', ')}.</div>`;
+}
+function frame(now){
+  const dt=last?Math.min(.1,(now-last)/1000):0; last=now;
+  if(playing&&T<SIM.endT){
+    T=Math.min(SIM.endT,T+dt*+$('speed').value);
+    while(idx<SIM.events.length&&SIM.events[idx].t<=T){applyEvent(SIM.events[idx],true);idx++;}
+    if(T>=SIM.endT){while(idx<SIM.events.length)applyEvent(SIM.events[idx++],false);playing=false;$('play').textContent='Tekrar izle';showEnd();}
+    renderHud();
+  }
+  for(const id in champEls){
+    const ce=champEls[id];const [tx,ty,isDead]=target(id,T);
+    const k=Math.min(1,dt*5); ce.x+=(tx-ce.x)*k; ce.y+=(ty-ce.y)*k;
+    ce.g.setAttribute('transform',`translate(${ce.x.toFixed(1)},${ce.y.toFixed(1)})`);
+    ce.g.setAttribute('opacity',isDead?.3:1);
+  }
+  requestAnimationFrame(frame);
+}
+$('play').onclick=()=>{
+  if(T>=SIM.endT){reset(+$('seed').value);return;}
+  playing=!playing;$('play').textContent=playing?'Duraklat':'Devam';
+};
+$('skip').onclick=()=>{T=SIM.endT;while(idx<SIM.events.length)applyEvent(SIM.events[idx++],false);playing=false;$('play').textContent='Tekrar izle';renderHud();showEnd();};
+$('newm').onclick=()=>{const s=Math.floor(Math.random()*100000);$('seed').value=s;reset(s);};
+$('seed').onchange=()=>reset(+$('seed').value);
+$('dev').onchange=renderHud;
+$('mc').onclick=()=>{
+  const N=1000;let blue=0,early=0,dur=0,earlyBlue=0,lateBlue=0,late=0,abs=0;
+  for(let i=1;i<=N;i++){const r=simulate(i*7919,false);if(r.end.side==='blue')blue++;dur+=r.end.m;abs+=Math.abs(r.total);
+    if(r.end.type==='nexus'){early++;if(r.end.side==='blue')earlyBlue++;}else{late++;if(r.end.side==='blue')lateBlue++;}}
+  const st=(n,s)=>`<div class="stat"><div class="n num">${n}</div><div class="s">${s}</div></div>`;
+  $('stats').innerHTML=st(`%${(blue/N*100).toFixed(1)}`,'Mavi (erken comp) kazanma oranı')
+    +st(`%${(early/N*100).toFixed(1)}`,'35. dakikadan önce Nexus düşen maçlar')
+    +st(`${(dur/N).toFixed(1)} dk`,'Ortalama maç süresi')
+    +st(late?`%${(lateBlue/late*100).toFixed(0)}`:'-','Uzayan maçlarda Mavi kazanma oranı')
+    +st(`${(abs/N).toFixed(1)}`,'Ortalama final puan farkı');
+};
+reset(+$('seed').value);
+requestAnimationFrame(frame);
+</script>

@@ -1,0 +1,41 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Node / React
+node_modules/
+dist/
+build/
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Veri hattı: ham maç verisi repoya girmez (büyük); out/ tabloları girer
+data-pipeline/raw/
+
+# Sırlar ve yerel ayarlar
+.env
+.env.*
+appsettings.*.local.json
+secrets.json
+
+# Veritabanı
+*.db
+*.db-shm
+*.db-wal
+
+# Editör / işletim sistemi
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
