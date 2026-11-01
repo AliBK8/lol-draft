@@ -36,11 +36,38 @@ public sealed class NarratorTests
     {
         foreach (var events in Matches())
         {
+            // Savaş sonrası kule (objektiften 12 sn sonra) anlatıcıdan gelmez; ayrı sayılır.
+            var postFight = events.OfType<ObjectiveEvent>().Select(o => o.T + 12).ToHashSet();
             var narrated = events
-                .Where(e => e is TowerEvent or PlateEvent or CsEvent)
+                .Where(e => e is TowerEvent or PlateEvent or CsEvent && !postFight.Contains(e.T))
                 .GroupBy(e => (Lane(e), Minute(e)));
 
             Assert.All(narrated, g => Assert.Single(g));
+        }
+    }
+
+    [Fact]
+    public void Anlatici_sadece_koridorda_olani_anlatir()
+    {
+        var blue = TestTeams.EarlyBlue();
+        var red = TestTeams.ScaleRed();
+
+        foreach (var events in Matches())
+        {
+            // CS ve plaka: koridorun yüzü o an koridorda.
+            foreach (var e in events.Where(e => e is CsEvent or PlateEvent))
+            {
+                var (side, lane) = e is CsEvent c ? (c.Side, c.Lane) : (((PlateEvent)e).Side, ((PlateEvent)e).Lane);
+                var lead = TestEvents.LaneChampions(side == TeamSide.Blue ? blue : red, lane)[0];
+                Assert.False(TestEvents.IsAbsent(events, lead.Id, e.T), $"{lead.Name} {e.T} sn'de koridorda değil: {e.Text}");
+            }
+
+            // Solo kill: katil ve kurban koridorda (kurbanın ölümü bu kill'in kendisi, sadece meşguliyete bak).
+            foreach (var kill in events.OfType<KillEvent>().Where(k => k.Text.Contains("koridorda öne çıktı")))
+            {
+                Assert.False(TestEvents.IsAbsent(events, kill.KillerId, kill.T), kill.Text);
+                Assert.False(TestEvents.IsAway(events, kill.VictimId, kill.T), kill.Text);
+            }
         }
     }
 

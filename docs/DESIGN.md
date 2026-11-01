@@ -112,7 +112,9 @@ Tek bir **toplam puan farkı** vardır (pozitif = Mavi önde). Toplam, kategoril
 
 ### 4.5 Dakika döngüsü (1..35)
 
-Her dakika sırasıyla: koridorlar → orman → nehir çatışması → objektif → kuşatma kontrolü → frame kaydı.
+Her dakika iki aşamada oynanır:
+1. **Kayıt:** koridor ve orman akışı dakika başında puana yazılır. Diğer işler kendi saniyesiyle zaman çizelgesine kaydolur: sürpriz 5-25. sn, nehir çatışması 15-30. sn, anlatıcı 25-55. sn, objektif 30. sn, gank 40. sn, kuşatma 45. sn.
+2. **Çözüm:** işler saniye sırasıyla çözülür (eşit saniyede kayıt sırası). Her iş kendi saniyesindeki duruma bakar: kim yaşıyor, toplam puan. Savaş kill'leri de ayrı işlerdir: her kill kendi saniyesinde yaşayanlar arasından seçilir. Nexus düşünce kalan işler iptal edilir.
 
 **Koridor akışı** (her koridor, her dakika):
 ```
@@ -124,39 +126,38 @@ Her dakika sırasıyla: koridorlar → orman → nehir çatışması → objekti
 
 **Orman:**
 - Her dakika: `0.05 × (G_jg_Mavi − G_jg_Kırmızı) + N(0, 0.3)` → `orman`.
-- Gank dakikaları: 3, 6, 9, 12, 18, 24. Gank'ı atan taraf: `p_Mavi = 1 / (1 + e^(−(G_jg farkı)/4))`. Koridor rastgele.
+- Gank dakikaları: 3, 6, 9, 12, 18, 24. Gank'ı atan taraf: `p_Mavi = clamp(1 / (1 + e^(−(G_jg farkı)/4)))`. Koridor rastgele.
 - Lane fazında (<14 dk) ve koridor bot değilse support %45 ihtimalle gank'a katılır.
 - Başarı: tek başına %60, support'la %75. Başarı → `orman` ±4 (support'la ±5), koridor puanı ±3, kill. Başarısızlık → `orman` ∓2.
 
-**Nehir çatışması** (dk 8, 13, 18, 26; her biri %75 ihtimalle):
-- 2v2 ya da 3v3 (%50/%50). Katılımcı önceliği: jg, sup, mid, adc, top (yaşayanlar).
-- `p_Mavi = clamp(1 / (1 + e^(−(ΣG_Mavi − ΣG_Kırmızı + 0.1 × toplam)/6)))`
-- Kazanan `catisma` ±3, kaybedenlerden 1-2 kill.
-- **Planlanan değişiklik (C# portu prototiple doğrulandıktan sonra):** sabit dakika yerine aralık: 7-9, 12-14, 17-19, 25-27 (her aralıkta en fazla bir çatışma, %75 ihtimalle, dakika aralık içinde rastgele). Kişi sayısı eşit olmak zorunda değil: her taraf ayrı ayrı 1-3 kişi (1v2, 2v3…); az gelen taraf güç toplamında dezavantajlı.
+**Nehir çatışması** (aralıklar: dk 7-9, 12-14, 17-19, 25-27):
+- Aralığın başında %75 ihtimalle çatışma olacağına karar verilir; dakika aralık içinden eşit ihtimalle seçilir (her aralıkta en fazla bir). Saniye 15-30 arası.
+- Kişi sayısı eşit olmak zorunda değil: her taraf ayrı ayrı 1-3 kişi (1v2, 3v1…). Katılımcı önceliği: jg, sup, mid, adc, top (yaşayanlar).
+- `p_Mavi = clamp(1 / (1 + e^(−(ΣG_Mavi − ΣG_Kırmızı + 0.1 × toplam)/6)))`. Az gelen taraf ΣG'de dezavantajlı (herkes G=6 iken 1v3: fark −12 → ~%12); güçlü erken şampiyon erken dakikalarda yine de kazanabilir (prototip takımlarında Mavi 1v3'ün %30'unu alıyor).
+- Kazanan `catisma` ±3, kaybedenlerden 1-2 kill. Prototipte sabit dk 8, 13, 18, 26 ve 2v2/3v3 idi.
 
-**Objektifler:**
+**Objektifler** (dakika = motor dakikası; savaş o dakikanın 30. sn'sinde, ör. dk 6 → 5:30):
 
 | Dakika | Objektif | Puan |
 |---|---|---|
-| 6, 11, 16, 21, 27 | Ejder | 4 |
+| 6, sonra alındıktan 5 dk sonra (11, 16, 21, 26, 31) — bir takım 4'e ulaşana kadar | Ejder | 4 |
+| 4. ejderi alan | Ejder ruhu | +6 ve takım savaşlarında `d`'ye +2 |
+| ruhtan 6 dk sonra, alınınca 6 dk sonra tekrar (ruh yoksa hiç) | Elder | 12 |
 | 14 | Herald | 4 |
 | 23 | Baron | 8 |
-| 30 | Elder | 12 |
 | 35 | Son takım savaşı | 15 (maçı bitirir) |
 
 Takım savaşı ihtimali:
 ```
-d      = (Takım gücü Mavi − Takım gücü Kırmızı) + sinerji farkı + 0.2 × toplam puan
+d      = (Takım gücü Mavi − Takım gücü Kırmızı) + sinerji farkı + 0.2 × toplam puan + ruh bonusu (ruh kimdeyse ±2)
 p_Mavi = clamp(1 / (1 + e^(−d/15)), 0.1, 0.9)
 ```
 - Geride olan takım objektifi kazanırsa puan ×1.25 (geri dönüş).
 - Savaşta kazanandan kaybedene kill'ler: Ejder 1-2, Baron/Herald/Elder 1-3, son savaş 1-4.
-- **Planlanan değişiklik (C# portu prototiple doğrulandıktan sonra): ejder ruhu ve Elder.** Sabit ejder/Elder takvimi yerine gerçek oyun ritmi:
-  - Ejder 5. dk'da doğar, alındıktan 5 dk sonra yenisi gelir; bir takım **4 ejdere** ulaşınca ejder doğmaz.
-  - 4. ejderi alan **ejder ruhu** kazanır: bir kerelik +6 puan ve maçın geri kalanında takım savaşı `d`'sine +2 (eşit maçta ~%60). Ölçülü tutuldu: ruh tek başına maçı bitirmemeli.
-  - **Elder** ruhtan 6 dk sonra doğar, alınınca 6 dk sonra tekrar gelir; iki taraf da alabilir (geri dönüş kapısı, geride olan alırsa ×1.25).
-  - Ruh hiç alınmazsa (3-3 → 7. ejder) Elder çıkmaz.
-  - Ayar düğmeleri: ruh puanı (6), ruh savaş bonusu (2). Hedef: ruhu alan takım maçların %65-75'ini kazansın (denge aracıyla ölçülecek).
+- İki objektif aynı dakikaya düşerse yeni planlanan bir dakika kayar; son savaş dakikasına (ve sonrasına) düşen objektif çıkmaz. Kuşatmanın "o dakika objektif yok" şartı bu dinamik takvime bakar.
+- En hızlı ruh 4-0 ile dk 21'de, en erken Elder dk 27'de. Ruh hiç alınmazsa (3-3 → 7. ejder dk 36'ya düşer) Elder çıkmaz.
+- **Ejder ruhu ölçülü tutuldu:** eşit maçta ruh tek başına takım savaşını ~%60'a çıkarır. Ayar düğmeleri: ruh puanı (6), ruh savaş bonusu (2). Hedef: ruhu alan takım maçların %65-75'ini kazansın.
+- Ölçüm (prototip takımları, 1000 maç): maçların %48,7'sinde ruh alınıyor, ruhu alan %65,9 kazanıyor (Kırmızı/scale alırsa %84, Mavi/erken alırsa %55: ruh geç geldiği için geç güçlü takımda daha etkili). Maç başı 4,7 ejder, 0,27 Elder. Prototipte takvim sabitti (ejder 6, 11, 16, 21, 27; Elder 30).
 
 ### 4.6 Maç sonu kuralları
 - **Kuşatma:** dk ≥ 20, o dakika objektif yoksa, |toplam| ≥ 45 ve son kuşatmadan bu yana ≥ 3 dk geçtiyse önde olan takım kuşatmaya gider. İhtimal = takım savaşı ihtimali (önde olanın tarafından).
@@ -175,12 +176,20 @@ Koridorda biriken Δ bir bütçede tutulur. Her dakika, bütçenin işaretine g�
 
 | Koşul | Olay | Bütçeden düşülen |
 |---|---|---|
+| dk ≥ 14, koridor fırsatı (aşağıda): önce önde olan, sonra diğer taraf | Kule (dış → iç → inhibitör) | — (kendi puanı: +4, inhibitör +6) |
 | \|bütçe\| ≥ 8, önde olan ve rakipten biri yaşıyor | Solo kill | 8 |
-| dk ≥ 14, \|bütçe\| ≥ 10, kule < 3 | Kule (dış → iç → inhibitör) | 10 |
 | 5 ≤ dk < 14, \|bütçe\| ≥ 5 | Kule plakası | 5 |
 | \|bütçe\| ≥ 3, son CS olayından ≥ 4 dk geçti | CS farkı | 3 |
 
 Olay zamanı: dakikanın 25-55. saniyeleri arası rastgele. Bütçe sadece anlatım içindir; puan zaten Δ ile eklenmiştir.
+
+Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü ya da meşgulse (aşağıda) o dakika solo kill / plaka / CS anlatımı olmaz; bütçe harcanmaz, birikir. Solo kill kurbanı da koridorda olmalı.
+
+**Kule = fırsat.** Kuleye ancak koridorda rakip yokken vurulur; koridorda önde olmak gerekmez.
+- **Koridor fırsatı:** kendi koridorcun yaşıyor ve koridorda; karşısındaki herkes ölü ya da meşgul; kule kalmış. Meşgul: nehir çatışması, objektif savaşı ya da kuşatmaya katılan 25 sn, gank'a giden support 20 sn koridorunda sayılmaz (meşguliyet iş çözüldüğü anda bilinir). Puanı gerçektir: koridor kategorisine +4, inhibitör +6.
+- **Savaş sonrası:** objektif savaşından 12 sn sonra kaybedenlerden en az 2 kişi ölüyse kazanan yakındaki kuleyi alır: ejder → bot, Herald → mid, Baron/Elder → en çok kulesi kalmış koridor. Ek puan yok: kazanılan savaşın görünür sonucu, puanı objektif değerinde (ek puan verince erken comp kartopu %52 → %61'e çıkıyordu).
+- Ölçüm (prototip takımları, 1000 maç): maç başı 4,3 kule (3,95 savaş sonrası, 0,33 koridor fırsatı); denge değişmedi (Mavi %51).
+- İleride: inhibitörü düşmemiş koridordan kuşatmaya gidilemesin (kuşatma ↔ kule bağı).
 
 ### 4.9 Olay şeması
 
@@ -523,7 +532,9 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | Maç başı nehir çatışması | ~2,7 |
 | Puanda önde olanın kaybettiği maç | %7 |
 
-**C# motoru (`LolDraft.Engine`), seed 0-999:** prototiple olay olay birebir aynı (V8 ile .NET'in `Math.Log/Cos` son bit farkı yüzünden toplam puan 15. basamakta değişebilir, hiçbir olayı etkilemiyor). Mavi %53,3; kuşatmayla biten %40,5 (%99 Mavi); uzayan maçlarda Mavi %22; ortalama 29,6 dk; maç başı 21,8 kill, 0,24 throw, 2,7 nehir çatışması.
+**C# motoru, güncel kurallar** (zaman çizelgesi, kule = fırsat, aralıklı/eşitsiz nehir çatışması, ejder ruhu/Elder), seed 0-999: Mavi %53,8; kuşatmayla biten %40,5 (%100 Mavi); uzayan maçlarda Mavi %22,7; ortalama 29,6 dk; maç başı 20,6 kill, 0,23 throw, 2,7 nehir çatışması, 4,5 kule; ruhu alan %65,9 kazanıyor.
+
+**C# motoru, prototip portu anı (`6ee7999`), seed 0-999:** prototiple olay olay birebir aynı (V8 ile .NET'in `Math.Log/Cos` son bit farkı yüzünden toplam puan 15. basamakta değişebilir, hiçbir olayı etkilemiyor). Mavi %53,3; kuşatmayla biten %40,5 (%99 Mavi); uzayan maçlarda Mavi %22; ortalama 29,6 dk; maç başı 21,8 kill, 0,24 throw, 2,7 nehir çatışması.
 
 **Hedefler:**
 - Belirgin şekilde iyi bir draft tek maçta %60-65, bo3'te ~%70 kazansın.
@@ -601,9 +612,9 @@ Farkımız (önem sırasıyla): izlenen maç hikâyesi, gerçek turnuva draft'ı
 
 ### Bilinen sorunlar (prototipten gelen, C# portu bitince düzeltilecek)
 C# motoru port süresince prototiple birebir aynı tutuluyor (aynı seed → aynı olaylar); bu sorunlar port bitince ayrı adımda düzeltilecek.
-1. **Kule olayı hiç oluşmuyor.** Anlatıcıda solo kill (bütçe ≥ 8) kuleden (≥ 10) önce kontrol edildiği için bütçe 10'a çıkmadan harcanıyor. Prototipte de ezici bir draft'ta da 1000 maçta 0 kule.
-2. **Dakika içinde zaman sırası tutarsız.** Kurallar sabit sırayla işleniyor (koridor → orman → nehir → objektif → kuşatma) ama olay saniyeleri bu sırada değil. Ölüm kontrolü ve "İlk kan!" işlem sırasına göre yapıldığından, zaman çizelgesinde ölü şampiyon kill alabiliyor ya da "İlk kan!" ikinci kill'e yazılıyor. Tam prototipte 1000 maçın 365'inde. Çözüm önerisi: dakikanın olaylarını önce üretip saniye sırasıyla çözmek.
-3. **Gank tarafı ihtimali sınırlanmıyor.** `p_Mavi = 1/(1+e^(−fark/4))` %10-%90'a sıkıştırılmıyor; ormancı farkı 9 olunca ~%90.5.
+1. ~~**Kule olayı hiç oluşmuyor.**~~ **Çözüldü** (§4.8 kule = fırsat). Prototipte solo kill (bütçe ≥ 8) kuleden (≥ 10) önce kontrol edildiği için 1000 maçta 0 kule.
+2. ~~**Dakika içinde zaman sırası tutarsız.**~~ **Çözüldü** (§4.5 kayıt/çözüm). Prototipte kurallar sabit sırayla işlendiği için ölü şampiyon kill alabiliyor, "İlk kan!" ikinci kill'e yazılabiliyordu (1000 maçın 365'inde).
+3. ~~**Gank tarafı ihtimali sınırlanmıyor.**~~ **Çözüldü:** `p_Mavi = clamp(1/(1+e^(−fark/4)))`; prototipte ormancı farkı 9 olunca ~%90.5 oluyordu.
 
 ---
 

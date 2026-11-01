@@ -24,10 +24,7 @@ public sealed class KillRulesTests
         Assert.True(deaths.IsAlive(champion, 620));
     }
 
-    private const string TimeOrderIssue =
-        "Prototipten gelen dakika içi zaman sırası sorunu; port bitince düzeltilecek (DESIGN.md §14 Bilinen sorunlar 2)";
-
-    [Fact(Skip = TimeOrderIssue)]
+    [Fact]
     public void Olu_sampiyon_kill_alamaz_ve_tekrar_olemez()
     {
         for (uint seed = 0; seed < MatchCount; seed++)
@@ -70,7 +67,7 @@ public sealed class KillRulesTests
         }
     }
 
-    [Fact(Skip = TimeOrderIssue)]
+    [Fact]
     public void Ilk_kan_sadece_ilk_killde_yazilir()
     {
         for (uint seed = 0; seed < MatchCount; seed++)

@@ -25,7 +25,7 @@ public sealed class ArchitectureTests
             "ScoreBreakdown", "ScoreCategory", "Seed", "TeamSide", "Lane", "ChampionProfile", "TeamDraft",
             "MatchEvent", "Objective", "ObjectiveEvent", "KillEvent", "SiegeEvent", "NexusEvent",
             "TowerEvent", "PlateEvent", "CsEvent", "SurpriseEvent", "GankFailEvent", "MoveEvent",
-            "SkirmishEvent", "RiverSide", "ThrowEvent",
+            "SkirmishEvent", "RiverSide", "ThrowEvent", "DragonSoulEvent",
         ];
 
         var exported = typeof(IMatchSimulator).Assembly.GetExportedTypes().Select(t => t.Name);

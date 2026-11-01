@@ -6,23 +6,27 @@ namespace LolDraft.Engine.Tests;
 public sealed class SiegeTests
 {
     private const int MatchCount = 1000;
-    private static readonly int[] ObjectiveMinutes = [6, 11, 14, 16, 21, 23, 27, 30, 35];
 
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
     [Fact]
     public void Kusatma_20_dakikadan_sonra_objektifsiz_dakikalarin_45_saniyesinde()
     {
-        // Kuşatma toplanması: 45. sn'deki SiegeEvent (son savaşın toplanması 55. sn'de).
-        var sieges = Results().SelectMany(r => r.Events.OfType<SiegeEvent>()).Where(s => s.T % 60 == 45).ToList();
-
-        Assert.NotEmpty(sieges);
-        Assert.All(sieges, s =>
+        var count = 0;
+        foreach (var events in Results().Select(r => r.Events))
         {
-            var minute = (int)(s.T / 60) + 1;
-            Assert.True(minute >= 20);
-            Assert.DoesNotContain(minute, ObjectiveMinutes);
-        });
+            // Kuşatma toplanması: 45. sn'deki SiegeEvent (son savaşın toplanması 55. sn'de).
+            var objectiveMinutes = events.OfType<ObjectiveEvent>().Select(o => (int)(o.T / 60) + 1).ToHashSet();
+            foreach (var siege in events.OfType<SiegeEvent>().Where(s => s.T % 60 == 45))
+            {
+                var minute = (int)(siege.T / 60) + 1;
+                Assert.True(minute >= 20);
+                Assert.DoesNotContain(minute, objectiveMinutes);
+                count++;
+            }
+        }
+
+        Assert.True(count > 0);
     }
 
     [Fact]

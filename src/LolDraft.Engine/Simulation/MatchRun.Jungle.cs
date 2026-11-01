@@ -27,7 +27,8 @@ internal sealed partial class MatchRun
 
     private static readonly HashSet<int> GankMinutes = [3, 6, 9, 12, 18, 24];
 
-    private void PlayJungle(int minute)
+    // Orman akışı dakika başında puana yazılır; gank 40. saniyeye kaydolur.
+    private void ScheduleJungle(int minute)
     {
         var powerDiff = _blue.Jungle.PowerAt(minute) - _red.Jungle.PowerAt(minute);
 
@@ -35,15 +36,15 @@ internal sealed partial class MatchRun
         _scores.Add(ScoreCategory.Jungle, JunglePowerFactor * powerDiff + _rng.NextNormal() * JungleNoiseSigma);
 
         if (GankMinutes.Contains(minute))
-            PlayGank(minute, powerDiff);
+            At((minute - 1) * 60 + GankSecond, () => PlayGank(minute, powerDiff));
     }
 
     // Zar sırası: taraf, koridor, (şartlar tutarsa) support katılımı, başarı.
     private void PlayGank(int minute, int powerDiff)
     {
-        // Gank'ı atan taraf: p_Mavi = 1 / (1 + e^(−(G_jg farkı)/4)). Eşit ormancıda %50.
-        // Not: prototipte %10-%90'a sıkıştırılmıyor (en fazla ~%90.5); DESIGN.md §14 bilinen sorunlar 3.
-        var blueProbability = Probability.Logistic(powerDiff / GankSideDivisor);
+        // Gank'ı atan taraf: p_Mavi = clamp(1 / (1 + e^(−(G_jg farkı)/4))). Eşit ormancıda %50.
+        // Prototipte sıkıştırılmıyordu (fark 9'da ~%90.5); her olay ihtimali gibi %10-%90.
+        var blueProbability = Probability.Clamp(Probability.Logistic(powerDiff / GankSideDivisor));
         var side = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var lane = Lanes[_rng.NextIndex(Lanes.Length)];
         var team = Team(side);
@@ -62,6 +63,10 @@ internal sealed partial class MatchRun
                           && lane != Lane.Bot
                           && _deaths.IsAlive(support, t)
                           && _rng.NextDouble() < SupportRoamChance;
+
+        // Gank'a giden support bot koridorundan çıkmış olur.
+        if (withSupport)
+            MarkAway([support], t + AwayAfterRoamSeconds);
 
         string[] parts = withSupport ? [jungler.Id, support.Id] : [jungler.Id];
         _events.Add(new MoveEvent(t, "", parts, lane, River: null, GankMoveLead, GankMoveTail));

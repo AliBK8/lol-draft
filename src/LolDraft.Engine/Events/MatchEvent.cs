@@ -64,6 +64,9 @@ public sealed record SkirmishEvent(
 /// <summary>Görünmez hareket ipucu: takım <paramref name="Lead"/> sn önce toplanır, <paramref name="Tail"/> sn kalır.</summary>
 public sealed record SiegeEvent(double T, string Text, TeamSide Side, int Lead, int Tail) : MatchEvent(T, Text);
 
+/// <summary>4. ejderi alan takım ejder ruhunu kazanır; ardından Elder doğar.</summary>
+public sealed record DragonSoulEvent(double T, string Text, TeamSide Side) : MatchEvent(T, Text);
+
 /// <param name="Side">Kuşatmayı tutan (savunan) takım.</param>
 /// <param name="Probability">Savunanın kuşatmayı tutma ihtimali.</param>
 public sealed record ThrowEvent(double T, string Text, TeamSide Side, double Probability) : MatchEvent(T, Text);

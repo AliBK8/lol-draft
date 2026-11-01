@@ -16,14 +16,20 @@ internal sealed partial class MatchRun
     // -9: maç başında "son kuşatma çok önceydi" (JS: lastSiege = -9).
     private int _lastSiegeMinute = -9;
 
-    // Kuşatma şartları: dk ≥ 20, o dakika objektif yok, |toplam| ≥ 45, son kuşatmadan bu yana ≥ 3 dk.
-    // Zar sırası: başarı, sonra savaş kill'leri.
-    private MatchEnd? PlaySiege(int minute)
+    // 20. dk'dan sonra objektifsiz her dakika 45. saniyeye kaydolur; şartlar o saniyedeki puana bakar.
+    private void ScheduleSiege(int minute)
+    {
+        if (minute >= SiegeMinMinute && !_objectiveAt.ContainsKey(minute))
+            At((minute - 1) * 60 + SiegeSecond, () => PlaySiege(minute));
+    }
+
+    // Kuşatma şartları: |toplam| ≥ 45 ve son kuşatmadan bu yana ≥ 3 dk.
+    // Zar sırası: başarı, sonra kill sayısı (kill'ler kendi saniyelerinde).
+    private void PlaySiege(int minute)
     {
         var total = _scores.Total;
-        if (minute < SiegeMinMinute || ObjectiveSchedule.ContainsKey(minute)
-            || Math.Abs(total) < SiegeThreshold || minute - _lastSiegeMinute < SiegeCooldownMinutes)
-            return null;
+        if (Math.Abs(total) < SiegeThreshold || minute - _lastSiegeMinute < SiegeCooldownMinutes)
+            return;
 
         _lastSiegeMinute = minute;
         var attacker = total > 0 ? TeamSide.Blue : TeamSide.Red;
@@ -33,20 +39,24 @@ internal sealed partial class MatchRun
         var probability = FightProbability(attacker, minute);
 
         _events.Add(new SiegeEvent(t, "", attacker, Lead: 20, Tail: 4));
+        MarkAway([.. AliveAt(attacker, t), .. AliveAt(defender, t)], t + AwayAfterFightSeconds);
 
         if (_rng.NextDouble() < probability)
         {
-            FightKills(attacker, t, SiegeMaxKills);
-            _events.Add(new NexusEvent(t + 8,
-                $"{attacker.DisplayName()} kuşatmayı kazandı ve Nexus'u yıktı, maç {minute}. dakikada bitti", attacker, probability));
-            return new MatchEnd(minute, attacker, MatchEndKind.Siege, probability);
+            ScheduleFightKills(attacker, t, SiegeMaxKills);
+            At(t + 8, () =>
+            {
+                _events.Add(new NexusEvent(t + 8,
+                    $"{attacker.DisplayName()} kuşatmayı kazandı ve Nexus'u yıktı, maç {minute}. dakikada bitti", attacker, probability));
+                EndMatch(new MatchEnd(minute, attacker, MatchEndKind.Siege, probability));
+            });
+            return;
         }
 
         // Throw: savunan kuşatmayı tutar, +10 puan ve kill'ler alır. Önde olanın avantajı azalır, maç sürer.
         _scores.Add(ScoreCategory.Siege, defender.Sign() * ThrowValue);
-        FightKills(defender, t, ThrowMaxKills);
-        _events.Add(new ThrowEvent(t + 6,
-            $"{attacker.DisplayName()} bitirmeye gitti ama {defender.DisplayName()} savunmayı tuttu. Throw!", defender, 1 - probability));
-        return null;
+        ScheduleFightKills(defender, t, ThrowMaxKills);
+        At(t + 6, () => _events.Add(new ThrowEvent(t + 6,
+            $"{attacker.DisplayName()} bitirmeye gitti ama {defender.DisplayName()} savunmayı tuttu. Throw!", defender, 1 - probability)));
     }
 }

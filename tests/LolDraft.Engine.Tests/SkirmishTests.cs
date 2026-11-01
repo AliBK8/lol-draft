@@ -2,28 +2,52 @@ using LolDraft.Engine.Events;
 
 namespace LolDraft.Engine.Tests;
 
-/// <summary>Nehir çatışması kuralları (DESIGN.md §4.5). Aralıklı dakika/eşitsiz sayı değişikliğinde güncellenecek.</summary>
+/// <summary>Nehir çatışması kuralları (DESIGN.md §4.5): dakika aralıkları, iki taraf ayrı ayrı 1-3 kişi.</summary>
 public sealed class SkirmishTests
 {
     private const int MatchCount = 500;
-    private static readonly int[] SkirmishMinutes = [8, 13, 18, 26];
+    private static readonly (int From, int To)[] Windows = [(7, 9), (12, 14), (17, 19), (25, 27)];
 
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
     [Fact]
-    public void Catisma_belirli_dakikalarin_15_30_saniyeleri_arasinda()
+    public void Catisma_araliklarda_her_aralikta_en_fazla_bir_ve_15_30_saniyeleri_arasinda()
+    {
+        foreach (var result in Results())
+        {
+            var skirmishes = result.Events.OfType<SkirmishEvent>().ToList();
+
+            Assert.All(skirmishes, s =>
+            {
+                Assert.Contains(Windows, w => Minute(s) >= w.From && Minute(s) <= w.To);
+                Assert.InRange(s.T % 60, 15, 30);
+                // 1 − 0.9 double'da 0.09999999999999998; sınırda küçük tolerans.
+                Assert.InRange(s.Probability, 0.1 - 1e-9, 0.9 + 1e-9);
+            });
+            Assert.All(Windows, w => Assert.True(skirmishes.Count(s => Minute(s) >= w.From && Minute(s) <= w.To) <= 1));
+        }
+    }
+
+    [Fact]
+    public void Catisma_dakikalari_aralik_icinde_dagilir_ve_sayilar_esitsiz_olabilir()
     {
         var skirmishes = Results().SelectMany(r => r.Events.OfType<SkirmishEvent>()).ToList();
 
-        Assert.NotEmpty(skirmishes);
+        // Her aralığın her dakikası kullanılıyor (sabit dakika değil).
+        Assert.All(Windows, w => Assert.All(Enumerable.Range(w.From, w.To - w.From + 1),
+            m => Assert.Contains(skirmishes, s => Minute(s) == m)));
+
         Assert.All(skirmishes, s =>
         {
-            Assert.Contains((int)(s.T / 60) + 1, SkirmishMinutes);
-            Assert.InRange(s.T % 60, 15, 30);
-            // 1 − 0.9 double'da 0.09999999999999998; sınırda küçük tolerans.
-            Assert.InRange(s.Probability, 0.1 - 1e-9, 0.9 + 1e-9);
+            Assert.InRange(s.BlueCount, 1, 3);
+            Assert.InRange(s.RedCount, 1, 3);
+            Assert.Contains($"{s.BlueCount}v{s.RedCount}", s.Text);
         });
+        Assert.Contains(skirmishes, s => s.BlueCount != s.RedCount);
+        Assert.Contains(skirmishes, s => s.BlueCount == s.RedCount);
     }
+
+    private static int Minute(MatchEvent e) => (int)(e.T / 60) + 1;
 
     [Fact]
     public void Kazanan_katilimcilar_kaybeden_katilimcilardan_1_2_kill_alir()
