@@ -132,6 +132,7 @@ Her dakika sırasıyla: koridorlar → orman → nehir çatışması → objekti
 - 2v2 ya da 3v3 (%50/%50). Katılımcı önceliği: jg, sup, mid, adc, top (yaşayanlar).
 - `p_Mavi = clamp(1 / (1 + e^(−(ΣG_Mavi − ΣG_Kırmızı + 0.1 × toplam)/6)))`
 - Kazanan `catisma` ±3, kaybedenlerden 1-2 kill.
+- **Planlanan değişiklik (C# portu prototiple doğrulandıktan sonra):** sabit dakika yerine aralık: 7-9, 12-14, 17-19, 25-27 (her aralıkta en fazla bir çatışma, %75 ihtimalle, dakika aralık içinde rastgele). Kişi sayısı eşit olmak zorunda değil: her taraf ayrı ayrı 1-3 kişi (1v2, 2v3…); az gelen taraf güç toplamında dezavantajlı.
 
 **Objektifler:**
 
@@ -150,6 +151,12 @@ p_Mavi = clamp(1 / (1 + e^(−d/15)), 0.1, 0.9)
 ```
 - Geride olan takım objektifi kazanırsa puan ×1.25 (geri dönüş).
 - Savaşta kazanandan kaybedene kill'ler: Ejder 1-2, Baron/Herald/Elder 1-3, son savaş 1-4.
+- **Planlanan değişiklik (C# portu prototiple doğrulandıktan sonra): ejder ruhu ve Elder.** Sabit ejder/Elder takvimi yerine gerçek oyun ritmi:
+  - Ejder 5. dk'da doğar, alındıktan 5 dk sonra yenisi gelir; bir takım **4 ejdere** ulaşınca ejder doğmaz.
+  - 4. ejderi alan **ejder ruhu** kazanır: bir kerelik +6 puan ve maçın geri kalanında takım savaşı `d`'sine +2 (eşit maçta ~%60). Ölçülü tutuldu: ruh tek başına maçı bitirmemeli.
+  - **Elder** ruhtan 6 dk sonra doğar, alınınca 6 dk sonra tekrar gelir; iki taraf da alabilir (geri dönüş kapısı, geride olan alırsa ×1.25).
+  - Ruh hiç alınmazsa (3-3 → 7. ejder) Elder çıkmaz.
+  - Ayar düğmeleri: ruh puanı (6), ruh savaş bonusu (2). Hedef: ruhu alan takım maçların %65-75'ini kazansın (denge aracıyla ölçülecek).
 
 ### 4.6 Maç sonu kuralları
 - **Kuşatma:** dk ≥ 20, o dakika objektif yoksa, |toplam| ≥ 45 ve son kuşatmadan bu yana ≥ 3 dk geçtiyse önde olan takım kuşatmaya gider. İhtimal = takım savaşı ihtimali (önde olanın tarafından).
@@ -358,9 +365,12 @@ public interface IMatchSimulator
 {
     MatchResult Simulate(MatchInput input);           // aynı input → aynı sonuç
 }
-public sealed record MatchInput(TeamDraft Blue, TeamDraft Red, Seed Seed, Directive? BlueDirective, Directive? RedDirective);
+public static class MatchEngine { public static IMatchSimulator CreateSimulator(); }   // simülatör internal kalsın diye
+public sealed record MatchInput(TeamDraft Blue, TeamDraft Red, Seed Seed);   // Directive'ler v0.2'de eklenecek
 public sealed record MatchResult(IReadOnlyList<MatchEvent> Events, ScoreBreakdown Breakdown, MatchEnd End);
 ```
+Yanında değer nesneleri ve olay tipleri: `Seed`, `TeamSide`, `ChampionProfile`, `TeamDraft`, `ScoreBreakdown`, `ScoreCategory`, `MatchEnd`, `MatchEvent` ve alt tipleri. Liste `ArchitectureTests` ile kilitli; yeni public tip bilinçli eklenir. Olaylar JSON bilmez, JSON'a çevirmek Api'nin işi (DTO).
+
 `SynergyCalculator`, `LaneFlow`, `Narrator`, `FightResolver`, `MovementPlanner`, `IRandomSource` gibi parçalar `internal sealed`.
 
 **Domain örneği: draft durum makinesi:**
@@ -513,6 +523,8 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | Maç başı nehir çatışması | ~2,7 |
 | Puanda önde olanın kaybettiği maç | %7 |
 
+**C# motoru (`LolDraft.Engine`), seed 0-999:** prototiple olay olay birebir aynı (V8 ile .NET'in `Math.Log/Cos` son bit farkı yüzünden toplam puan 15. basamakta değişebilir, hiçbir olayı etkilemiyor). Mavi %53,3; kuşatmayla biten %40,5 (%99 Mavi); uzayan maçlarda Mavi %22; ortalama 29,6 dk; maç başı 21,8 kill, 0,24 throw, 2,7 nehir çatışması.
+
 **Hedefler:**
 - Belirgin şekilde iyi bir draft tek maçta %60-65, bo3'te ~%70 kazansın.
 - Ortalama maç 25-32 dk, maç başı 15-30 kill.
@@ -586,6 +598,12 @@ Farkımız (önem sırasıyla): izlenen maç hikâyesi, gerçek turnuva draft'ı
 - 2v2'de sorumluluk ve oy paylaşımı nasıl?
 - MVP'de bilgisayar rakibi gerekli mi?
 - Harita sadece 2D çizim mi, ileride daha detaylı mı?
+
+### Bilinen sorunlar (prototipten gelen, C# portu bitince düzeltilecek)
+C# motoru port süresince prototiple birebir aynı tutuluyor (aynı seed → aynı olaylar); bu sorunlar port bitince ayrı adımda düzeltilecek.
+1. **Kule olayı hiç oluşmuyor.** Anlatıcıda solo kill (bütçe ≥ 8) kuleden (≥ 10) önce kontrol edildiği için bütçe 10'a çıkmadan harcanıyor. Prototipte de ezici bir draft'ta da 1000 maçta 0 kule.
+2. **Dakika içinde zaman sırası tutarsız.** Kurallar sabit sırayla işleniyor (koridor → orman → nehir → objektif → kuşatma) ama olay saniyeleri bu sırada değil. Ölüm kontrolü ve "İlk kan!" işlem sırasına göre yapıldığından, zaman çizelgesinde ölü şampiyon kill alabiliyor ya da "İlk kan!" ikinci kill'e yazılıyor. Tam prototipte 1000 maçın 365'inde. Çözüm önerisi: dakikanın olaylarını önce üretip saniye sırasıyla çözmek.
+3. **Gank tarafı ihtimali sınırlanmıyor.** `p_Mavi = 1/(1+e^(−fark/4))` %10-%90'a sıkıştırılmıyor; ormancı farkı 9 olunca ~%90.5.
 
 ---
 

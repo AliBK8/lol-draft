@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LolDraft.Api/LolDraft.Api.csproj" />
+    <Project Path="src/LolDraft.Application/LolDraft.Application.csproj" />
+    <Project Path="src/LolDraft.Domain/LolDraft.Domain.csproj" />
+    <Project Path="src/LolDraft.Engine/LolDraft.Engine.csproj" />
+    <Project Path="src/LolDraft.Gateway/LolDraft.Gateway.csproj" />
+    <Project Path="src/LolDraft.Infrastructure/LolDraft.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LolDraft.Api.Tests/LolDraft.Api.Tests.csproj" />
+    <Project Path="tests/LolDraft.Domain.Tests/LolDraft.Domain.Tests.csproj" />
+    <Project Path="tests/LolDraft.Engine.Tests/LolDraft.Engine.Tests.csproj" />
+  </Folder>
+</Solution>

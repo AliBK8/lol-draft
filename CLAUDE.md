@@ -33,8 +33,9 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - Görev yerine getirildikten sonra bir kez daha üzerinde kontrol yapılıp sonrasında görev bitirilir ve kontrol edildiği belirtilir.
 
 ## Sıradaki işler
-1. `data-pipeline/01_players.py`, `02_match_ids.py`, `03_download.py`
-2. Bölge boyama aracı → `zones.json`
-3. `04_transitions.py` → `transitions.json`, `kill_heatmap.json`
-4. Çözüm iskeleti (§8.2), gateway + API, C# motor + deterministiklik testleri
+1. ~~Veri hattı 01-04, `zones.json`, `transitions.json`, `kill_heatmap.json`~~ (bitti)
+2. ~~4a: Çözüm iskeleti (§8.2): `LolDraft.slnx`, 6 src + 3 test projesi, mimari testleri~~ (bitti)
+3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti (1000 seed'de orijinal prototiple aynı olaylar). Sırada: DESIGN.md §14 bilinen sorunlar + nehir çatışması aralıklı dakika/eşitsiz sayı + ejder ruhu/Elder (§4.5)
+4. 4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`
 5. MVP için 40 şampiyon ve etiketleri
+6. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../LolDraft.Application/LolDraft.Application.csproj" />
+    <ProjectReference Include="../LolDraft.Infrastructure/LolDraft.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LolDraft.Api.Tests" />
+  </ItemGroup>
+
+</Project>
