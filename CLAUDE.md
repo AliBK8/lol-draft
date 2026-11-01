@@ -12,6 +12,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - `web/` — React + TypeScript
 - `data-pipeline/` — Python (requests; pandas yok, saf Python): Riot match-v5 timeline'larından hareket tabloları
 - `prototype/mac-motoru.html` — çalışan JS prototip; motor kurallarının referans uygulaması
+- `tools/LolDraft.Balance` — denge aracı: rastgele ayna draft'larla motoru ölçer (DESIGN.md §9)
 -- Hedef: .NET 10 (`net10.0`), SDK `global.json` ile sabit
 
 ## Temel kurallar
@@ -35,7 +36,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 ## Sıradaki işler
 1. ~~Veri hattı 01-04, `zones.json`, `transitions.json`, `kill_heatmap.json`~~ (bitti)
 2. ~~4a: Çözüm iskeleti (§8.2): `LolDraft.slnx`, 6 src + 3 test projesi, mimari testleri~~ (bitti)
-3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti; §14 bilinen sorunlar çözüldü (zaman çizelgesi, gank sınırı, kule = fırsat); nehir çatışması aralıklı/eşitsiz ve ejder ruhu/Elder eklendi (§4.5). Sırada: denge aracı (konsol, rastgele draft'lar, §9)
-4. 4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`
-5. MVP için 40 şampiyon ve etiketleri
+3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti; §14 bilinen sorunlar çözüldü (zaman çizelgesi, gank sınırı, kule = fırsat); nehir çatışması aralıklı/eşitsiz ve ejder ruhu/Elder eklendi (§4.5). Denge aracı bitti (§9).
+4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): A ekonomi → B şampiyon modeli v2 + kurallar → C 40 şampiyon → D dengeleme
+5. 4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`
 6. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

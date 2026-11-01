@@ -12,4 +12,7 @@
     <Project Path="tests/LolDraft.Domain.Tests/LolDraft.Domain.Tests.csproj" />
     <Project Path="tests/LolDraft.Engine.Tests/LolDraft.Engine.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/LolDraft.Balance/LolDraft.Balance.csproj" />
+  </Folder>
 </Solution>
