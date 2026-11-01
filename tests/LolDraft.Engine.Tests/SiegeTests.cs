@@ -74,14 +74,49 @@ public sealed class SiegeTests
         });
     }
 
+    // Throw sabit puan yazmaz (eskiden +10); savunan kill'leri ödülleriyle alır.
     [Fact]
-    public void Throw_savunana_10_puan_yazar()
+    public void Throw_puan_yazmaz_savunan_kill_alir()
     {
+        var (throws, defended) = (0, 0);
         foreach (var result in Results())
         {
-            var expected = result.Events.OfType<ThrowEvent>().Sum(t => t.Side.Sign() * 10.0);
-            Assert.Equal(expected, result.Breakdown[ScoreCategory.Siege]);
+            Assert.Equal(0, result.Breakdown[ScoreCategory.Siege]);
+            foreach (var throwEvent in result.Events.OfType<ThrowEvent>())
+            {
+                throws++;
+                var siegeT = throwEvent.T - 6;
+                if (result.Events.OfType<KillEvent>().Any(k =>
+                        k.Side == throwEvent.Side && k.T >= siegeT + 2 && k.T <= siegeT + 2 + 1.5 * 2))
+                    defended++;
+            }
         }
+
+        Assert.True(throws > 0);
+        Assert.True(defended >= 0.9 * throws, $"{defended}/{throws} throw'da savunan kill aldı");
+    }
+
+    // Kuşatmaya giden: bir koridorda dış + iç kuleyi yıkmış ve dakika başında altında önde (fark kuşatma anında ≥ 2.000).
+    [Fact]
+    public void Kusatmaya_kapiya_dayanan_ve_altinda_onde_olan_gider()
+    {
+        var (sieges, ahead) = (0, 0);
+        foreach (var result in Results())
+        {
+            foreach (var siege in result.Events.OfType<SiegeEvent>().Where(s => s.T % 60 == 45))
+            {
+                sieges++;
+                var towers = result.Events.OfType<TowerEvent>().Where(e => e.Side == siege.Side && e.T < siege.T);
+                Assert.Contains(towers.GroupBy(e => e.Lane), lane => lane.Count() >= 2);
+
+                var frame = result.GoldFrames.First(f => f.Minute == (int)(siege.T / 60));
+                if (frame.TeamGold(siege.Side) > frame.TeamGold(siege.Side.Opponent()))
+                    ahead++;
+            }
+        }
+
+        Assert.True(sieges > 100, $"Sadece {sieges} kuşatma");
+        Assert.True(ahead >= 0.95 * sieges, $"{ahead}/{sieges} kuşatmada saldıran dakika başında önde");
     }
 
     private IEnumerable<MatchResult> Results()

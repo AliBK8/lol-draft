@@ -32,8 +32,16 @@ public sealed record ChampionProfile
     public int Engage { get; }
     public double ApShare { get; }
 
-    // Faz gücü G(şampiyon, dk) (DESIGN.md §4.3): dk < 14 erken, 14 ≤ dk < 25 orta, dk ≥ 25 geç.
-    internal int PowerAt(int minute) => minute < 14 ? Early : minute < 25 ? Mid : Late;
+    // Güç potansiyeli G_pot(dk), yumuşak eğri (DESIGN.md §16.3):
+    //   dk ≤ 10: erken · 10 → 18: erkenden ortaya doğrusal · 18 → 28: ortadan geçe doğrusal · dk ≥ 28: geç
+    // Örnek Kayle (2-6-10): 10. dk 2, 14. dk 4, 18. dk 6, 23. dk 8, 28. dk 10.
+    internal double PowerAt(int minute) => minute switch
+    {
+        <= 10 => Early,
+        < 18 => Early + (minute - 10) / 8.0 * (Mid - Early),
+        < 28 => Mid + (minute - 18) / 10.0 * (Late - Mid),
+        _ => Late,
+    };
 
     private static int InRange(int value, int min, int max, string name) =>
         value >= min && value <= max

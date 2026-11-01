@@ -107,14 +107,14 @@ public sealed class ObjectiveTests
     }
 
     [Fact]
-    public void Ejder_puani_geri_donus_ve_ruh_dahil_dokumle_tutarli()
+    public void Ejder_puani_ruh_dahil_dokumle_tutarli()
     {
         foreach (var result in Results())
         {
-            // Ejder 4 puan, geride olan alırsa 5; ruh +6. Metindeki "geri dönüş" ile puan dökümü tutarlı olmalı.
+            // Ejder 4 puan, ruh +6 (geri dönüş çarpanı yok; geri dönüş ödülle olur).
             var dragons = result.Events.OfType<ObjectiveEvent>()
                 .Where(o => o.Objective == Objective.Dragon)
-                .Sum(o => o.Side.Sign() * (o.Text.Contains("geri dönüş") ? 5.0 : 4.0));
+                .Sum(o => o.Side.Sign() * 4.0);
             var soul = result.Events.OfType<DragonSoulEvent>().Sum(s => s.Side.Sign() * 6.0);
 
             Assert.Equal(dragons + soul, result.Breakdown[ScoreCategory.Dragon], 9);

@@ -376,9 +376,10 @@ public interface IMatchSimulator
 }
 public static class MatchEngine { public static IMatchSimulator CreateSimulator(); }   // simülatör internal kalsın diye
 public sealed record MatchInput(TeamDraft Blue, TeamDraft Red, Seed Seed);   // Directive'ler v0.2'de eklenecek
-public sealed record MatchResult(IReadOnlyList<MatchEvent> Events, ScoreBreakdown Breakdown, MatchEnd End);
+public sealed record MatchResult(IReadOnlyList<MatchEvent> Events, ScoreBreakdown Breakdown, MatchEnd End,
+    IReadOnlyList<GoldFrame> GoldFrames);                // dakika kareleri (§16.11)
 ```
-Yanında değer nesneleri ve olay tipleri: `Seed`, `TeamSide`, `ChampionProfile`, `TeamDraft`, `ScoreBreakdown`, `ScoreCategory`, `MatchEnd`, `MatchEvent` ve alt tipleri. Liste `ArchitectureTests` ile kilitli; yeni public tip bilinçli eklenir. Olaylar JSON bilmez, JSON'a çevirmek Api'nin işi (DTO).
+Yanında değer nesneleri ve olay tipleri: `Seed`, `TeamSide`, `ChampionProfile`, `TeamDraft`, `ScoreBreakdown`, `ScoreCategory`, `MatchEnd`, `GoldFrame`, `ChampionGold`, `MatchEvent` ve alt tipleri. Liste `ArchitectureTests` ile kilitli; yeni public tip bilinçli eklenir. Olaylar JSON bilmez, JSON'a çevirmek Api'nin işi (DTO).
 
 `SynergyCalculator`, `LaneFlow`, `Narrator`, `FightResolver`, `MovementPlanner`, `IRandomSource` gibi parçalar `internal sealed`.
 
@@ -549,7 +550,7 @@ dotnet run --project tools/LolDraft.Balance -c Release -- --drafts 10000 --seed 
 ```
 - Havuz §3 biçiminde JSON (`roles`: top, jg, mid, adc, sup); varsayılan `sample-champions.json`: prototipteki 10 şampiyon + her role 2 arketip (gerçek 40 şampiyon gelince değişecek).
 - Rastgele draft (her rolde iki takıma farklı şampiyon). Her draft **ayna** oynanır: A Mavi/B Kırmızı, sonra yer değiştirip aynı seed. Draft etkisi iki tarafa eşit dağılır; Mavi'nin %50'den sapması saf taraf etkisidir.
-- Rapor: genel ölçümler (§9 hedefleriyle yan yana), güç ve sinerji farkına göre kazanma, belirgin erken comp, bitiş dakikası dağılımı, şampiyon kazanma oranları (%95 hata payıyla). Motoru sadece public sözleşmeden (`MatchEngine`) kullanır; aynı `--seed` aynı raporu verir. 10.000 draft (20.000 maç) ~8 sn.
+- Rapor: genel ölçümler (§9 ve §16.12 hedefleriyle yan yana), **ekonomi** (14. dk CS, 15. dk takım altın farkı, shutdown ve yakalanma sayısı/ödülü), **altın farkı → kazanma tablosu** (10/15/20. dk × fark dilimi 0-1.499 / 1.500-2.999 / 3.000-4.999 / 5.000+; o dakikaya ulaşan maçlar), güç ve sinerji farkına göre kazanma, belirgin erken comp (ve 14. dk 3.000+ geride kalan scale comp'un kurtarma oranı), bitiş dakikası dağılımı, şampiyon kazanma oranları (%95 hata payıyla). Eski "maç sonu puanda önde olan kaybetti" kalktı (puan artık karar vermiyor). Motoru sadece public sözleşmeden (`MatchEngine`) kullanır; aynı `--seed` aynı raporu verir. 10.000 draft (20.000 maç) ~8 sn.
 
 **İlk ölçüm (örnek havuz, 10.000 draft)** ve geçici deneyler (değiştir → ölç → geri al):
 
@@ -711,32 +712,59 @@ Her şampiyonun altını tutulur. Sayılar gerçek oyuna yakın seçildi ki veri
 | Kaynak | Altın | Not |
 |---|---|---|
 | Başlangıç | 500 | |
-| Taban gelir (farm + pasif) | 6,5/sn (~390/dk) | **sadece yaşarken**: ölmek gelir kaybıdır |
-| Koridor farm üstünlüğü | her dakika `abs(Δ) × 60`, öndeki koridorcuya | bot'ta adc %60, destek %40. CS olayları bunun anlatımıdır, ayrıca altın vermez |
+| Pasif gelir | 2/sn (120/dk) | **sadece yaşarken**: ölmek gelir kaybıdır |
+| Farm (CS) | CS × 20 | aşağıdaki CS kuralı; top, mid, adc koridor minyonu, ormancı kamp keser |
+| Support item'ı | 90/dk, yaşarken | support CS kesmez |
 | Kill | katile 300 + **ödül** | |
-| Asist | savaş/çatışma/gank kill'inde kazanan katılımcılara toplam 150, eşit bölünür | |
+| Asist | savaş/çatışma/gank kill'inde katil dışındaki yaşayan katılımcılara toplam 150, eşit bölünür | solo koridor kill'inde asist yok |
 | Plaka | 160, plakayı alan koridorcuya | |
-| Kule | 250 koridorcu(lar)a, takımın kalanına kişi başı 50 | dış/iç/inhibitör aynı (ayar) |
+| Kule | 250 koridorculara eşit bölünür (bot'ta 125'er), takımın kalanına kişi başı 50 | dış/iç/inhibitör aynı (ayar); savaş sonrası kule de verir |
 | Ejder | takıma kişi başı 40 | asıl değeri ruh |
 | Herald | takıma kişi başı 100 | |
 | Baron | takıma kişi başı 300 + **Baron buff'ı** | |
 | Elder | altın yok, **Elder buff'ı** | |
 
-**Ödül (shutdown):**
+**CS kuralı (uygulandı, `MatchRun.Farm.cs`):** dakikada 12 minyon (2 dalga × 6), 10 sn'lik 6 dilimde. Normal tempoda %70'i kesilir: dilim başı 1,4 CS (dk'da 8,4). Her dilimde:
 ```
-E(t) = 500 + 6,5 × t                              // hiç ölmemiş, farm farkı olmayan oyuncunun altını (t = sn)
-ödül = clamp(0,2 × (altın_kurban − E(t)), 0, 700)
+kaçan  = taban × min(0,25 × |Δ|, 0,5)      // Δ: o dakikanın koridor Δ'sı (ormancıda orman akışı)
+ezilen = taban − kaçan                       // kule altında dalga kaçırır
+ezen   = taban + 0,5 × kaçan                 // kaçanın yarısını ezen keser, yarısı kuleye gider
 ```
-Önde olanı öldürmek çok altın getirir; geri dönüş kapısının ana parçası. Örnek: 1.500 önde olanın ödülü 300; 4.000 önde olanınki 700 (tavan).
+- Dilim anında koridorda olmayan (ölü, roam, savaş) o dilimin CS'sini kesemez.
+- Örnek: Δ = 0,7 → ezilen dilim başı 1,155, ezen 1,5225. Erken comp vs scale comp (test takımları), 2.000 maç ortalaması 14. dk: Renekton 117 CS, Kayle 86 CS; takım farkı 10. dk ~2.600, 14. dk ~4.600 altın.
+- CS de kalibre edilecek: timeline'larda dakika dakika oyuncu başı minyon/kamp sayısı var.
+- "CS farkı açıyor" anlatımı faz A adım 3'te gerçek CS farkına bağlanır (şimdilik anlatıcı bütçesi).
+
+**Altın rolüyle kıyaslanır:** support'un geliri düşük olduğu için `r` (16.5) her şampiyonun altınını **aynı roldeki rakibiyle** kıyaslar (uygulandı). Ödül de aynı kıyası kullanır.
+
+**Ödül (shutdown, uygulandı):**
+```
+taban = 0,3 × (altın_kurban − altın_kurbanın_rol_rakibi)                   // kurbanın ölmeden önceki altını
+ödül  = taban > 0 ise min(taban × (1 + 0,13 × son ölümden beri yaşanan dk), 700), değilse 0
+```
+Önde olanı öldürmek çok altın getirir; geri dönüş kapısının ana parçası. Uzun süre ölmeden önde kalan giderek değerli hedef olur (seri ödülü). Örnek: rakibinden 1.000 önde → 300; 5 dk ölmezse ~495. Zaman **çarpandır**: toplama (+40/dk) denendi, 50 altın önde olan bile tam bonus alıyordu (maç başı ~9 shutdown, %40'ı tavanda). Ödülü sadece katil alır (asistler kendi payını alır). `KillEvent.Bounty` miktarı taşır; 150+ ödül "Shutdown! … (+N ödül altını)" diye anlatılır.
 
 ### 16.5 Altından gerçek güce
 ```
-r     = altın / E(t)                                 // 1 = ortalama, 1,2 = %20 önde
-s     = { econ 0: 0,3 · econ 1: 0,6 · econ 2: 0,9 · econ 3: 1,2 }   // altına duyarlılık
+r     = altın / ((altın + rakip_rol_altını) / 2)    // 1 = başa baş, 1,1 = rakibinden %22 fazla (uygulandı)
+s     = { econ 0: 0,5 · econ 1: 1 · econ 2: 1,5 · econ 3: 2 }   // altına duyarlılık (deneyle ölçeklendi, aşağıda)
 G_eff = G_pot(dk) × clamp(1 + s × (r − 1), 0,5, 1,4)
 ```
 - **Scale şampiyon altına daha duyarlıdır** (`econ` 3): az altınla potansiyelinin yarısına iner, çok altınla en fazla %40 artar.
 - Taban ve tavan kartopu sınırlar (azalan getiri): 10 kill alan, 3 kill alandan çok daha güçlü olmaz.
+- Uygulama (`MatchRun.Power.cs`): `econ` henüz yok (adım 8), herkes `s = 1,5`. Örnek: Renekton 5.150 vs Kayle 4.050 altın → r 1,12 / 0,88 → güç ×1,18 / ×0,82.
+- **Duyarlılık deneyi** (herkes aynı s; eşit draft 5.000 maç + denge aracı 4.000 draft):
+
+| Ölçüm | s 0,9 | **s 1,5 (seçildi)** | s 2 | s 3 | Hedef |
+|---|---|---|---|---|---|
+| Eşit draft: 15. dk 3.000+ önde kazanıyor | %64,5 | %72,2 | %79,9 | %89,4 | %70-80 |
+| Eşit draft: 15. dk 5.000+ önde kazanıyor | %70,7 | %82,1 | %88,6 | %94,7 | — |
+| Erken comp kazanıyor / 35'ten önce bitiriyor | %39,9 / %16,2 | %48,1 / %27,0 | %54,7 / %36,2 | %64,4 / %52,5 | — / %30-45 |
+| Ruhu alan kazanıyor | %64,6 | %70,4 | %74,4 | %81,4 | %65-75 |
+| Ortalama süre | 33,3 | 32,1 | 30,7 | 28,4 | 25-32 dk |
+| Sınıra takılan savaş | %2,6 | %3,2 | %4,1 | %6,4 | düşük |
+
+  0,9 çok zayıf (altın önemsiz), 3 kartopu. 1,5 seçildi: erken ve scale comp başa baş, gerçekçi. 2 hedeflerin hepsine giriyor ama erken comp'u hafif öne çıkarıyor; faz D'de (econ'la birlikte) yeniden bakılacak aday.
 - `G_eff`, bugün `G`'nin kullanıldığı her yere geçer: koridor akışı, nehir çatışması, takım gücü.
 
 **Örnek: Kayle (2-6-10, econ 3) vs Renekton (9-6-4, econ 1), top, 28. dk:**
@@ -760,8 +788,8 @@ d      = ΣG_eff(katılımcılar) farkı + kural bonusları (olay türüne göre
 p_Mavi = clamp(1 / (1 + e^(−d / bölen)), 0,1, 0,9)        bölen: takım savaşı 15, çatışma 6
 ```
 - Bugünkü `0,2 × toplam puan` ve ayrıca eklenen `sinerji farkı` kalkar (sinerji iki kez sayılıyordu, §9). Üstünlük altın üzerinden `ΣG_eff`'e girer.
-- **Buff'lar:** ejder ruhu kalıcı d +2 · Baron buff'ı 3 dk kuşatma d +4 ve kuşatma eşiği yarıya · Elder buff'ı 2 dk savaş d +6.
-- **Geri dönüş:** ayrı ×1,25 çarpanı kalkar; yerini ödül (16.4) alır: geride olan kazandığında önde olanları öldürür, ödül toplar.
+- **Buff'lar (uygulandı):** ejder ruhu kalıcı d +2 · Baron buff'ı 3 dk kuşatma d +4 ve kuşatma eşiği yarıya · Elder buff'ı 2 dk tüm takım savaşlarında (objektif, kuşatma, son savaş) d +6. Buff takıma aittir (ölen üye kaybetmez; sadeleştirme).
+- **Geri dönüş:** ayrı ×1,25 çarpanı kalktı (uygulandı); yerini ödül (16.4) aldı: geride olan kazandığında önde olanları öldürür, ödül toplar.
 
 ### 16.8 Kurallar (ilk set: 13 kural)
 Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var. Ağırlıklar JSON'da (kod değişmeden ayar), kurallar C#'ta test edilebilir küçük parçalar.
@@ -793,19 +821,24 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 
 ### 16.9 Yakalanma (geri dönüş kapısı)
 Çok önde olan takım bazen bir yerde yakalanır:
-- dk ≥ 15, her dakika bir kez, **önde olan takımın en zengin şampiyonu** (en yüksek `r`) için.
-- İhtimal: `p = min(0,03 + 0,01 × takım altın farkı / 1000, 0,12) × (1 + 0,15 × rakip pick toplamı)`.
-- Yakalanırsa kaçma şansı `0,2 + 0,1 × mob`; kaçamazsa rakibin en yüksek `pick`'li yaşayan şampiyonu öldürür ve katil **ödülü** alır. Log: "Draven yan koridorda yakalandı! Kırmızı 650 altın ödül aldı."
-- Önde olan için risk, geride olan için umut; son savaştan önce farkın kapanmasını sağlayan ana mekanik.
+- dk ≥ 15, objektif olmayan dakikalarda (objektifte herkes savaşta) bir kez, dakikanın 5-40. saniyesinde (45. sn kuşatmadan önce); takım altın farkı o an ≥ 1.000 ise.
+- Kurban: **önde olan takımın, koridorunda olan (ölü/savaşta değil) en zengini**: rol rakibine göre en yüksek altın oranı.
+- İhtimal: `p = min(0,03 + 0,01 × takım altın farkı / 1000, 0,12) × (1 + 0,15 × rakip pick toplamı)`. 3.000 önde → %6/dk, 9.000+ → %12.
+- Yakalanırsa kaçma şansı `0,2 + 0,1 × mob`; kaçamazsa rakibin en yüksek `pick`'li müsait şampiyonu öldürür ve katil **ödülü** alır. Log: "Shutdown! Draven alt koridorda yakalandı, kill Lee Sin aldı (+650 ödül altını)". Kill olayı `Lane` boş (koridor anlatıcısının kill'i değil).
+- Önde olan için risk, geride olan için umut; son savaştan önce farkın kapanmasını sağlayan mekaniklerden.
+- Uygulama (`MatchRun.Pick.cs`): `pick` ve `mob` henüz yok (adım 8): ihtimal sadece altın farkına bağlı, kaçma %20, katil nehre yakınlık sırasıyla ilk müsait (ormancı, support, mid, adc, top).
+- Ölçüm (5.000 maç, yakalanmalı / yakalanmasız): maç başı 0,6 yakalanma, ortalama ödül ~680. Eşit draft'ta 15. dk 5.000+ önde olan %79,4 / %81,3, erken vs scale'de %73,4 / %74,9 kazanıyor; büyük farkta ~2 puan geri dönüş.
 
 ### 16.10 Kuşatma ve maç sonu
 - Şart: dk ≥ 20, o dakika objektif yok, **takım altın farkı ≥ 4.000** (Baron buff'ı varken ≥ 2.000), en az bir koridorda dış ve iç kule yıkılmış, son kuşatmadan ≥ 3 dk.
-- Başarı ihtimali: takım savaşı (16.7) + K6 poke. Başarı → Nexus. Başarısız → **throw**: savunan savaşı kazanmış sayılır, kill'ler ödülle → fark kendiliğinden kapanır (bugünkü sabit +10 kalkar).
+- Başarı ihtimali: takım savaşı (16.7) + K6 poke. Başarı → Nexus. Başarısız → **throw**: savunan savaşı kazanmış sayılır, kill'ler ödülle → fark kendiliğinden kapanır (sabit +10 kalktı).
+- Uygulandı (`MatchRun.Siege.cs`): saldıran = kuşatma anında altında önde olan; K6 poke adım 9'da. Puan (`ScoreSheet`) artık hiçbir karara girmiyor; sadece `Breakdown` çıktısında duruyor, karne gelince (adım 10) altın kaynakları dökümüyle değişecek.
+- Ölçüm (10.000 draft): süre 29,3 dk, maçların %52,7'si kuşatmayla bitiyor, erken comp %32,6'sını 35'ten önce bitiriyor (ilk kez hedefte), eşit draft'ta 15. dk 3.000+ önde olan %78,7 kazanıyor. **Bilinen:** bitişlerin %15'i tam 20. dakikada (ilk kuşatma dakikası birikiyor); faz D'de bakılacak (ör. ilk kuşatma için inhibitör şartı ya da eşiğin dakikayla artması).
 - Son savaş (dk 35) aynı kalır: o anki `ΣG_eff`, kurallar ve buff'larla.
 
 ### 16.11 Çıktı (motor sözleşmesine eklenecekler)
 - `KillEvent`'e ödül altını; altın getiren olaylara miktar.
-- **Dakika kareleri:** her dakika her şampiyonun altını ve takım altın farkı → front'ta altın grafiği.
+- **Dakika kareleri** (`GoldFrame`, uygulandı): k. kare = k. dakikanın başındaki (t = k × 60) her şampiyonun altını ve CS'si (aşağı yuvarlanmış), `TeamGold(side)` takım toplamı. 0. kare herkes 500; son kare maçın bittiği dakika, Nexus anı → front'ta altın grafiği.
 - **Draft karnesi:** maçta etkili olan kurallar (kural, taraf, nerede, ne kadar etki, metin) ve altın farkının kaynakları (koridorlar, kill'ler, ödüller, objektifler). Örnek: "Top: range üstünlüğü (Jayce) → +900 altın · Kayle scale edemedi: 28. dk'da potansiyelinin %55'i · Draven yakalandı → 650 ödül, fark kapandı".
 - `ScoreBreakdown` yerine altın kaynakları dökümü.
 
@@ -827,13 +860,13 @@ Kalibrasyon: veri hattındaki timeline'larda dakika dakika takım altını var �
 Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki adım. Sayılar (ağırlıklar, eşikler) adımlar boyunca taslak kalır; asıl ayar faz D'de yapılır.
 
 **Faz A — Ekonomi (puan → altın)**
-1. Altın defteri: başlangıç, pasif gelir (sadece yaşarken), kill/asist/plaka/kule/objektif altını, dakika kareleri. Henüz güce bağlı değil, yan kayıt; mevcut davranış ve testler değişmez.
-2. Koridor farmı: koridor Δ'sı altına dönüşür (|Δ|×60, bot'ta %60/%40).
-3. Yumuşak güç eğrisi + `G_eff`: savaş ve koridor ihtimalleri altından hesaplanır. Büyük geçiş: matchup sabitleri ve ikinci sinerji sayımı kalkar, testler güncellenir.
-4. Shutdown ödülü.
-5. Yakalanma (16.9).
-6. Kuşatma v2 (altın farkı + kuleler), throw'un ödülle kapanması, Baron/Elder buff'ları.
-7. Denge aracı altına geçer → ara ölçüm (ayna ~%50, süre, geri dönüş oranı).
+1. ~~Altın defteri: başlangıç, pasif gelir (sadece yaşarken), kill/asist/plaka/kule/objektif altını, dakika kareleri. Henüz güce bağlı değil, yan kayıt; mevcut davranış ve testler değişmez.~~ (bitti: `GoldLedger`, `MatchRun.Gold.cs`, `GoldFrame`; maç akışı birebir aynı)
+2. ~~Koridor farmı: CS kuralı (16.4), ezilen CS kaçırır, koridorda olmayan kesemez; support item'ı.~~ (bitti: `MatchRun.Farm.cs`, karelerde CS; maç akışı birebir aynı)
+3. ~~Yumuşak güç eğrisi + `G_eff`: savaş ve koridor ihtimalleri altından hesaplanır. Büyük geçiş: matchup sabitleri ve ikinci sinerji sayımı kalkar, testler güncellenir.~~ (bitti) Koridor Δ, orman/gank, nehir çatışması, takım savaşı `G_eff` kullanıyor; `0,2 × puan` ve `0,1 × puan` kalktı, sinerji d'de tek kez (kurallar gelince kalkacak); CS anlatımı gerçek CS farkına (≥ 15, olay metninde sayılar). Kuşatma eşiği ve ×1,25 hâlâ puanla (adım 4, 6). Ölçüm (10.000 draft): Mavi %54,2 → %50,6; sinerji 5 farkta %67, 7'de %72 (değişmedi, adım 9); erken comp %42,8 kazanıyor, %17,5'ini 35'ten önce bitiriyor; süre 33,3 dk. Eşit draft'ta 1.500+ altın önde olan objektif savaşının %55,7'sini kazanıyor (altın etkisi kapalıyken %50,6): altının etkisi şimdilik küçük, faz D'de veriyle büyütülecek. Motor artık prototiple birebir değil.
+4. ~~Shutdown ödülü.~~ (bitti; objektiflerdeki ×1,25 kalktı) Ölçüm (5.000 maç, ödüllü / ödülsüz): eşit draft'ta 15. dk 1.500+ önde olan %62,0 / %62,8, 5.000+ önde olan %71,9 / %72,6 kazanıyor; erken vs scale'de 5.000+ önde %60,2 / %60,6. Maç başı ~3 shutdown, ~1.200 ödül altını. Sonra ödül büyütüldü (0,3 + zaman çarpanı, yukarıdaki formül): maç başı ~6 shutdown, ortalama ~500, ~3.250 ödül altını; ama eşit draft'ta 1.500+ önde olan hâlâ %60,4, 5.000+ önde olan %70,7 kazanıyor. **Ödülü 3 katına çıkarmak geri dönüşü ancak ~2 puan artırdı: darboğaz ödül değil, altının savaşa etkisi (s, r).** Faz D'de önce o ayarlanacak.
+5. ~~Yakalanma (16.9).~~ (bitti; ölçüm 16.9'da)
+6. ~~Kuşatma v2 (altın farkı + kuleler), throw'un ödülle kapanması, Baron/Elder buff'ları.~~ (bitti; ölçüm 16.10'da)
+7. ~~Denge aracı altına geçer → ara ölçüm (ayna ~%50, süre, geri dönüş oranı).~~ (bitti) **Faz A sonu ölçümü** (10.000 draft): Mavi %49,5; süre 29,3 dk; %52,7 kuşatmayla bitiyor; kill 21,9; ruhu alan %69,3; 14. dk CS 102; 15. dk ort. takım farkı 3.228; maç başı 6,3 shutdown (ort. 509), 0,49 yakalanma (ort. 679). 15. dk'da önde olan: 0-1.499 → %53, 1.500-2.999 → %60, 3.000-4.999 → %69, 5.000+ → %80 (hedef 3.000+ %70-80 ✓). Erken comp %47,3 kazanıyor, %32,6'sını 35'ten önce bitiriyor ✓; 14. dk 3.000+ geride scale comp %33,6 kurtarıyor ✓ (%25-35). Açık: sinerji 5 farkta %66, 7'de %72 (faz B kurallarıyla), 20. dk bitiş birikmesi %15 (faz D).
 
 **Faz B — Şampiyon modeli v2 ve kurallar**
 8. `ChampionProfile` v2 (range, sınıf, econ, etiketler) + `sample-champions.json`.

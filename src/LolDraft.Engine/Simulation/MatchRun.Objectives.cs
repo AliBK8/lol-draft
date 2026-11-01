@@ -10,9 +10,7 @@ internal sealed partial class MatchRun
     private const int ObjectiveSecond = 30;
 
     // Takım savaşı ayarları (DESIGN.md §4.5).
-    private const double FightScoreFactor = 0.2;
     private const double FightDivisor = 15;
-    private const double ComebackMultiplier = 1.25;
 
     // Ejder ritmi (gerçek oyun): ilk ejder 5:00'te doğar (savaş 5:30 = 6. dakika), alındıktan 5 dk sonra yenisi.
     // Bir takım 4 ejdere ulaşınca ejder ruhu: ejder doğmaz, 6 dk sonra Elder; Elder alınınca 6 dk sonra tekrar.
@@ -76,23 +74,20 @@ internal sealed partial class MatchRun
     // Zar sırası: kazanan, kill sayısı (kill'ler kendi saniyelerinde). Son savaşsa Nexus'u kaydeder.
     private void PlayObjective(int minute, Objective objective)
     {
-        var totalBefore = _scores.Total;
         var t = (minute - 1) * 60 + ObjectiveSecond;
-        var blueProbability = FightProbability(TeamSide.Blue, minute);
+        var blueProbability = FightProbability(TeamSide.Blue, minute, t);
         var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
 
-        // Geri dönüş: puanda geride olan takım kazanırsa değer ×1.25 (işaretler ters → çarpım negatif).
-        var value = Value(objective);
-        var comeback = totalBefore * winner.Sign() < 0;
-        if (comeback)
-            value *= ComebackMultiplier;
-        _scores.Add(Category(objective), winner.Sign() * value);
+        // Geri dönüşün ayrı çarpanı yok (eskiden ×1.25): geride olan kazanırsa önde olanları keser, ödülü toplar (§16.4).
+        _scores.Add(Category(objective), winner.Sign() * Value(objective));
 
         var text = objective == Objective.FinalFight
             ? $"Son takım savaşını {winner.DisplayName()} kazandı"
-            : $"{winner.DisplayName()} {Accusative(objective)} aldı{(comeback ? " (geri dönüş, ekstra puan)" : "")}";
+            : $"{winner.DisplayName()} {Accusative(objective)} aldı";
         _events.Add(new ObjectiveEvent(t, text, objective, winner, winnerProbability));
+        GiveObjectiveGold(winner, objective);
+        GiveBuff(winner, objective, t);
         if (objective is Objective.Dragon or Objective.Elder)
             AfterDragonOrElder(objective, winner, minute, t);
 
@@ -128,21 +123,22 @@ internal sealed partial class MatchRun
             (killer, victim) => $"Takım savaşında {victim.Name} düştü, kill {killer.Name} aldı");
     }
 
-    // Takım savaşı ihtimali (DESIGN.md §4.5):
-    //   d      = (Takım gücü Mavi − Takım gücü Kırmızı) + sinerji farkı + 0.2 × toplam puan + ruh bonusu (±2)
+    // Takım savaşı ihtimali (DESIGN.md §16.7):
+    //   d      = (ΣG_eff Mavi − ΣG_eff Kırmızı) + sinerji farkı + ruh (±2) + Elder buff'ı (±6) + kuşatmada Baron buff'ı (±4)
     //   p_Mavi = clamp(1 / (1 + e^(−d/15)), 0.1, 0.9)
-    // Bölen 15 eğrinin dikliği: d = 15 → ~%73. Puan sadece ihtimali kaydırır, sonucu zar belirler.
+    // Bölen 15 eğrinin dikliği: d = 15 → ~%73. Altın üstünlüğü G_eff'in içinde; sonucu zar belirler.
+    // Sinerji tek kez sayılır (eskiden toplam puanın içinden ikinci kez giriyordu); kurallar K5-K13 gelince kalkacak.
     // Kırmızı için d'nin işareti çevrilir: p_Kırmızı = 1 − p_Mavi (clamp simetrik olduğu için aynı kalır).
-    private double FightProbability(TeamSide side, int minute)
+    private double FightProbability(TeamSide side, int minute, double t, bool siege = false)
     {
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
-        var d = (TeamPower(_blue, minute) - TeamPower(_red, minute)) + _synergyDiff + FightScoreFactor * _scores.Total
-                + soulBonus;
+        var d = (EffectivePower(_blue.Champions, minute, t) - EffectivePower(_red.Champions, minute, t)) + _synergyDiff
+                + soulBonus + BuffBonus(TeamSide.Blue, t, siege) - BuffBonus(TeamSide.Red, t, siege);
         return Probability.Clamp(Probability.Logistic(side.Sign() * d / FightDivisor));
     }
 
-    // Takım gücü: 5 şampiyonun G toplamı (DESIGN.md §4.3).
-    private static int TeamPower(TeamDraft team, int minute) => team.Champions.Sum(c => c.PowerAt(minute));
+    private double BuffBonus(TeamSide side, double t, bool siege) =>
+        (HasElder(side, t) ? ElderFightBonus : 0) + (siege && HasBaron(side, t) ? BaronSiegeBonus : 0);
 
     private static double Value(Objective objective) => objective switch
     {

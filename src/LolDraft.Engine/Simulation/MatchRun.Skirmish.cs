@@ -8,7 +8,6 @@ internal sealed partial class MatchRun
 {
     private const double SkirmishChance = 0.75;
     private const int SkirmishMaxSide = 3;
-    private const double SkirmishScoreFactor = 0.1;
     private const double SkirmishDivisor = 6;
     private const double SkirmishValue = 3;
     private const int SkirmishMaxKills = 2;
@@ -52,12 +51,12 @@ internal sealed partial class MatchRun
         if (blue.Count == 0 || red.Count == 0)
             return;
 
-        // Çatışma ihtimali (DESIGN.md §4.5):
-        //   d      = ΣG_Mavi − ΣG_Kırmızı + 0.1 × toplam puan
+        // Çatışma ihtimali (DESIGN.md §16.7):
+        //   d      = ΣG_eff_Mavi − ΣG_eff_Kırmızı
         //   p_Mavi = clamp(1 / (1 + e^(−d/6)))
-        // Bölen 6 (takım savaşında 15): az kişide güç farkı daha belirleyici. Kişi sayısı farkı doğrudan ΣG'ye
-        // yansır: herkes G=6 iken 1v3'te fark −12 → ~%12 (kalabalığa yakalanmak).
-        var d = blue.Sum(c => c.PowerAt(minute)) - red.Sum(c => c.PowerAt(minute)) + SkirmishScoreFactor * _scores.Total;
+        // Bölen 6 (takım savaşında 15): az kişide güç farkı daha belirleyici. Kişi sayısı farkı doğrudan ΣG_eff'e
+        // yansır: herkes G=6 iken 1v3'te fark −12 → ~%12 (kalabalığa yakalanmak). Altın üstünlüğü G_eff'in içinde.
+        var d = EffectivePower(blue, minute, t) - EffectivePower(red, minute, t);
         var blueProbability = Probability.Clamp(Probability.Logistic(d / SkirmishDivisor));
         var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;

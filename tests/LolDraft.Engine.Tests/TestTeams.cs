@@ -22,6 +22,9 @@ internal static class TestTeams
     /// <summary>Ezici draft: Mavi her fazda 10, Kırmızı her fazda 1. Koridor olaylarını bol üretir.</summary>
     public static MatchInput Stomp(uint seed) => new(Flat("b", 10), Flat("r", 1), new Seed(seed));
 
+    /// <summary>Eşit draft: iki taraf her fazda 6, sinerji aynı. Fark sadece oyunda (altın, zar) açılır.</summary>
+    public static MatchInput Even(uint seed) => new(Flat("b", 6), Flat("r", 6), new Seed(seed));
+
     private static TeamDraft Flat(string prefix, int power) => new(
         new ChampionProfile($"{prefix}0", $"{prefix}0", power, power, power, frontline: 2, engage: 2, apShare: 0),
         new ChampionProfile($"{prefix}1", $"{prefix}1", power, power, power, frontline: 0, engage: 0, apShare: 0),

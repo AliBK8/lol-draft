@@ -30,19 +30,21 @@ internal sealed partial class MatchRun
     // Orman akışı dakika başında puana yazılır; gank 40. saniyeye kaydolur.
     private void ScheduleJungle(int minute)
     {
-        var powerDiff = _blue.Jungle.PowerAt(minute) - _red.Jungle.PowerAt(minute);
+        var t0 = (minute - 1) * 60;
+        var powerDiff = EffectivePower(_blue.Jungle, minute, t0) - EffectivePower(_red.Jungle, minute, t0);
 
-        // orman += 0.05 × (G_jg_Mavi − G_jg_Kırmızı) + N(0, 0.3)
-        _scores.Add(ScoreCategory.Jungle, JunglePowerFactor * powerDiff + _rng.NextNormal() * JungleNoiseSigma);
+        // orman += 0.05 × (G_eff_jg_Mavi − G_eff_jg_Kırmızı) + N(0, 0.3)
+        _jungleDelta = JunglePowerFactor * powerDiff + _rng.NextNormal() * JungleNoiseSigma;
+        _scores.Add(ScoreCategory.Jungle, _jungleDelta);
 
         if (GankMinutes.Contains(minute))
             At((minute - 1) * 60 + GankSecond, () => PlayGank(minute, powerDiff));
     }
 
     // Zar sırası: taraf, koridor, (şartlar tutarsa) support katılımı, başarı.
-    private void PlayGank(int minute, int powerDiff)
+    private void PlayGank(int minute, double powerDiff)
     {
-        // Gank'ı atan taraf: p_Mavi = clamp(1 / (1 + e^(−(G_jg farkı)/4))). Eşit ormancıda %50.
+        // Gank'ı atan taraf: p_Mavi = clamp(1 / (1 + e^(−(G_eff_jg farkı)/4))). Eşit ormancıda %50.
         // Prototipte sıkıştırılmıyordu (fark 9'da ~%90.5); her olay ihtimali gibi %10-%90.
         var blueProbability = Probability.Clamp(Probability.Logistic(powerDiff / GankSideDivisor));
         var side = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
@@ -77,7 +79,7 @@ internal sealed partial class MatchRun
             var text = withSupport
                 ? $"{jungler.Name} ve {support.Name} {LaneName(lane)} koridora baskın yaptı, {victim.Name} düştü"
                 : $"{jungler.Name} {LaneName(lane)} koridora gank attı, {victim.Name} düştü";
-            Kill(side, jungler, victim, t, text, lane);
+            Kill(side, jungler, victim, t, text, lane, assists: withSupport ? [support] : []);
         }
         else
         {

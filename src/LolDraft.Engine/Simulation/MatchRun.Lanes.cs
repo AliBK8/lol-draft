@@ -16,8 +16,10 @@ internal sealed partial class MatchRun
     // Anlatıcı eşikleri ve bütçeden düşülen bedeller (DESIGN.md §4.8). Kule kuralı MatchRun.Towers.cs'te.
     private const double SoloKillCost = 8;
     private const double PlateCost = 5;
-    private const double CsCost = 3;
     private const int PlateMinMinute = 5;
+
+    // CS anlatımı gerçek CS farkına bakar (bütçeye değil): koridorun yüzleri arasında ≥ 15 CS, 4 dk bekleme.
+    private const int CsGapToNarrate = 15;
     private const int CsCooldownMinutes = 4;
 
     private static readonly Lane[] Lanes = [Lane.Top, Lane.Mid, Lane.Bot];
@@ -34,15 +36,16 @@ internal sealed partial class MatchRun
 
         foreach (var lane in Lanes)
         {
-            // Δ = 0.1 × (G_koridor_Mavi − G_koridor_Kırmızı) + matchup[koridor] + N(0, 0.8)
-            // Güç farkı akışın yönünü belirler. Gürültü tek bir dakikayı çevirebilir ama 35 dakikada güç farkı birikir.
-            var delta = LanePowerFactor * (LanePower(_blue, lane, minute) - LanePower(_red, lane, minute))
-                        + Matchup(lane)
+            // Δ = 0.1 × (G_eff_koridor_Mavi − G_eff_koridor_Kırmızı) + N(0, 0.8)   (DESIGN.md §16.6)
+            // Gerçek güç farkı akışın yönünü belirler. Gürültü tek bir dakikayı çevirebilir ama güç farkı birikir.
+            // Koridor içi kartopu: Δ → CS → altın → G_eff → Δ. Taban/tavan (0,5-1,4) ve ödül dengeler.
+            var delta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
                         + _rng.NextNormal() * LaneNoiseSigma;
 
             // Δ hem puana hem anlatıcı bütçesine yazılır; puan burada eklenir, anlatıcı sadece anlatır.
             _scores.Add(LaneCategory(lane), delta);
             _laneBudget[(int)lane] += delta;
+            _laneDelta[(int)lane] = delta;
 
             if (_rng.NextDouble() < SurpriseChance)
             {
@@ -77,8 +80,9 @@ internal sealed partial class MatchRun
     }
 
     // Anlatıcı (DESIGN.md §4.8): bütçenin işaretine göre önde olan taraf için en fazla bir olay.
-    // Şartlar sırayla denenir; ilk tutan olay üretilir. Solo kill, plaka ve CS bütçeden bedel düşer (sadece anlatım);
-    // kule ise fırsattır (rakip yok) ve kendi puanını getirir (MatchRun.Towers.cs).
+    // Şartlar sırayla denenir; ilk tutan olay üretilir. Solo kill ve plaka bütçeden bedel düşer (sadece anlatım);
+    // kule ise fırsattır (rakip yok) ve kendi puanını getirir (MatchRun.Towers.cs). İkisi de olmadıysa CS anlatımı
+    // gerçek CS farkına bakar.
     // Saniye her dakika kayıtta seçilir (olay olmasa da); çözüm o saniyedeki duruma bakar.
     private void Narrate(Lane lane, int minute, double t)
     {
@@ -88,7 +92,6 @@ internal sealed partial class MatchRun
 
         var lead = LaneChampions(side, lane)[0];
         var rivals = LaneChampions(side.Opponent(), lane);
-        ref var lastCs = ref _lastCsMinute[(int)lane];
 
         if (TryLaneTower(side, lane, minute, t))
         {
@@ -96,29 +99,48 @@ internal sealed partial class MatchRun
             return;
         }
 
-        // Anlatıcı koridorda olanı anlatır: kahraman ölü ya da başka yerde meşgulse bu dakika anlatım yok.
+        // Anlatıcı koridorda olanı anlatır: kahraman ölü ya da başka yerde meşgulse kill/plaka yok.
         // Bütçe harcanmaz, birikmeye devam eder; kahraman dönünce anlatılır (puan zaten Δ ile eklendi).
-        if (!IsInLane(lead, t))
+        if (IsInLane(lead, t))
+        {
+            var rivalsInLane = rivals.Where(c => IsInLane(c, t)).ToList();
+            if (size >= SoloKillCost && rivalsInLane.Count > 0)
+            {
+                var victim = rivalsInLane[_rng.NextIndex(rivalsInLane.Count)];
+                Kill(side, lead, victim, t, $"{lead.Name} {LaneName(lane)} koridorda öne çıktı, {victim.Name} düştü", lane);
+                budget -= side.Sign() * SoloKillCost;
+                return;
+            }
+
+            if (minute >= PlateMinMinute && minute < TowerMinMinute && size >= PlateCost)
+            {
+                budget -= side.Sign() * PlateCost;
+                _gold.Earn(lead, GoldSource.Plate, PlateGold);
+                _events.Add(new PlateEvent(t, $"{lead.Name} {LaneName(lane)} kuleden plaka kopardı", side, lane));
+                return;
+            }
+        }
+
+        TryNarrateCs(lane, minute, t);
+    }
+
+    // CS anlatımı: koridorun yüzleri (bot'ta adc) arasında ≥ 15 CS fark varsa, öndeki koridordaysa, 4 dk'da bir.
+    private void TryNarrateCs(Lane lane, int minute, double t)
+    {
+        ref var lastCs = ref _lastCsMinute[(int)lane];
+        var blue = LaneChampions(TeamSide.Blue, lane)[0];
+        var red = LaneChampions(TeamSide.Red, lane)[0];
+        var blueCs = (int)Math.Floor(_gold.Cs(blue));
+        var redCs = (int)Math.Floor(_gold.Cs(red));
+        var side = blueCs >= redCs ? TeamSide.Blue : TeamSide.Red;
+        var lead = side == TeamSide.Blue ? blue : red;
+
+        if (Math.Abs(blueCs - redCs) < CsGapToNarrate || minute - lastCs < CsCooldownMinutes || !IsInLane(lead, t))
             return;
 
-        var rivalsInLane = rivals.Where(c => IsInLane(c, t)).ToList();
-        if (size >= SoloKillCost && rivalsInLane.Count > 0)
-        {
-            var victim = rivalsInLane[_rng.NextIndex(rivalsInLane.Count)];
-            Kill(side, lead, victim, t, $"{lead.Name} {LaneName(lane)} koridorda öne çıktı, {victim.Name} düştü", lane);
-            budget -= side.Sign() * SoloKillCost;
-        }
-        else if (minute >= PlateMinMinute && minute < TowerMinMinute && size >= PlateCost)
-        {
-            budget -= side.Sign() * PlateCost;
-            _events.Add(new PlateEvent(t, $"{lead.Name} {LaneName(lane)} kuleden plaka kopardı", side, lane));
-        }
-        else if (size >= CsCost && minute - lastCs >= CsCooldownMinutes)
-        {
-            lastCs = minute;
-            budget -= side.Sign() * CsCost;
-            _events.Add(new CsEvent(t, $"{lead.Name} {LaneName(lane)} koridorda CS farkı açıyor", side, lane));
-        }
+        lastCs = minute;
+        var (leadCs, rivalCs) = side == TeamSide.Blue ? (blueCs, redCs) : (redCs, blueCs);
+        _events.Add(new CsEvent(t, $"{lead.Name} {LaneName(lane)} koridorda CS farkı açıyor ({leadCs} - {rivalCs})", side, lane));
     }
 
     // Koridordaki şampiyonlar; ilk sıradaki koridorun "yüzü" (bot'ta adc).
@@ -132,17 +154,12 @@ internal sealed partial class MatchRun
 
     private ChampionProfile[] LaneChampions(TeamSide side, Lane lane) => LaneChampions(Team(side), lane);
 
-    // Koridor gücü: koridordaki şampiyonların G ortalaması; bot = (adc + sup) / 2 (DESIGN.md §4.3).
-    private static double LanePower(TeamDraft team, Lane lane, int minute) =>
-        LaneChampions(team, lane).Sum(c => c.PowerAt(minute)) / (double)LaneChampions(team, lane).Length;
-
-    // Prototipteki sabit matchup; ileride veriden gelecek (DESIGN.md §3).
-    private static double Matchup(Lane lane) => lane switch
+    // Koridor gücü: koridordaki şampiyonların G_eff ortalaması; bot = (adc + sup) / 2.
+    private double LanePower(TeamSide side, Lane lane, int minute, double t)
     {
-        Lane.Top => 0.1,
-        Lane.Mid => 0.05,
-        _ => 0,
-    };
+        var laners = LaneChampions(side, lane);
+        return EffectivePower(laners, minute, t) / laners.Length;
+    }
 
     private static ScoreCategory LaneCategory(Lane lane) => lane switch
     {

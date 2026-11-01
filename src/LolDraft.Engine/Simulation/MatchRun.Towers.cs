@@ -53,6 +53,7 @@ internal sealed partial class MatchRun
         var tier = _towersDestroyed[(int)side, (int)lane]++;
         if (scored)
             _scores.Add(LaneCategory(lane), side.Sign() * (tier == 2 ? InhibitorValue : TowerValue));
+        GiveTowerGold(side, lane);
         _events.Add(new TowerEvent(t, $"{text} {TowerName(tier)} yıktı", side, lane, tier));
     }
 

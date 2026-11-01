@@ -3,7 +3,9 @@ using LolDraft.Engine.Events;
 namespace LolDraft.Engine;
 
 /// <summary>Olaylar zaman sırasındadır; son olay her zaman <see cref="NexusEvent"/>.</summary>
-public sealed record MatchResult(IReadOnlyList<MatchEvent> Events, ScoreBreakdown Breakdown, MatchEnd End);
+/// <param name="GoldFrames">Dakika kareleri, 0. dakikadan maçın bittiği dakikaya (DESIGN.md §16.11).</param>
+public sealed record MatchResult(
+    IReadOnlyList<MatchEvent> Events, ScoreBreakdown Breakdown, MatchEnd End, IReadOnlyList<GoldFrame> GoldFrames);
 
 public enum MatchEndKind
 {

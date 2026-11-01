@@ -20,7 +20,6 @@ internal sealed class BalanceStats
     public int Throws { get; private set; }
     public int SoulMatches { get; private set; }
     public int SoulWins { get; private set; }
-    public int LeaderLost { get; private set; }
     public int Fights { get; private set; }
     public int ClampedFights { get; private set; }
 
@@ -40,6 +39,27 @@ internal sealed class BalanceStats
     public int EarlyCompMatches { get; private set; }
     public int EarlyCompWins { get; private set; }
     public int EarlyCompSiegeWins { get; private set; }
+
+    // Lane fazında ezilen scale comp: belirgin erken comp maçında scale tarafı 14. dk'da ≥ 3.000 geride → kurtarıyor mu?
+    public int CrushedScaleMatches { get; private set; }
+    public int CrushedScaleWins { get; private set; }
+
+    // Ekonomi (DESIGN.md §16.4).
+    public static readonly int[] CurveMinutes = [10, 15, 20];
+    public static readonly int[] LeadBuckets = [0, 1500, 3000, 5000];
+    private const int CrushedLead = 3000;
+
+    public double LanerCsAt14 { get; private set; }
+    public int LanerCsSamples { get; private set; }
+    public double TeamLeadAt15 { get; private set; }
+    public int TeamLeadSamples { get; private set; }
+    public int Shutdowns { get; private set; }
+    public double ShutdownGold { get; private set; }
+    public int Catches { get; private set; }
+    public double CatchGold { get; private set; }
+
+    // (dakika, fark dilimi) → (o dakikaya ulaşan maç, o dakikada altında önde olanın kazandığı).
+    public SortedDictionary<(int Minute, int Bucket), (int Games, int LeaderWins)> ByGoldLead { get; } = [];
 
     public void Add(TeamDraft blue, TeamDraft red, MatchResult result, int powerGapBucketSize, int earlyCompThreshold)
     {
@@ -63,9 +83,7 @@ internal sealed class BalanceStats
             if (soul.Side == winner) SoulWins++;
         }
 
-        // Puanda önde olan (son savaştan/kuşatmadan önceki toplam değil, maç sonu toplam) kaybetti mi?
-        var total = result.Breakdown.Total;
-        if (total != 0 && (total > 0 ? TeamSide.Blue : TeamSide.Red) != winner) LeaderLost++;
+        AddEconomy(result);
 
         // Sınıra takılan savaşlar: objektif, nehir çatışması, kuşatma (Nexus/Throw). Gank ihtimali olaylarda yok.
         IEnumerable<double> probabilities = events.OfType<ObjectiveEvent>().Select(o => o.Probability)
@@ -111,8 +129,66 @@ internal sealed class BalanceStats
                 EarlyCompWins++;
                 if (result.End.Kind == MatchEndKind.Siege) EarlyCompSiegeWins++;
             }
+
+            var scale = early == TeamSide.Blue ? TeamSide.Red : TeamSide.Blue;
+            if (Frame(result, 14) is { } f14 && f14.TeamGold(early) - f14.TeamGold(scale) >= CrushedLead)
+            {
+                CrushedScaleMatches++;
+                if (winner == scale) CrushedScaleWins++;
+            }
         }
     }
+
+    private void AddEconomy(MatchResult result)
+    {
+        if (Frame(result, 14) is { } f14)
+        {
+            // Koridorcular ve ormancı (support CS kesmez): takım sırasında her 5'in son elemanı support.
+            foreach (var (c, i) in f14.Champions.Select((c, i) => (c, i)).Where(x => x.i % 5 != 4))
+            {
+                LanerCsAt14 += c.Cs;
+                LanerCsSamples++;
+            }
+        }
+
+        if (Frame(result, 15) is { } f15)
+        {
+            TeamLeadAt15 += Math.Abs(f15.TeamGold(TeamSide.Blue) - f15.TeamGold(TeamSide.Red));
+            TeamLeadSamples++;
+        }
+
+        // Altın farkı → kazanma: o dakikaya ulaşan maçlarda, önde olan (dilimine göre) kazandı mı?
+        foreach (var minute in CurveMinutes)
+        {
+            if (Frame(result, minute) is not { } frame) continue;
+            var lead = frame.TeamGold(TeamSide.Blue) - frame.TeamGold(TeamSide.Red);
+            if (lead == 0) continue;
+            var bucket = LeadBuckets.Last(b => Math.Abs(lead) >= b);
+            var leaderWon = (lead > 0) == (result.End.Winner == TeamSide.Blue);
+            var (games, wins) = ByGoldLead.GetValueOrDefault((minute, bucket));
+            ByGoldLead[(minute, bucket)] = (games + 1, wins + (leaderWon ? 1 : 0));
+        }
+
+        // Shutdown (150+ ödül) ve yakalanma (DESIGN.md §16.9; metindeki "yakalandı" ile ayırt edilir).
+        foreach (var kill in result.Events.OfType<KillEvent>())
+        {
+            if (kill.Bounty >= 150)
+            {
+                Shutdowns++;
+                ShutdownGold += kill.Bounty;
+            }
+
+            if (kill.Text.Contains("yakalandı"))
+            {
+                Catches++;
+                CatchGold += kill.Bounty;
+            }
+        }
+    }
+
+    // Maç o dakikaya ulaşmadıysa kare yok (son kare maçın bittiği dakikadır, Nexus anı; o da sayılmaz).
+    private static GoldFrame? Frame(MatchResult result, int minute) =>
+        minute < result.End.Minute ? result.GoldFrames.FirstOrDefault(f => f.Minute == minute) : null;
 
     private void AddChampions(TeamDraft team, bool won)
     {

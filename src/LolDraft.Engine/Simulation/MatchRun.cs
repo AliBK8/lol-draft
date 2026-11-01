@@ -7,7 +7,8 @@ namespace LolDraft.Engine.Simulation;
 /// Tek bir maçın durumu ve dakika döngüsü (DESIGN.md §4.5). Kurallar ayrı dosyalarda (partial):
 /// <c>MatchRun.Lanes.cs</c> koridor akışı, sürpriz ve anlatıcı; <c>MatchRun.Jungle.cs</c> orman ve gank;
 /// <c>MatchRun.Skirmish.cs</c> nehir çatışması; <c>MatchRun.Objectives.cs</c> objektifler ve son savaş;
-/// <c>MatchRun.Siege.cs</c> kuşatma ve throw.
+/// <c>MatchRun.Siege.cs</c> kuşatma ve throw; <c>MatchRun.Gold.cs</c> altın kaynakları ve dakika kareleri;
+/// <c>MatchRun.Farm.cs</c> CS ve farm altını; <c>MatchRun.Power.cs</c> altından gerçek güç; <c>MatchRun.Pick.cs</c> yakalanma.
 /// </summary>
 internal sealed partial class MatchRun
 {
@@ -40,6 +41,7 @@ internal sealed partial class MatchRun
     public MatchResult Play()
     {
         _scores.Add(ScoreCategory.Synergy, _synergyDiff);
+        RecordGoldFrame(0, 0);
 
         for (var minute = 1; _end is null; minute++)
         {
@@ -49,18 +51,25 @@ internal sealed partial class MatchRun
             ScheduleSkirmish(minute);
             ScheduleObjective(minute);
             ScheduleSiege(minute);
+            ScheduleCatch(minute);
+            ScheduleFarm(minute);
 
             // 2) Çözüm: saniye sırasıyla. Her iş, kendi saniyesindeki duruma (kim yaşıyor, toplam puan) bakar.
             // Nexus düşerse kalan işler iptal edilir.
             while (_end is null && _timeline.TryDequeue(out var job, out _))
                 job();
             _timeline.Clear();
+
+            // Dakika bittiyse karesi (bir sonraki dakikanın başı); maç bu dakika bittiyse son kare aşağıda.
+            if (_end is null)
+                RecordGoldFrame(minute, minute * 60);
         }
 
         // Olaylar çözüm sırasıyla, yani zaman sırasıyla eklenir; OrderBy (kararlı) güvence için.
         var ordered = _events.OrderBy(e => e.T).ToList();
         var nexusT = ordered.OfType<NexusEvent>().First().T;
-        return new MatchResult(ordered.Where(e => e.T <= nexusT).ToArray(), _scores.ToBreakdown(), _end);
+        RecordGoldFrame(_end.Minute, nexusT);
+        return new MatchResult(ordered.Where(e => e.T <= nexusT).ToArray(), _scores.ToBreakdown(), _end, _goldFrames);
     }
 
     /// <summary>İşi zaman çizelgesine yazar; dakika içinde saniyesi gelince çözülür.</summary>
@@ -91,18 +100,25 @@ internal sealed partial class MatchRun
                 var victim = victims[_rng.NextIndex(victims.Count)];
                 remaining.Remove(victim);
                 var killer = killers[_rng.NextIndex(killers.Count)];
-                Kill(winner, killer, victim, t, text(killer, victim));
+                Kill(winner, killer, victim, t, text(killer, victim), assists: killers.Where(c => c != killer).ToList());
             });
         }
     }
 
-    private void Kill(TeamSide side, ChampionProfile killer, ChampionProfile victim, double t, string text, Lane? lane = null)
+    // assists: kill'e katkı veren yaşayan takım arkadaşları (savaş, çatışma, gank); solo kill'de boş.
+    private void Kill(TeamSide side, ChampionProfile killer, ChampionProfile victim, double t, string text, Lane? lane = null,
+        IReadOnlyCollection<ChampionProfile>? assists = null)
     {
+        // Ödül, kurbanın ölmeden önceki altınıyla hesaplanır.
+        var bounty = KillBounty(victim, t);
         var until = _deaths.Kill(victim, t);
+        _gold.Died(victim, t, until);
+        GiveKillGold(killer, assists ?? [], bounty);
         // Maçın ilk kill'i "İlk kan!" ön ekiyle yazılır (DESIGN.md §4.7). Kill'ler zaman sırasıyla çözüldüğü için
-        // işlenen ilk kill zaman çizelgesinde de ilktir.
-        var prefix = _deaths.Kills == 1 ? "İlk kan! " : "";
-        _events.Add(new KillEvent(t, prefix + text, side, killer.Id, victim.Id, until, lane));
+        // işlenen ilk kill zaman çizelgesinde de ilktir. Büyük ödül "Shutdown!" olarak anlatılır.
+        var prefix = (_deaths.Kills == 1 ? "İlk kan! " : "") + (bounty >= ShutdownToNarrate ? "Shutdown! " : "");
+        var suffix = bounty >= ShutdownToNarrate ? $" (+{bounty} ödül altını)" : "";
+        _events.Add(new KillEvent(t, prefix + text + suffix, side, killer.Id, victim.Id, until, lane, bounty));
     }
 
     // Sıra takım sırasıdır (top, jungle, mid, bot, support); zarla seçilen indeksler bu sıraya göre.

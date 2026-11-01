@@ -19,7 +19,9 @@ public sealed record ObjectiveEvent(double T, string Text, Objective Objective, 
 /// <param name="Side">Kill'i alan takım.</param>
 /// <param name="Until">Kurbanın yeniden doğduğu oyun saniyesi.</param>
 /// <param name="Lane">Koridor olayıysa koridor; savaş kill'lerinde boş.</param>
-public sealed record KillEvent(double T, string Text, TeamSide Side, string KillerId, string VictimId, double Until, Lane? Lane)
+/// <param name="Bounty">Katilin kill altınına ek aldığı shutdown ödülü (0-700, DESIGN.md §16.4).</param>
+public sealed record KillEvent(
+    double T, string Text, TeamSide Side, string KillerId, string VictimId, double Until, Lane? Lane, int Bounty)
     : MatchEvent(T, Text);
 
 /// <param name="Tier">0 dış kule, 1 iç kule, 2 inhibitör.</param>
