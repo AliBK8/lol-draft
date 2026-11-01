@@ -10,8 +10,9 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - `src/LolDraft.Application`, `LolDraft.Domain`, `LolDraft.Infrastructure` — katmanlar (DESIGN.md §8.2)
 - `src/LolDraft.Engine` — simülasyon motoru (saf, seed'li, deterministik; dışarıya sadece `IMatchSimulator`)
 - `web/` — React + TypeScript
-- `data-pipeline/` — Python (requests, pandas): Riot match-v5 timeline'larından hareket tabloları
+- `data-pipeline/` — Python (requests; pandas yok, saf Python): Riot match-v5 timeline'larından hareket tabloları
 - `prototype/mac-motoru.html` — çalışan JS prototip; motor kurallarının referans uygulaması
+-- Hedef: .NET 10 (`net10.0`), SDK `global.json` ile sabit
 
 ## Temel kurallar
 - Simülasyon sunucuda koşar; istemci sadece olay listesini oynatır.
@@ -29,6 +30,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - Kod yazmadan önce kavramı ve gerekçeyi açıkla; somut örnek ve adım adım izleme tercih edilir.
 - Yanıtlar odaklı ve kısa olsun.
 - Çalışan koda özellik eklerken **sadece o özelliğin gerektirdiğini değiştir**; ilgisiz satırları "düzeltme".
+- Görev yerine getirildikten sonra bir kez daha üzerinde kontrol yapılıp sonrasında görev bitirilir ve kontrol edildiği belirtilir.
 
 ## Sıradaki işler
 1. `data-pipeline/01_players.py`, `02_match_ids.py`, `03_download.py`

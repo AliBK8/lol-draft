@@ -231,22 +231,30 @@ Draft'a uymayan direktif küçük bir ceza alır.
 İkonlar hedefe yumuşak geçişle (lerp) ilerler.
 
 ### 5.2 Hedef sistem: veri tabanlı bölge geçişleri (Markov)
-1. **Bölgeler:** Harita (~15.000 × 15.000 birim) 15×15 ızgaraya bölünür. Her hücre elle ~20 bölgeden birine atanır: top/mid/bot × dış/iç kule, nehir üst/alt, ormanlar, ejder/baron çukuru, base'ler (`zones.json`; boyama aracı yapılacak).
+1. **Bölgeler:** Harita (~15.000 × 15.000 birim) 15×15 ızgaraya bölünür. Her hücre elle 23 bölgeden birine atanır: top/mid/bot × dış/iç kule × mavi/kırmızı, nehir üst/alt, ormanlar (mavi/kırmızı × üst/alt), ejder/baron çukuru, base'ler ve `mid_center` (`data-pipeline/out/zones.json`, araç: `data-pipeline/tools/zone-painter.html`). Boyama 180° simetriktir (mavi↔kırmızı, üst↔alt, baron↔ejder). Merkez hücre kendi kendisinin simetriği olduğu için iki tarafa da ait olmayan `mid_center` bölgesidir; böylece kendi/rakip çevirisinde iki taraf eşit kalır.
 2. **Tablo anahtarı:** `rol | faz | durum | şimdiki bölge` → sonraki bölge olasılıkları.
    - Faz: 0-8, 8-14, 14-25, 25+ dk.
    - Durum: takım altın farkı ≥ +1500 önde, ≤ −1500 geride, arası eşit.
-3. **Seyreklik:** Satırda 30'dan az gözlem varsa önce durum, sonra faz düşürülerek daha kaba satıra geçilir. Görülmemiş ama komşu geçişlere küçük taban olasılık verilir.
+   - Bölgeler oyuncunun takımına göre **kendi/rakip** adlandırılır (`top_outer_blue` mavi için `top_outer_own`, kırmızı için `top_outer_enemy`); iki takımın verisi aynı satırlarda birleşir.
+   - Oyuncunun ölü olduğu dakikalar tabloya girmez (ölüm → base kuralı motorda).
+3. **Seyreklik:** Üç seviye satır yazılır: tam, durumsuz (`ROL|faz|*|bölge`), faz+durumsuz (`ROL|*|*|bölge`). Satırda 30'dan az gözlem varsa bir üst seviyeye geçilir. Satırda görülmemiş komşu bölgelere (ızgarada kenar paylaşan) 0,5 sahte gözlem eklenir.
 4. **Çalışma zamanı:** Motor olayları üretir. Olaylar **kısıttır** (ör. "Leona 10:30'da ejder çukurunda"). Kısıt yoksa her dakika tablodan sonraki bölge örneklenir.
 5. **Ara hareket:** Koridor ve nehir boyunca çizilmiş bir yol ağı (düğüm + kenar); bölgeler arası en kısa yol. İkonlar duvardan geçmez.
 6. **Kill konumları:** Gerçek kill konumlarından faz ve bölge bazlı ısı haritası; anlatıcı kill'i bu dağılımdan bir noktada gösterir.
 7. **Doğrulama:** 1.000 simülasyonun bölge dağılımı (rol başına zamanın % kaçı nerede, bot duo mid'e kaçıncı dk geçiyor, kill'lerin bölge dağılımı) gerçek veriyle karşılaştırılır.
 
-`transitions.json` önerilen biçim:
+`transitions.json` biçimi (`data-pipeline/04_transitions.py` üretir):
 ```json
-{ "version": 1, "patches": ["…"], "zones": ["top_outer", "river_bot", "…"],
-  "rows": { "UTILITY|8-14|even|bot_outer": { "n": 412,
-            "next": { "bot_outer": 0.55, "river_bot": 0.20, "base": 0.15, "mid_outer": 0.10 } } } }
+{ "version": 1, "patches": ["16.20", "16.21"], "matches": 495, "min_n": 30,
+  "zones": ["base_own", "top_outer_own", "river_top", "mid_center", "…"],
+  "adjacency": { "base_own": ["base_own", "bot_inner_own", "…"] },
+  "rows": { "UTILITY|8-14|even|bot_outer_own": { "n": 257,
+            "next": { "river_bot": 0.20, "bot_outer_own": 0.15, "base_own": 0.13, "…": 0 } },
+            "UTILITY|8-14|*|bot_outer_own": { "…": 0 }, "UTILITY|*|*|bot_outer_own": { "…": 0 } } }
 ```
+`kill_heatmap.json`: `"faz|mutlak bölge"` → `[x, y, kill alan takım]` listesi (Riot koordinatı).
+
+İlk ölçüm (495 maç, 16.19-16.21): 94 bin geçiş; geçişlerin %7,4'ü durumsuz satıra, %1,2'si faz+durumsuz satıra düşüyor (eşik %10-15 → 500 maç yeterli). Yüksek eloda maç başı ~55 kill.
 
 ---
 
@@ -256,7 +264,7 @@ Klasör: `data-pipeline/`. Anahtar ortam değişkeninde: `RIOT_API_KEY`. Develop
 
 | Adım | Betik | Uç nokta | Çıktı |
 |---|---|---|---|
-| 1 | `01_players.py` | `/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5` ve `grandmasterleagues` (platform: `euw1` / `tr1`) | `players.json` (puuid) |
+| 1 | `01_players.py` | `/lol/league/v4/challengerleagues/by-queue/RANKED_SOLO_5x5` ve `grandmasterleagues` (platform: `euw1`) | `players.json` (puuid) |
 | 2 | `02_match_ids.py` | `/lol/match/v5/matches/by-puuid/{puuid}/ids?queue=420&count=20` (bölge: `europe`) | `match_ids.json` (tekrarsız) |
 | 3 | `03_download.py` | `/lol/match/v5/matches/{id}` ve `/lol/match/v5/matches/{id}/timeline` | `raw/{id}.json`, `raw/{id}_tl.json` |
 | 4 | `04_transitions.py` (Jupyter da olur) | — | `out/transitions.json`, `out/kill_heatmap.json` |

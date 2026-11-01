@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bölge Boyama</title>
+<style>
+/* Geliştirici aracı: Riot haritası üzerinde 15×15 ızgarayı bölgelere boyar → zones.json (DESIGN.md §5.2) */
+:root{
+  --bg:#0b1019; --panel:#131a28; --panel2:#19223a; --line:#27324c;
+  --fg:#e6e9f2; --muted:#8a94ad; --brass:#d9b65f; --warn:#ff9f43; --ok:#55c08a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,"Segoe UI",sans-serif;padding:16px}
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr) 250px;gap:14px;max-width:1500px;margin:0 auto;align-items:start}
+@media (max-width:1000px){.wrap{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+h1{font-size:1.15rem;margin:0}
+h2{font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--brass);margin:6px 0 0;font-weight:600}
+button,input,select{font:inherit;color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 10px}
+button{cursor:pointer}
+button:hover{border-color:var(--brass)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.primary{background:var(--brass);color:#1a1405;border-color:var(--brass);font-weight:600}
+.zones{display:flex;flex-direction:column;gap:1px}
+.zone{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:6px;cursor:pointer;border:1px solid transparent;font-size:.84rem;background:none;text-align:left;width:100%}
+.zone.sel{border-color:var(--brass);background:var(--panel2)}
+.zone .sw{width:14px;height:14px;border-radius:3px;flex:none;border:1px solid #0006}
+.zone .n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.zone .n.zero{color:var(--warn)}
+.stage{position:relative;width:min(100%, calc(100vh - 32px));aspect-ratio:1/1;margin:0 auto;touch-action:none}
+.stage svg,.stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage svg{border-radius:10px;border:1px solid var(--line);background:#000;cursor:crosshair}
+.stage canvas{pointer-events:none}
+.muted{color:var(--muted)} .warn{color:var(--warn)} .ok{color:var(--ok)}
+.small{font-size:.82rem}
+label.chk{display:flex;gap:6px;align-items:center;cursor:pointer}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+#hover{font-variant-numeric:tabular-nums;min-height:3.9em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>Bölge Boyama</h1>
+    <p class="muted small" style="margin:0">Bölge seç, haritada tıklayıp sürükle. Sağ tık siler. Simetri açıkken karşı hücre otomatik boyanır (merkez hücre hariç).</p>
+    <h2>Bölgeler</h2>
+    <div class="zones" id="zones"></div>
+  </div>
+
+  <div class="stage" id="stage">
+    <svg id="map" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bölge haritası"></svg>
+    <canvas id="pts"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Görünüm</h2>
+    <label class="chk"><input type="checkbox" id="sym" checked> Simetrik boya</label>
+    <label class="chk"><input type="checkbox" id="showPts" checked> Veri noktalarını göster</label>
+    <label class="small muted" for="alpha">Boya opaklığı</label>
+    <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45">
+    <div class="muted small" id="ptsInfo"></div>
+
+    <h2>Durum</h2>
+    <div class="small" id="status"></div>
+    <div class="small muted" id="hover">Haritanın üstüne gel.</div>
+
+    <h2>Dosya</h2>
+    <button class="primary" id="export" type="button">zones.json indir</button>
+    <div class="row">
+      <button id="importBtn" type="button">zones.json yükle</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="row">
+      <button id="draft" type="button">Taslağı yeniden kur</button>
+      <button id="clear" type="button">Temizle</button>
+    </div>
+    <p class="muted small" style="margin:0">Çalışma tarayıcıda otomatik kaydedilir. Bitince indirip <code>data-pipeline/out/zones.json</code> olarak kaydet.</p>
+  </div>
+</div>
+
+<!-- İsteğe bağlı: zone_points.py çıktısı. Yoksa sessizce atlanır. -->
+<script>window.ZONE_POINTS = null;</script>
+<script src="zone_points.js" onerror="void 0"></script>
+<script>
+/* ---------------- sabitler ---------------- */
+const GRID = 15, CELL = 1000, CENTER = (GRID - 1) / 2;   // 15×15, hücre 1000 birim; merkez hücre (7,7)
+const MAP_IMG = 'https://ddragon.leagueoflegends.com/cdn/16.21.1/img/map/map11.png';
+// map11.png'nin kapsadığı Riot koordinatları (Riot'un harita sınırları)
+const IMG_MIN = {x: -120, y: -120}, IMG_MAX = {x: 14870, y: 14980};
+// Görünen alan iki eksende de [-120, 15000]: hem görseli hem ızgarayı kapsar
+const VIEW_MIN = -120, VIEW_MAX = GRID * CELL, VIEW_SIZE = VIEW_MAX - VIEW_MIN;
+const STORE_KEY = 'zone-painter-v1';
+
+const ZONES = [
+  ['base_blue', '#2f6bff'], ['base_red', '#ff3b3b'],
+  ['top_outer_blue', '#7fb2ff'], ['top_inner_blue', '#4a7fd4'],
+  ['mid_outer_blue', '#8fe3ff'], ['mid_inner_blue', '#3fb6d9'],
+  ['bot_outer_blue', '#a99bff'], ['bot_inner_blue', '#6f5fe0'],
+  ['top_outer_red', '#ffa07a'], ['top_inner_red', '#e0603a'],
+  ['mid_outer_red', '#ffd27a'], ['mid_inner_red', '#d9a03a'],
+  ['bot_outer_red', '#ff8fc8'], ['bot_inner_red', '#d9508f'],
+  ['river_top', '#3fe0c5'], ['river_bot', '#1f9c88'],
+  ['jungle_blue_top', '#4fbf5f'], ['jungle_blue_bot', '#2e8a3c'],
+  ['jungle_red_top', '#c4e04a'], ['jungle_red_bot', '#8aa52a'],
+  ['baron_pit', '#c070ff'], ['dragon_pit', '#f2f2f2'],
+  ['mid_center', '#111111'],   // merkez hücre: kendi kendisinin simetriği, iki tarafa da ait değil
+];
+const ZI = Object.fromEntries(ZONES.map(([n], i) => [n, i]));
+
+// 180° dönme simetrisi: mavi↔kırmızı, üst↔alt, baron↔ejder (ör. top_outer_blue ↔ bot_outer_red)
+const SWAP = {blue: 'red', red: 'blue', top: 'bot', bot: 'top', baron: 'dragon', dragon: 'baron'};
+const MIRROR = ZONES.map(([n]) => {
+  const m = n.split('_').map(t => SWAP[t] || t).join('_');
+  if (!(m in ZI)) throw new Error('Simetrik karşılığı yok: ' + n);
+  return ZI[m];
+});
+const mirrorCell = i => (GRID * GRID - 1) - i;            // (r,c) → (14-r, 14-c)
+const isCenter = i => i === (GRID * GRID - 1) / 2;
+
+// Taslak için tohum noktaları (Riot koordinatı, yaklaşık): sadece mavi yarı + üst nehir.
+// Karşı taraf simetriyle eklenir, her hücre en yakın tohumun bölgesini alır.
+const DRAFT_SEEDS = {
+  base_blue: [[500, 500], [1748, 2270], [1169, 4287], [3651, 3696], [4281, 1253]],
+  top_inner_blue: [[1512, 6699], [1300, 5600], [1300, 7800]],
+  top_outer_blue: [[981, 10441], [1000, 9300], [1000, 11600], [1100, 12800]],
+  mid_inner_blue: [[5048, 4812], [4500, 4400]],
+  mid_outer_blue: [[5846, 6396], [6500, 6900]],
+  bot_inner_blue: [[6919, 1483], [5700, 1300], [8000, 1300]],
+  bot_outer_blue: [[10504, 1029], [9300, 1100], [11600, 1000], [12800, 1100]],
+  jungle_blue_top: [[3821, 7901], [2100, 8400], [3780, 6443], [2800, 9800]],
+  jungle_blue_bot: [[7765, 4108], [7000, 5400], [8400, 2700], [6000, 3000]],
+  river_top: [[3200, 11700], [4300, 11000], [6200, 8800], [7000, 8000]],
+  baron_pit: [[5007, 10471]],
+  mid_center: [[7500, 7500]],
+};
+
+/* ---------------- durum ---------------- */
+let cells = new Array(GRID * GRID).fill(-1);   // indeks = satır*15 + sütun, satır 0 = haritanın altı (y 0-1000)
+let selected = ZI.base_blue;                    // -1 = silgi
+let painting = null;                            // basılıyken boyanan bölge (silgi için -1)
+
+const $ = id => document.getElementById(id);
+const svg = $('map'), NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs, parent = svg) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e);
+  return e;
+};
+
+/* ---------------- çizim ---------------- */
+// SVG koordinatı: x = Riot x, y = -Riot y (Riot'ta y yukarı artar)
+svg.setAttribute('viewBox', `${VIEW_MIN} ${-VIEW_MAX} ${VIEW_SIZE} ${VIEW_SIZE}`);
+el('image', {href: MAP_IMG, x: IMG_MIN.x, y: -IMG_MAX.y,
+  width: IMG_MAX.x - IMG_MIN.x, height: IMG_MAX.y - IMG_MIN.y, preserveAspectRatio: 'none'});
+const rects = [];
+for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) {
+  rects[r * GRID + c] = el('rect', {x: c * CELL, y: -(r + 1) * CELL, width: CELL, height: CELL,
+    stroke: '#ffffff', 'stroke-opacity': .25, 'stroke-width': 12});
+}
+el('rect', {x: (CENTER) * CELL, y: -(CENTER + 1) * CELL, width: CELL, height: CELL,
+  fill: 'none', stroke: '#d9b65f', 'stroke-width': 30, 'stroke-dasharray': '80 60', 'pointer-events': 'none'});
+
+function renderCells() {
+  const a = +$('alpha').value;
+  cells.forEach((z, i) => {
+    const rc = rects[i];
+    if (z < 0) { rc.setAttribute('fill', 'url(#none)'); rc.setAttribute('fill-opacity', 1); }
+    else { rc.setAttribute('fill', ZONES[z][1]); rc.setAttribute('fill-opacity', a); }
+  });
+  renderStatus();
+}
+// boyanmamış hücre deseni
+const defs = el('defs', {});
+const pat = el('pattern', {id: 'none', width: 200, height: 200, patternUnits: 'userSpaceOnUse'}, defs);
+el('path', {d: 'M0 200 L200 0', stroke: '#ff9f43', 'stroke-width': 25, 'stroke-opacity': .55}, pat);
+svg.insertBefore(defs, svg.firstChild);
+
+/* ---------------- palet ve durum ---------------- */
+function renderPalette() {
+  const box = $('zones'); box.innerHTML = '';
+  const counts = ZONES.map(() => 0);
+  cells.forEach(z => { if (z >= 0) counts[z]++; });
+  const items = [...ZONES.map(([n, col], i) => [i, n, col, counts[i]]), [-1, 'silgi', 'transparent', null]];
+  for (const [i, n, col, cnt] of items) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'zone' + (i === selected ? ' sel' : '');
+    b.innerHTML = `<span class="sw" style="background:${col}${i < 0 ? ';border-style:dashed;border-color:#8a94ad' : ''}"></span><span></span><span class="n${cnt === 0 ? ' zero' : ''}"></span>`;
+    b.children[1].textContent = n;
+    b.children[2].textContent = cnt === null ? '' : cnt;
+    b.onclick = () => { selected = i; renderPalette(); };
+    box.appendChild(b);
+  }
+}
+function symmetryBreaks() {
+  let n = 0;
+  cells.forEach((z, i) => {
+    if (isCenter(i)) return;
+    const m = cells[mirrorCell(i)];
+    if ((z < 0) !== (m < 0) || (z >= 0 && MIRROR[z] !== m)) n++;
+  });
+  return n / 2;
+}
+function renderStatus() {
+  const empty = cells.filter(z => z < 0).length;
+  const unused = ZONES.filter((_, i) => !cells.includes(i)).length;
+  const sb = symmetryBreaks();
+  const line = (ok, okText, badText) => `<div class="${ok ? 'ok' : 'warn'}">${ok ? '✓ ' + okText : '! ' + badText}</div>`;
+  $('status').innerHTML =
+    line(empty === 0, 'Bütün hücreler boyalı', `${empty} hücre boyanmamış`) +
+    line(unused === 0, 'Bütün bölgeler kullanılmış', `${unused} bölge hiç kullanılmamış`) +
+    line(sb === 0, 'Simetrik', `${sb} hücre çifti simetrik değil`);
+  renderPalette();
+}
+
+/* ---------------- boyama ---------------- */
+function cellAt(evt) {
+  const p = new DOMPoint(evt.clientX, evt.clientY).matrixTransform(svg.getScreenCTM().inverse());
+  const x = p.x, y = -p.y, c = Math.floor(x / CELL), r = Math.floor(y / CELL);
+  return (r >= 0 && r < GRID && c >= 0 && c < GRID) ? {r, c, i: r * GRID + c, x, y} : null;
+}
+function paint(i, z) {
+  cells[i] = z;
+  if ($('sym').checked && !isCenter(i)) cells[mirrorCell(i)] = z < 0 ? -1 : MIRROR[z];
+}
+svg.addEventListener('contextmenu', e => e.preventDefault());
+svg.addEventListener('pointerdown', e => {
+  const h = cellAt(e); if (!h) return;
+  painting = e.button === 2 ? -1 : selected;
+  svg.setPointerCapture(e.pointerId);
+  paint(h.i, painting); renderCells();
+});
+svg.addEventListener('pointermove', e => {
+  const h = cellAt(e);
+  showHover(h);
+  if (h && painting !== null && cells[h.i] !== painting) { paint(h.i, painting); renderCells(); }
+});
+const stop = () => { if (painting !== null) { painting = null; save(); } };
+svg.addEventListener('pointerup', stop);
+svg.addEventListener('pointercancel', stop);
+svg.addEventListener('pointerleave', () => showHover(null));
+
+function showHover(h) {
+  if (!h) { $('hover').textContent = 'Haritanın üstüne gel.'; return; }
+  const z = cells[h.i];
+  $('hover').innerHTML = '';
+  const lines = [
+    `Hücre: satır ${h.r}, sütun ${h.c}${isCenter(h.i) ? ' (merkez)' : ''}`,
+    `Riot x ${h.c * CELL}–${(h.c + 1) * CELL}, y ${h.r * CELL}–${(h.r + 1) * CELL}`,
+    `İmleç: (${Math.round(h.x)}, ${Math.round(h.y)})`,
+    `Bölge: ${z < 0 ? '—' : ZONES[z][0]}`,
+  ];
+  for (const t of lines) { const d = document.createElement('div'); d.textContent = t; $('hover').appendChild(d); }
+}
+
+/* ---------------- taslak ---------------- */
+function buildDraft() {
+  const seeds = [];
+  for (const [n, pts] of Object.entries(DRAFT_SEEDS)) for (const [x, y] of pts) {
+    seeds.push([x, y, ZI[n]]);
+    seeds.push([GRID * CELL - x, GRID * CELL - y, MIRROR[ZI[n]]]);
+  }
+  cells = cells.map((_, i) => {
+    const r = Math.floor(i / GRID), c = i % GRID, cx = (c + .5) * CELL, cy = (r + .5) * CELL;
+    let best = -1, bd = Infinity;
+    for (const [x, y, z] of seeds) { const d = (x - cx) ** 2 + (y - cy) ** 2; if (d < bd) { bd = d; best = z; } }
+    return best;
+  });
+}
+
+/* ---------------- kaydet / yükle ---------------- */
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(cells)); } catch (_) { /* depolama yoksa sadece bellekte */ }
+}
+function load() {
+  try {
+    const v = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (Array.isArray(v) && v.length === GRID * GRID && v.every(z => Number.isInteger(z) && z >= -1 && z < ZONES.length)) { cells = v; return true; }
+  } catch (_) { /* yok say */ }
+  return false;
+}
+$('export').onclick = () => {
+  const empty = cells.filter(z => z < 0).length;
+  if (empty && !confirm(`${empty} hücre boyanmamış (-1 olarak yazılacak). Yine de indirilsin mi?`)) return;
+  const rows = [];
+  for (let r = 0; r < GRID; r++) rows.push(cells.slice(r * GRID, (r + 1) * GRID));
+  const data = {version: 1, grid: GRID, cell: CELL, origin: [0, 0],
+    note: 'cells[satır][sütun] = zones indeksi; satır 0 = y 0-1000 (haritanın altı), sütun 0 = x 0-1000',
+    zones: ZONES.map(([n]) => n), cells: rows};
+  const json = JSON.stringify(data, null, 1).replace(/\[\s+([-\d,\s]+?)\s+\]/g, (_, s) => '[' + s.replace(/\s+/g, '') + ']');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json + '\n'], {type: 'application/json'}));
+  a.download = 'zones.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.grid !== GRID || !Array.isArray(d.cells) || d.cells.length !== GRID) throw new Error('ızgara 15×15 değil');
+    const flat = d.cells.flat();
+    if (flat.length !== GRID * GRID) throw new Error('hücre sayısı 225 değil');
+    cells = flat.map(z => {               // bölgeleri isimle eşle (sıra değişmiş olabilir)
+      if (z === -1) return -1;
+      const name = d.zones[z];
+      if (!(name in ZI)) throw new Error('bilinmeyen bölge: ' + name);
+      return ZI[name];
+    });
+    save(); renderCells();
+  } catch (err) { alert('Yüklenemedi: ' + err.message); }
+};
+$('draft').onclick = () => { if (confirm('Mevcut boyama silinip taslak kurulsun mu?')) { buildDraft(); save(); renderCells(); } };
+$('clear').onclick = () => { if (confirm('Bütün hücreler silinsin mi?')) { cells.fill(-1); save(); renderCells(); } };
+$('alpha').oninput = renderCells;
+
+/* ---------------- veri noktaları (zone_points.js) ---------------- */
+const canvas = $('pts');
+function drawPoints() {
+  const P = window.ZONE_POINTS, dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (!P) { $('ptsInfo').textContent = 'Veri noktası yok (zone_points.py çalıştırılmamış).'; return; }
+  $('ptsInfo').textContent = `${P.matches} maç: ${P.positions.length} konum, ${P.buildings.length} bina, ${P.monsters.length} canavar`;
+  if (!$('showPts').checked) return;
+  const X = x => (x - VIEW_MIN) / VIEW_SIZE * w, Y = y => (VIEW_MAX - y) / VIEW_SIZE * h;
+  ctx.fillStyle = 'rgba(255,255,255,.10)';
+  for (const [x, y] of P.positions) ctx.fillRect(X(x) - 1, Y(y) - 1, 2, 2);
+  ctx.fillStyle = '#ffb347'; ctx.strokeStyle = '#000';
+  for (const [x, y] of P.buildings) { ctx.fillRect(X(x) - 3, Y(y) - 3, 6, 6); ctx.strokeRect(X(x) - 3, Y(y) - 3, 6, 6); }
+  ctx.fillStyle = '#e070ff';
+  for (const [x, y] of P.monsters) { ctx.beginPath(); ctx.arc(X(x), Y(y), 3, 0, 7); ctx.fill(); ctx.stroke(); }
+}
+$('showPts').onchange = drawPoints;
+new ResizeObserver(drawPoints).observe(canvas);
+
+/* ---------------- başlangıç ---------------- */
+if (!load()) { buildDraft(); save(); }
+renderCells();
+drawPoints();
+</script>
+</body>
+</html>

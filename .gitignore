@@ -21,6 +21,10 @@ venv/
 
 # Veri hattı: ham maç verisi repoya girmez (büyük); out/ tabloları girer
 data-pipeline/raw/
+# Ara listeler (puuid, maç id) yeniden üretilebilir, repoya girmez
+data-pipeline/players.json
+data-pipeline/match_ids.json
+data-pipeline/tools/zone_points.js
 
 # Sırlar ve yerel ayarlar
 .env
