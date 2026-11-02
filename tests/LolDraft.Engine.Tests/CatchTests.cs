@@ -9,18 +9,18 @@ public sealed class CatchTests
     private const int MatchCount = 1000;
 
     [Theory]
-    [InlineData(1000, 0.04)]
-    [InlineData(3000, 0.06)]
-    [InlineData(9000, 0.12)]
-    [InlineData(20000, 0.12)]   // tavan
+    [InlineData(1000, 0.05)]
+    [InlineData(3000, 0.09)]
+    [InlineData(8500, 0.2)]     // tavan
+    [InlineData(20000, 0.2)]
     public void Yakalanma_ihtimali_takim_farkiyla_artar_ve_sinirlidir(double lead, double expected)
     {
         Assert.Equal(expected, MatchRun.CatchChance(lead, opponentPickTotal: 0), 9);
     }
 
     [Theory]
-    [InlineData(3000, 4, 0.096)]    // %6 × (1 + 0,15 × 4)
-    [InlineData(9000, 4, 0.192)]    // tavan %12 × 1,6
+    [InlineData(3000, 4, 0.144)]    // %9 × (1 + 0,15 × 4)
+    [InlineData(9000, 4, 0.32)]     // tavan %20 × 1,6
     public void Rakibin_pick_toplami_yakalanma_ihtimalini_artirir(double lead, int pickTotal, double expected)
     {
         Assert.Equal(expected, MatchRun.CatchChance(lead, pickTotal), 9);

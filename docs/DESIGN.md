@@ -29,6 +29,7 @@ Temel ilkeler:
 | Hareket | Şimdilik senaryo kuralları (v2 prototip). Hedef: gerçek maç timeline'larından bölge geçiş olasılıkları (Markov tablosu). ML yok. | ML gereksiz; dakikalık konum verisiyle Markov yeterli ve basit. |
 | Stack | ASP.NET Core + SignalR (tek API uygulaması) önünde YARP gateway, React + TypeScript, SQLite ile başla. Veri hattı Python. | Gateway; tek giriş noktası, rate limiting, TLS ve auth için sonradan eklendi. Mikroservis, Redis, Hangfire MVP için gereksiz. Node/TS alternatifi değerlendirildi; motor paylaşımına gerek olmadığı ve Monte Carlo ağır olduğu için .NET. |
 | Güvenlik | Sunucu otoriter, kayıtsız misafir JWT, iki katmanlı rate limiting (gateway + hub), katmanlı mimari ve sıkı kapsülleme. | §8 |
+| Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
 ---
 
@@ -550,7 +551,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 ```
 dotnet run --project tools/LolDraft.Balance -c Release -- --drafts 10000 --seed 1 [--champions havuz.json]
 ```
-- Havuz §3 biçiminde JSON (`roles`: top, jg, mid, adc, sup); varsayılan `sample-champions.json`: prototipteki 10 şampiyon + her role 2 arketip (gerçek 40 şampiyon gelince değişecek).
+- Havuz §16.2 biçiminde JSON (`roles`: top, jg, mid, adc, sup); varsayılan `champions.json`: oyunun 40 şampiyonu (faz C). Eski `sample-champions.json` (prototipin 10'u + 10 arketip) faz C'de kaldırıldı; faz B ölçümleri onunla.
 - Rastgele draft (her rolde iki takıma farklı şampiyon). Her draft **ayna** oynanır: A Mavi/B Kırmızı, sonra yer değiştirip aynı seed. Draft etkisi iki tarafa eşit dağılır; Mavi'nin %50'den sapması saf taraf etkisidir.
 - Rapor: genel ölçümler (§9 ve §16.12 hedefleriyle yan yana), **ekonomi** (14. dk CS, 15. dk takım altın farkı, shutdown ve yakalanma sayısı/ödülü), **altın farkı → kazanma tablosu** (10/15/20. dk × fark dilimi 0-1.499 / 1.500-2.999 / 3.000-4.999 / 5.000+; o dakikaya ulaşan maçlar), güç ve sinerji farkına göre kazanma, belirgin erken comp (ve 14. dk 3.000+ geride kalan scale comp'un kurtarma oranı), bitiş dakikası dağılımı, şampiyon kazanma oranları (%95 hata payıyla). Eski "maç sonu puanda önde olan kaybetti" kalktı (puan artık karar vermiyor). Motoru sadece public sözleşmeden (`MatchEngine`) kullanır; aynı `--seed` aynı raporu verir. 10.000 draft (20.000 maç) ~8 sn.
 
@@ -760,12 +761,12 @@ taban = 0,3 × (altın_kurban − altın_kurbanın_rol_rakibi)                  
 ### 16.5 Altından gerçek güce
 ```
 r     = altın / ((altın + rakip_rol_altını) / 2)    // 1 = başa baş, 1,1 = rakibinden %22 fazla (uygulandı)
-s     = { econ 0: 0,5 · econ 1: 1 · econ 2: 1,5 · econ 3: 2 }   // altına duyarlılık (deneyle ölçeklendi, aşağıda)
+s     = { econ 0: 0,45 · econ 1: 0,9 · econ 2: 1,35 · econ 3: 1,8 }   // altına duyarlılık (deneyle ölçeklendi, aşağıda; faz D'de %10 indirildi)
 G_eff = G_pot(dk) × clamp(1 + s × (r − 1), 0,5, 1,4)
 ```
 - **Scale şampiyon altına daha duyarlıdır** (`econ` 3): az altınla potansiyelinin yarısına iner, çok altınla en fazla %40 artar.
 - Taban ve tavan kartopu sınırlar (azalan getiri): 10 kill alan, 3 kill alandan çok daha güçlü olmaz.
-- Uygulama (`MatchRun.Power.cs`): `s = 0,5 + 0,5 × econ` (adım 8'den beri şampiyona göre; öncesinde herkes 1,5). Örnek r = 1,1: Jinx (econ 3) ×1,20, Draven (econ 2) ×1,15, Leona (econ 0) ×1,05.
+- Uygulama (`MatchRun.Power.cs`): `s = 0,45 + 0,45 × econ` (adım 8'den beri şampiyona göre, öncesinde herkes 1,5; faz D ayar turu 2'de 0,5 + 0,5 × econ'dan indirildi). Örnek r = 1,1: Jinx (econ 3) ×1,18, Draven (econ 2) ×1,135, Leona (econ 0) ×1,045.
 - **Duyarlılık deneyi** (herkes aynı s; eşit draft 5.000 maç + denge aracı 4.000 draft):
 
 | Ölçüm | s 0,9 | **s 1,5 (seçildi)** | s 2 | s 3 | Hedef |
@@ -827,8 +828,8 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 
 | # | Kural | Koşul | Nerede | Etki |
 |---|---|---|---|---|
-| K5 | Engage | `en` toplam farkı | objektif savaşı, son savaş | d += 1,0 × fark (±4); rakip `dis + peel` toplamının yarısı kadar silinir |
-| K6 | Poke | `poke` toplam farkı | kuşatma (saldırı ve savunma) | d += 1,0 × fark (±4); objektif savaşında rakip `en` ≥ 5 ise poke takımına −2 |
+| K5 | Engage | `en` toplam farkı | objektif savaşı, son savaş | d += 1,0 × fark (±4); rakip `dis + peel` toplamı kadar silinir (faz D: eskiden yarısı) |
+| K6 | Poke | `poke` toplam farkı | kuşatma (saldırı ve savunma), objektif savaşı | kuşatmada d += 1,0 × fark (±4); objektif savaşında rakip `en` ≥ 8 ise poke takımına −2, değilse poke takımına 0,5 × fark (±2) (faz D: eskiden sadece ceza, eşik 5) |
 | K7 | Pick | `pick` toplam farkı | nehir çatışması, gank, yakalanma | çatışma d += 1,0 × fark (±3); gank başarısı +%5 × fark (±%15) |
 | K8 | Dive tehdidi | rakipte hiper taşıyıcı ve rakip `peel + fl` < 3 | takım savaşları | d += 0,8 × `dive` toplamı (±3) |
 | K9 | Korunan taşıyıcı | takımda hiper taşıyıcı | dk ≥ 25 takım savaşları | `peel` ≥ 3 → d +2 · `peel + fl` < 2 → taşıyıcının `G_eff` × 0,85 |
@@ -840,8 +841,8 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11, K13'e dağılır; maç başı tek "sinerji puanı" kalkar (uygulandı, `SynergyCalculator` silindi).
 
 **Uygulama (adım 9b, `TeamRules.cs`):** `FightKind` (objektif, kuşatma, son savaş, nehir çatışması); takım savaşlarında iki takımın tamamı, çatışmada sadece gelenler. Etkiler `RuleEffect` (koridor kurallarıyla aynı). Yorumlar:
-- K5: etkin engage = `en` toplamı − rakibin `dis + peel` toplamının yarısı (≥ 0); fark ±4. Örnek: erken comp 7 − 3,5 = 3,5, scale comp 3 − 1,5 = 1,5 → Mavi +2.
-- K6: objektif cezası poke toplamı fazla olan takıma. Son savaşta poke yok.
+- K5: etkin engage = `en` toplamı − rakibin `dis + peel` toplamı (≥ 0; faz D'den önce yarısı); fark ±4. Örnek: erken comp 7 − 7 = 0, scale comp 3 − 3 = 0 → K5 yok (Lulu'lu koruma engage'i siler).
+- K6: objektifte poke toplamı fazla olan takıma: rakip sert engage'liyse (`en` ≥ 8 ≈ havuz ortalaması × 1,6) "Poke, engage'e yakalandı" −2, değilse "Poke objektifi kurdu" +0,5 × fark (±2). Son savaşta poke yok.
 - K7: çatışmada gelenlerin `pick` farkı. Gank: başarı += %5 × (gelenlerin `pick` toplamı − hedefin `mob`'u), ±%15 (pick yakalar, mob kaçar; yakalanmayla aynı mantık). Yakalanmadaki pick adım 8'de.
 - K9 korumasız taşıyıcı: d'den 0,15 × taşıyıcının `G_eff`'i düşer (her hiper taşıyıcı için).
 - K12 split: bonus değil davranış, `MatchRun.Split.cs` (aşağıda "K12 karar zinciri").
@@ -861,15 +862,15 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 Çok önde olan takım bazen bir yerde yakalanır:
 - dk ≥ 15, objektif olmayan dakikalarda (objektifte herkes savaşta) bir kez, dakikanın 5-40. saniyesinde (45. sn kuşatmadan önce); takım altın farkı o an ≥ 1.000 ise.
 - Kurban: **önde olan takımın, koridorunda olan (ölü/savaşta değil) en zengini**: rol rakibine göre en yüksek altın oranı.
-- İhtimal: `p = min(0,03 + 0,01 × takım altın farkı / 1000, 0,12) × (1 + 0,15 × rakip pick toplamı)`. 3.000 önde → %6/dk, 9.000+ → %12.
+- İhtimal: `p = min(0,03 + 0,02 × takım altın farkı / 1000, 0,2) × (1 + 0,15 × rakip pick toplamı)`. 3.000 önde → %9/dk, 8.500+ → %20. (Faz D ayar turu 2: eskiden 1.000 başına %1, tavan %12; büyük farkı köreltir, draft tarzına bakmaz.)
 - Yakalanırsa kaçma şansı `0,2 + 0,1 × mob`; kaçamazsa rakibin en yüksek `pick`'li müsait şampiyonu öldürür ve katil **ödülü** alır. Log: "Shutdown! Draven alt koridorda yakalandı, kill Lee Sin aldı (+650 ödül altını)". Kill olayı `Lane` boş (koridor anlatıcısının kill'i değil).
 - Önde olan için risk, geride olan için umut; son savaştan önce farkın kapanmasını sağlayan mekaniklerden.
 - Uygulama (`MatchRun.Pick.cs`): formül yukarıdaki gibi (adım 8'den beri `pick` ve `mob` gerçek). Katil: rakibin müsait oyuncuları içinde en yüksek `pick`'li; eşitlikte nehre yakınlık sırası (ormancı, support, mid, adc, top).
 - Ölçüm (5.000 maç, yakalanmalı / yakalanmasız): maç başı 0,6 yakalanma, ortalama ödül ~680. Eşit draft'ta 15. dk 5.000+ önde olan %79,4 / %81,3, erken vs scale'de %73,4 / %74,9 kazanıyor; büyük farkta ~2 puan geri dönüş.
 
 ### 16.10 Kuşatma ve maç sonu
-- Şart: dk ≥ 20, o dakika objektif yok, **takım altın farkı ≥ 4.000** (Baron buff'ı varken ≥ 2.000), en az bir koridorda dış ve iç kule yıkılmış, son kuşatmadan ≥ 3 dk.
-- Başarı ihtimali: takım savaşı (16.7) + K6 poke. Başarı → Nexus. Başarısız → **throw**: savunan savaşı kazanmış sayılır, kill'ler ödülle → fark kendiliğinden kapanır (sabit +10 kalktı).
+- Şart: dk ≥ 16, o dakika objektif yok, **takım altın farkı ≥ eşik** (16. dk 7.000, dakikada −750, 20. dk'dan sonra 4.000; Baron buff'ı varken yarısı), en az bir koridorda dış ve iç kule yıkılmış, son kuşatmadan ≥ 3 dk. (Faz D: eskiden dk ≥ 20 ve sabit 4.000; önde olanlar birikip maçların %12'si tam 20. dk'da bitiyordu.)
+- Başarı ihtimali: takım savaşı (16.7) + K6 poke − **savunma avantajı 3** (savunan kule ve inhibitör altında; faz D ayar turu 2). Başarı → Nexus. Başarısız → **throw**: savunan savaşı kazanmış sayılır, kill'ler ödülle → fark kendiliğinden kapanır (sabit +10 kalktı).
 - Uygulandı (`MatchRun.Siege.cs`): saldıran = kuşatma anında altında önde olan; K6 poke adım 9'da. Puan (`ScoreSheet`) artık hiçbir karara girmiyor; sadece `Breakdown` çıktısında duruyor, karne gelince (adım 10) altın kaynakları dökümüyle değişecek.
 - Ölçüm (10.000 draft): süre 29,3 dk, maçların %52,7'si kuşatmayla bitiyor, erken comp %32,6'sını 35'ten önce bitiriyor (ilk kez hedefte), eşit draft'ta 15. dk 3.000+ önde olan %78,7 kazanıyor. **Bilinen:** bitişlerin %15'i tam 20. dakikada (ilk kuşatma dakikası birikiyor); faz D'de bakılacak (ör. ilk kuşatma için inhibitör şartı ya da eşiğin dakikayla artması).
 - Son savaş (dk 35) aynı kalır: o anki `ΣG_eff`, kurallar ve buff'larla.
@@ -898,8 +899,8 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 | Saf taraf etkisi (ayna) | ~%50 |
 | Belirgin iyi draft (kural toplamı yüksek) | %60-65; en iyi draft bile ≤ %70 |
 | Üstün kimlik (K5-K8 lehine) | %55-60 |
-| Lane fazında belirgin geride kalan scale comp maçı kurtarıyor | %25-35 |
-| 15. dk 3.000+ altın önde olan kazanıyor | %70-80 (gerçek veriyle kalibre) |
+| Lane fazında belirgin geride kalan scale comp maçı kurtarıyor | %25-40 (faz D'de %25-35'ten genişletildi: eğlence önce, §1) |
+| 15. dk 3.000+ altın önde olan kazanıyor | %70-80; 5.000+ önde bile ≤ %85 (eğlence önce, §1; gerçek solo kuyruk %85-98) |
 | Ortalama süre / maç başı kill | 25-32 dk / 15-30 |
 | Erken comp 35'ten önce bitiriyor | %30-45 |
 | Ruhu alan kazanıyor | %65-75 |
@@ -925,13 +926,58 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
    - ~~9b: K5-K11, K13 (eski tek sinerji puanı kalkar).~~ (bitti; 16.8 "Uygulama") Ölçüm (10.000 draft, 9a → 9b): Mavi %50,3; süre 29,7 → 29,6; erken comp %46,7 → %48,4 kazanıyor, %30,9 → %32,9'unu 35'ten önce bitiriyor ✓; scale comp kurtarıyor %36,7 → %34,3 ✓ (ilk kez hedefte); 15. dk 3.000-4.999 önde %68, 5.000+ %79 ✓; sınıra takılan savaş %2,7 → %5,0. **Kural farkı → kazanma** eğrisi düzgün ve tekdüze: 2 → %56, 4 → %62,5, 6 → %67,5, 8 → %73, 10 → %77, 12+ → %80-90. Hedef (belirgin iyi draft %60-65, en iyisi ≤ %70) fark ~4-6'da tutuyor ama uç draft'lar (fark 8+, maçların ~%7'si) fazla kazanıyor: cezalar üst üste biniyor (frontline yok −4, tek tip hasar −2, korumasız taşıyıcıya dive +3...). Şampiyonlar: engage tank'lar önde (Leona %57, Sejuani %56, Tank Top %55: hem `en` hem `fl` ödülleniyor, K5 + K10), Büyücü Destek %37,6 (fl/en/peel 0 → K10, K4, K5'e açık). Faz D adayları: kural toplamına tavan (ör. ±8) ya da ağırlıkları küçültme; K5 + K10 tank'ı iki kez ödüllüyor mu bakılacak; örnek havuz arketipleri de gerçek veriyle değişecek.
    - ~~9c: K12 split~~ (bitti; 16.8 "K12 karar zinciri"). Ölçüm (10.000 draft): maç başı 0,59 split, %50'si cevaplanıyor, %76'sı kule getiriyor; split yapan takım o objektifi %33 alıyor, maçı %39 kazanıyor (zaten geride olan takım). Genel tablo aynı: Mavi %49,8, süre 29,5, maç başı kule 4,8 → 5,3, scale comp kurtarıyor %34,2 ✓. Dövüşçü Top (split 3) %47,8 → %48,7. Denge aracına split satırları eklendi.
 10. ~~Draft karnesi çıktısı (16.11).~~ (bitti; 16.11 "Uygulama")
-11. Denge aracına kural etkisi ve kimlik-kimlik raporu → ölçüm.
+11. ~~Denge aracına kural etkisi ve kimlik-kimlik raporu → ölçüm.~~ (bitti) Karnedeki kural satırları maç başına (kural, yer) birleştirilir (iki tarafa işlediyse net); rapor: çalıştığı maç, ortalama doğrudan etki, net lehine olan taraf kazanıyor. **Dikkat:** son sütun "kural güçlü" değil "bu kurala sahip draft kazanıyor" demek; kural, draft'ın başka zayıflıklarıyla birlikte gelebilir (K6 kuşatmada lehine olan %41 kazanıyor: poke takımı genel olarak zayıf). Kimlik (`Identity.cs`): her etiket toplamı havuzdaki beklenen takım toplamına bölünür, en yüksek oran ≥ 1,25 ise kimlik o (Engage, Poke, Pick, Koruma = peel + dis, Dive, Split), değilse Karma.
+   Ölçüm (10.000 draft, örnek havuz):
+   - Kurallar: K5 objektif %96 maç, olay başına 3,7 puan, lehine olan %60 · K6 objektif cezası **%76 maçta** (rakip `en` ≥ 5; havuzda ortalama takım `en` toplamı ~5,75: eşik ortalamanın altında) · K7 gank 5,7 puan ama lehine olan %50 (gürültüde kayboluyor) · K8 nadir (%8) ama lehine olan %73-80 · K10 5,6-5,9 puan, lehine olan %66-73 · koridor kuralları maç başı 50-130 altın (K4 en büyük).
+   - Kimlikler: Engage %61,1 (hedef %55-60'ın hemen üstü), **Poke %40,5**, Pick %53,9, Koruma %52,9, Dive %48,4, Split %46,3, Karma %52. Engage vs Poke %66,5, Engage vs Dive %64, Engage vs Split %62; Koruma vs Split %56.
+   - Faz D'ye: (1) K6 objektif cezasının eşiği havuz ortalamasına göre (ör. beklenen `en` × 1,4 ≈ 8) ya da kaldırılmalı; Poke kimliğinin tek kazancı kuşatma, objektifte hep ceza yiyor. (2) Engage biraz güçlü: K5 + K10 tank'ı iki kez ödüllüyor (9b'deki not). (3) K7'nin etkisi büyük ama sonuca yansımıyor: pick'in değeri belki yakalanma/gank sıklığında olmalı. (4) Örnek havuz arketip; ayar gerçek 40 şampiyonla yapılacak, şimdi değil.
 
 **Faz C — Veri**
-12. 40 şampiyon etiketleme (kullanıcı) + tutarlılık kontrol aracı ("hiper taşıyıcı ama econ 1", "tank ama fl 0" uyarıları).
+12. ~~40 şampiyon etiketleme~~ (bitti: `tools/LolDraft.Balance/champions.json`; taslağı Claude çıkardı, kullanıcı onayladı. Her koridordan 8, her koridorda farklı tipler; 6 hiper taşıyıcı: Kayle, Karthus, Kassadin, Viktor, Jinx, Vayne. Bilinçli seçimler: Ashe'nin oku `en` değil `pick` 3 (engage tank/destek işi, adc'ye `en` K5'i bozar); Gnar ve Jayce koridorda ranged. K13 kombo tablosu yeni listeye göre: Kayle/Jinx/Vayne + Lulu, Leona + Draven, Yasuo + Malphite/Alistar, Orianna + Amumu.) + ~~tutarlılık kontrol aracı~~ (bitti: `dotnet run --project tools/LolDraft.Balance -- --check [--champions havuz.json]`, `PoolCheck.cs`). Yazdıkları: rol başına sayı (öneri ≥ 6), sınıf dağılımı, etiket ortalamaları, hiper taşıyıcılar ve uyarılar: hiper taşıyıcıya benzeyip econ < 3 · econ 3 ama geç < 8 · tank ama fl < 2 ya da econ ≥ 2 · enchanter ama peel + dis < 2 · suikastçı ama mob < 2 (K3 çalışmaz) · melee nişancı (§16.2 koridor menzili) · split ≥ 2 ama top/mid değil (K12) · adc ama en ≥ 2 · güç toplamı 14-22 dışı · hiç etiket yok. Uyarı hata değildir (Kayle bilinçli istisna). Örnek havuzda: tek uyarı Kayle; dis ortalaması 0,35, peel 0,55 (koruma kıt: Poke/Engage sonuçlarını etkiliyor olabilir, 40'lık listede dengeli olsun).
 
 **Faz D — Dengeleme**
 13. Veri hattından gerçek altın eğrisi ("X. dk Y altın önde → kazanma oranı"), altın duyarlılığı ve kural ağırlıkları 16.12 hedeflerine oturtulur.
+   - **Ayar turu 1** (40'lık havuz, 10.000 draft; her düğme tek tek ölçüldü):
+
+     | # | Değişiklik | Neden | Sonuç |
+     |---|---|---|---|
+     | 1 | K6 sert engage eşiği 5 → 8 | havuzda ortalama takım `en` toplamı 5: ortalama rakip de "sert engage" sayılıyordu (ceza maçların %61'inde) | ceza %19'a indi ama Poke %42,4 → %43,6: asıl sebep bu değil |
+     | 2 | K6 objektifte simetrik: sert engage yoksa poke farkı × 0,5 (±2) | poke'un tek kazancı kuşatmaydı; gerçekte poke objektifi kurar, ona sert engage karşı koyar | Poke %45,6 |
+     | 3 | K5'te `dis + peel` engage'i tam ağırlıkla siler (eskiden yarısı) | Engage herkesi yeniyordu, Koruma'yı bile (%57,5); taş-kağıt-makas çalışmıyordu | Engage %59,3 → %56,6, Engage vs Koruma %50, Poke %47, kural farkı 8-9 %65-68 |
+     | 4 | ~~K8 koruma şartı sadece `peel` < 2~~ (geri alındı) | Dive %44: K8 maçların %6'sında | K8 %18'e çıktı ama Dive yerinde (%44,5), kural farkı 9 %72'ye çıktı: Dive'ın zayıflığı K10'dan (suikastçıların `fl`'si 0) |
+     | 5 | Kuşatma 16. dk'da açılır, eşik dakikayla iner (16. dk 7.000 → 20. dk 4.000) | maçların %12'si tam 20. dk'da bitiyordu (birikme) | 20. dk %3,3; 17-20 arası yayıldı; 24. dk (Baron sonrası) %15 kaldı, gerçekçi |
+
+     Sonuç (önce → sonra): Engage %58,3 → %56,4 (hedef %55-60 ✓) · Poke %42,4 → %47,2 · Pick %52,3 · Koruma %51,2 · Split %47,6 · Dive %44,1 · Karma %50,6 · kural farkı 9-10 %70 ✓, 11+ %76-83 (maçların ~%2,5'i) · 15. dk 5.000+ önde %82 (≤ %85 ✓) · scale comp kurtarıyor %31 ✓ · erken comp %50,5 kazanıyor, %34,6'sını 35'ten önce bitiriyor ✓ · Mavi %49,4 · süre 29,1 dk. Şampiyonlar %41,5 (Brand) - %55,4 (Thresh, Alistar).
+     Açık: Dive %44 (suikastçılara `fl` mı, K10'a dive istisnası mı?), poke destekler (Brand %41,5, Karma), kural farkı 11+ (toplam kural d'sine tavan adayı).
+   - **Ayar turu 2: 15. dk 5.000+ önde olanın kazanma oranı ~%75'e** (kullanıcı isteği; §1 eğlence önce). Kavram: önde olan bu farkı ya altının güce dönüşmesiyle (`s`) ya da kuşatmayla maça çevirir; geri dönüş kapıları (ödül, yakalanma, throw) onu yavaşlatır. Hesap: 5.000 takım farkı rol başına ~1.000, r ≈ 1,1, güç ×1,15 / ×0,85 → her takım savaşında d ≈ +10 (~%66); 4-6 savaşta öndeki üst üste kazanır.
+
+     | Deneme | 15. dk 5.000+ | 15. dk 3-5k | Ezilen scale comp kurtarıyor | Erken comp kazanıyor / 35'ten önce |
+     |---|---|---|---|---|
+     | Başlangıç (tur 1 sonu) | %82,1 | %69,1 | %31,1 | %50,5 / %34,6 |
+     | Clamp 0,6-1,3 (eskiden 0,5-1,4) | %82,1 | %69,0 | %31,2 | — (geri alındı: 5.000 farkta r ≈ 1,1, clamp'e hiç değmiyor) |
+     | **A.** Kuşatmada savunma avantajı (saldıran d −3) | %80,9 | %68,1 | %32,5 | %49,7 / %33,1 |
+     | `s` %20 düşük (A'sız yakalanmasız denendi, A üstüne) | %78,0 | %65,7 | %37,9 | %46,0 / %29,6 (geri alındı: C'den kötü) |
+     | **B.** A + yakalanma 1.000 başına %2, tavan %20 | %79,1 | %66,0 | %35,6 | %48,1 / %30,9 |
+     | **C. (seçildi)** B + `s` %10 düşük | **%76,7** | %65,2 | %37,8 | %46,6 / %29,8 |
+
+     **Yapısal gerilim:** 15. dk'da büyük farkla önde olan çoğunlukla erken comp; önde olanı yavaşlatan her mekanik geride kalan scale comp'a yarar. Bu yüzden "ezilen scale comp kurtarıyor" hedefi %25-40'a genişletildi (geride kalanın şansı = eğlence). C'de diğerleri: Mavi %49,8, süre 29,8 dk, ruhu alan %65,9, yakalanma maç başı 1,06, Engage %57,0, Poke %46,2, Dive %44,0.
+     Açık (tur 3): erken comp %46,6'ya düştü (35'ten önce %29,8, hedefin hemen altı) → küçük telafi adayı: 16-19. dk kuşatma eşiği biraz düşük ya da erken güç eğrisi.
+   - ~~Gerçek eğri~~ (bitti: `data-pipeline/05_economy.py` → `out/economy.json`; denge aracıyla aynı ölçümler). Not: `DRAGON_SOUL_GIVEN` ruhun alındığı an değil (2. ejderden sonra ruh türü, `teamId` 0); ruh = 4. ejderi ilk kesen takım.
+
+     | Ölçüm | Gerçek (EUW Challenger/GM solo, 495 maç) | Motor (10.000 draft, adım 11) | Hedef |
+     |---|---|---|---|
+     | Ortalama süre | 26,4 dk | 29,5 dk | 25-32 |
+     | Maç başı kill | 54,6 | 22,8 | 15-30 |
+     | 14. dk CS (koridorcu + ormancı) | 111 | 102 | — |
+     | 15. dk ortalama takım altın farkı | 3.567 | 3.128 | — |
+     | 15. dk önde: 0-1.499 / 1.500-2.999 | %57 / %64 | %53 / %60 | — |
+     | 15. dk önde: 3.000-4.999 / 5.000+ | **%84,5 / %98,5** | %68 / %79 | %70-80 |
+     | 10. dk önde 1.500-2.999 | %79 | %61 | — |
+     | Ruhu alan kazanıyor | %96 (100 maç) | %69 | %65-75 |
+     | 14. dk 3.000+ geride kurtarıyor | %8,5 (223 maç) | %34 (sadece scale comp) | %25-35 |
+
+     Okuma: solo kuyrukta kartopu motordan çok daha sert (3.000+ önde %85-98, geride olan %8,5 kurtarıyor). Ama solo kuyruk **teslimle** biter (geride olan 15-20. dk'da bırakır; ortalama 26,4 dk) ve koordinasyon zayıftır; turnuva oyunu daha az kill ve daha çok geri dönüş üretir.
+     **Karar (kullanıcı): eğlence önce (§1).** Motor solo kuyruğa oturtulmaz; "turnuva hissi" hedefleri kalır, geride olanın her zaman gerçek şansı olur. Gerçek veri sadece yön verir: önde olanın kazanma oranı en fazla %80-85 (5.000+ önde için üst sınır), erken fark biraz daha belirleyici olabilir (gerçekte 10. dk 1.500+ önde %79). Geri dönüş hedefi %25-35 kalır. Kill sayısı turnuvaya yakın (15-30).
 
 ### 16.14 Kullanıcıya açık sorular
 1. ~~Sınıf listesi yeterli mi?~~ Evet, şimdilik bu 6'sı; gerekirse sonra eklenir.

@@ -10,9 +10,15 @@ Console.OutputEncoding = Encoding.UTF8;
 
 var options = BalanceOptions.Parse(args);
 var pool = ChampionPool.Load(options.ChampionsPath);
+if (options.Check)
+{
+    PoolCheck.Print(pool, Console.Out);
+    return;
+}
+
 var drafter = new RandomDrafter(pool, options.Seed);
 var simulator = MatchEngine.CreateSimulator();
-var stats = new BalanceStats();
+var stats = new BalanceStats(new IdentityClassifier(pool));
 
 for (var i = 0; i < options.Drafts; i++)
 {

@@ -4,7 +4,7 @@ using LolDraft.Engine.Events;
 namespace LolDraft.Balance;
 
 /// <summary>Maç sonuçlarını biriktirir; rapor bu sayılardan çıkar.</summary>
-internal sealed class BalanceStats
+internal sealed class BalanceStats(IdentityClassifier identities)
 {
     // Savaş ihtimali bu kadar sınıra yakınsa "sınıra takıldı" sayılır (1 − 0.9 double'da 0.0999…).
     private const double ClampEpsilon = 1e-9;
@@ -63,6 +63,14 @@ internal sealed class BalanceStats
     public int SplitObjectiveWins { get; private set; }
     public int SplitMatchWins { get; private set; }
 
+    // Kural raporu (DESIGN.md §16.13 adım 11): (kural, yer) → çalıştığı maç, net bir tarafı kayırdığı maç,
+    // kayırılan tarafın kazandığı, net etki büyüklüğü toplamı (koridorda altın, savaşta olay başına kazanma şansı puanı).
+    public SortedDictionary<(int Number, RuleContext Context), (int Matches, int Decided, int FavoredWins, double AbsImpact)> Rules { get; } = [];
+
+    // Kimlik (Mavi ve Kırmızı ayrı ayrı): oynadığı maç, kazandığı. Eşleşme (a ≠ b, sırasız: a < b) → (maç, a'nın kazandığı).
+    public SortedDictionary<Identity, (int Games, int Wins)> Identities { get; } = [];
+    public SortedDictionary<(Identity A, Identity B), (int Games, int AWins)> IdentityMatchups { get; } = [];
+
     // (dakika, fark dilimi) → (o dakikaya ulaşan maç, o dakikada altında önde olanın kazandığı).
     public SortedDictionary<(int Minute, int Bucket), (int Games, int LeaderWins)> ByGoldLead { get; } = [];
 
@@ -89,6 +97,8 @@ internal sealed class BalanceStats
         }
 
         AddEconomy(result);
+        AddRules(result);
+        AddIdentities(blue, red, winner);
 
         // Sınıra takılan savaşlar: objektif, nehir çatışması, kuşatma (Nexus/Throw). Gank ihtimali olaylarda yok.
         IEnumerable<double> probabilities = events.OfType<ObjectiveEvent>().Select(o => o.Probability)
@@ -203,6 +213,56 @@ internal sealed class BalanceStats
             if (result.End.Winner == split.Side)
                 SplitMatchWins++;
         }
+    }
+
+    // Karnedeki kural satırları (kural, yer) başına birleştirilir; aynı kural iki tarafa da işlediyse (K3, K13) net etki.
+    // Koridor: net altın = Σ işaret × etki. Savaş/gank: olay başına net puan = Σ işaret × etki × olay / Σ olay.
+    // Net sıfır değilse kayırılan taraf o; kazanıp kazanmadığına bakılır. Koridorlar tek yer sayılır.
+    private void AddRules(MatchResult result)
+    {
+        foreach (var group in result.Report.Rules.GroupBy(r => (Number: int.Parse(r.Rule[1..]), Context: Group(r.Context))))
+        {
+            var lane = group.Key.Context == RuleContext.TopLane;
+            var events = group.Sum(r => r.Count);
+            var net = group.Sum(r => Sign(r.Side) * r.Impact * (lane ? 1 : r.Count)) / (lane ? 1 : Math.Max(1, events));
+
+            var (matches, decided, wins, impact) = Rules.GetValueOrDefault(group.Key);
+            matches++;
+            if (net != 0)
+            {
+                decided++;
+                if ((net > 0) == (result.End.Winner == TeamSide.Blue))
+                    wins++;
+                impact += Math.Abs(net);
+            }
+
+            Rules[group.Key] = (matches, decided, wins, impact);
+        }
+    }
+
+    // Koridorlar tek grupta (TopLane anahtarıyla); diğerleri olduğu gibi.
+    private static RuleContext Group(RuleContext context) =>
+        context is RuleContext.MidLane or RuleContext.BotLane ? RuleContext.TopLane : context;
+
+    private static int Sign(TeamSide side) => side == TeamSide.Blue ? 1 : -1;
+
+    private void AddIdentities(TeamDraft blue, TeamDraft red, TeamSide winner)
+    {
+        var (b, r) = (identities.Of(blue), identities.Of(red));
+        foreach (var (identity, won) in new[] { (b, winner == TeamSide.Blue), (r, winner == TeamSide.Red) })
+        {
+            var (games, wins) = Identities.GetValueOrDefault(identity);
+            Identities[identity] = (games + 1, wins + (won ? 1 : 0));
+        }
+
+        if (b == r)
+            return;
+
+        // Sırasız eşleşme: küçük kimlik önce; onun kazanıp kazanmadığı.
+        var (a, aWon) = b < r ? (b, winner == TeamSide.Blue) : (r, winner == TeamSide.Red);
+        var key = (a, b < r ? r : b);
+        var (g, w) = IdentityMatchups.GetValueOrDefault(key);
+        IdentityMatchups[key] = (g + 1, w + (aWon ? 1 : 0));
     }
 
     // Maç o dakikaya ulaşmadıysa kare yok (son kare maçın bittiği dakikadır, Nexus anı; o da sayılmaz).

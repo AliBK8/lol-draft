@@ -38,6 +38,18 @@ internal static class TestTeams
     /// <summary>Eşit draft: iki taraf her fazda 6, sinerji ve etiketler aynı. Fark sadece oyunda (altın, zar) açılır.</summary>
     public static MatchInput Even(uint seed) => new(Flat("b", 6), Flat("r", 6), new Seed(seed));
 
+    /// <summary>
+    /// Split senaryosu: eşit draft, ama Mavi'nin top'u güçlü bir splitter (split 3, rakibini 1v1 yener) ve Mavi'de
+    /// frontline/engage yok (takım savaşında geride: K10, K5). Geride olan takımın split kozunu bol üretir.
+    /// </summary>
+    public static MatchInput Split(uint seed)
+    {
+        var blue = Flat("b", 6);
+        var fiora = new ChampionProfile("fiora", "Fiora", Melee, Fighter, null, 8, 8, 8, economy: 2, apShare: 0,
+            new ChampionTags(dive: 2, split: 3, mobility: 3));
+        return new MatchInput(new TeamDraft(fiora, blue.Jungle, blue.Mid, blue.Bot, blue.Support), Flat("r", 6), new Seed(seed));
+    }
+
     // İki takımda aynı yapı: sadece güç farklı. econ 2 (faz A'daki herkesin altın duyarlılığı), pick ve mob 0.
     private static TeamDraft Flat(string prefix, int power) => new(
         Flat($"{prefix}0", Melee, Fighter, power, 0, new ChampionTags(frontline: 2, engage: 2)),

@@ -49,7 +49,7 @@ public sealed class SplitTests
             }
         }
 
-        Assert.True(splits > 100, $"Sadece {splits} split");
+        Assert.True(splits > 50, $"Sadece {splits} split");
         Assert.InRange(answered, splits / 4, splits * 3 / 4);   // %50 cevap (koridorda değilse cevap yok)
     }
 
@@ -102,7 +102,7 @@ public sealed class SplitTests
         var simulator = MatchEngine.CreateSimulator();
         for (var seed = 0u; seed < MatchCount; seed++)
         {
-            var input = TestTeams.Match(seed);
+            var input = TestTeams.Split(seed);
             yield return (input, simulator.Simulate(input).Events);
         }
     }

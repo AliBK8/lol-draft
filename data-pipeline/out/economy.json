@@ -1,0 +1,89 @@
+{
+  "games": 495,
+  "avgMinutes": 26.4,
+  "killsPerGame": 54.6,
+  "csAt14": 111.0,
+  "teamLeadAt15": 3567,
+  "soul": {
+    "games": 100,
+    "wins": 96
+  },
+  "crushedAt14": {
+    "games": 223,
+    "comebacks": 19
+  },
+  "goldLeadCurve": [
+    {
+      "minute": 10,
+      "lead": 0,
+      "games": 233,
+      "leaderWins": 126
+    },
+    {
+      "minute": 10,
+      "lead": 1500,
+      "games": 187,
+      "leaderWins": 148
+    },
+    {
+      "minute": 10,
+      "lead": 3000,
+      "games": 65,
+      "leaderWins": 56
+    },
+    {
+      "minute": 10,
+      "lead": 5000,
+      "games": 10,
+      "leaderWins": 10
+    },
+    {
+      "minute": 15,
+      "lead": 0,
+      "games": 128,
+      "leaderWins": 73
+    },
+    {
+      "minute": 15,
+      "lead": 1500,
+      "games": 124,
+      "leaderWins": 79
+    },
+    {
+      "minute": 15,
+      "lead": 3000,
+      "games": 110,
+      "leaderWins": 93
+    },
+    {
+      "minute": 15,
+      "lead": 5000,
+      "games": 133,
+      "leaderWins": 131
+    },
+    {
+      "minute": 20,
+      "lead": 0,
+      "games": 91,
+      "leaderWins": 48
+    },
+    {
+      "minute": 20,
+      "lead": 1500,
+      "games": 71,
+      "leaderWins": 43
+    },
+    {
+      "minute": 20,
+      "lead": 3000,
+      "games": 103,
+      "leaderWins": 82
+    },
+    {
+      "minute": 20,
+      "lead": 5000,
+      "games": 156,
+      "leaderWins": 151
+    }
+  ]
+}

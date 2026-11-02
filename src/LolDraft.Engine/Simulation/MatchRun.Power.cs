@@ -6,17 +6,18 @@ namespace LolDraft.Engine.Simulation;
 /// </summary>
 internal sealed partial class MatchRun
 {
-    // Altına duyarlılık s = 0,5 + 0,5 × econ (econ 0: 0,5 · 1: 1 · 2: 1,5 · 3: 2). econ 2 = faz A'daki herkesin s'i.
-    // Deney (DESIGN.md §16.5): herkes 0,9 çok zayıf, herkes 3 kartopu.
-    private const double BaseGoldSensitivity = 0.5;
-    private const double GoldSensitivityPerEconomy = 0.5;
+    // Altına duyarlılık s = 0,45 + 0,45 × econ (econ 0: 0,45 · 1: 0,9 · 2: 1,35 · 3: 1,8).
+    // Faz D: eskiden 0,5 + 0,5 × econ; %10 indirildi (önde olan farkı daha az maça çevirsin). Daha fazlası scale
+    // comp'u fazla kurtarır. Deney (DESIGN.md §16.5): herkes 0,9 çok zayıf, herkes 3 kartopu.
+    private const double BaseGoldSensitivity = 0.45;
+    private const double GoldSensitivityPerEconomy = 0.45;
     private const double MinGoldFactor = 0.5;
     private const double MaxGoldFactor = 1.4;
 
     // Gerçek güç:
     //   r     = altın / (rolün iki oyuncusunun ortalama altını)     1 = başa baş, 1,1 = rakibinden %22 fazla
     //   G_eff = G_pot(dk) × clamp(1 + s × (r − 1), 0,5, 1,4)
-    // Örnek r = 1,1: Jinx (econ 3) ×1,20, Draven (econ 2) ×1,15, Leona (econ 0) ×1,05.
+    // Örnek r = 1,1: Jinx (econ 3) ×1,18, Draven (econ 2) ×1,135, Leona (econ 0) ×1,045.
     private double EffectivePower(ChampionProfile champion, int minute, double t) =>
         champion.PowerAt(minute)
         * GoldFactor(_gold.GoldAt(champion, t), _gold.GoldAt(Counterpart(champion), t), champion.Economy);

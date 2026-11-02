@@ -153,6 +153,9 @@ internal sealed partial class MatchRun
         var rules = TeamRules.Effects(kind, blue, red, minute, c => EffectivePower(c, minute, t));
         var d = (EffectivePower(blue, minute, t) - EffectivePower(red, minute, t)) + rules.Sum(e => e.Signed)
                 + soulBonus + BuffBonus(TeamSide.Blue, t, siege) - BuffBonus(TeamSide.Red, t, siege);
+        // Kuşatmada side = saldıran; savunan kule altında savaşır (MatchRun.Siege.cs).
+        if (siege)
+            d -= side.Sign() * SiegeDefenseBonus;
         if (report is { } context)
             ReportFightRules(rules, context, d, FightDivisor);
         return Probability.Clamp(Probability.Logistic(side.Sign() * d / FightDivisor));

@@ -5,16 +5,25 @@ namespace LolDraft.Engine.Simulation;
 /// <summary>Kuşatma ve throw (DESIGN.md §16.10): altında önde olan ve kapıya dayanan takım maçı erken bitirmeye gider.</summary>
 internal sealed partial class MatchRun
 {
-    private const int SiegeMinMinute = 20;
+    private const int SiegeMinMinute = 16;
     private const int SiegeCooldownMinutes = 3;
     private const int SiegeSecond = 45;
     private const int SiegeMaxKills = 4;
     private const int ThrowMaxKills = 3;
 
-    // Kuşatma şartı: takım altın farkı ≥ 4.000 (Baron buff'ı varken ≥ 2.000) ve bir koridorda dış + iç kule yıkılmış.
+    // Kuşatma şartı: takım altın farkı ≥ eşik (Baron buff'ı varken yarısı) ve bir koridorda dış + iç kule yıkılmış.
+    // Eşik dk 20'den önce daha büyük: 16. dk 7.000 → dakikada −750 → 20. dk'dan sonra 4.000. Çok önde olan erken
+    // bitirebilir, az önde olan 20'yi bekler. Eskiden kuşatma 20. dk'da açılıyordu: önde olanlar birikip maçların %12'si
+    // tam 20. dk'da bitiyordu (DESIGN.md faz D).
+    private const int SiegeFullMinute = 20;
     private const double SiegeGoldLead = 4000;
-    private const double SiegeGoldLeadWithBaron = 2000;
+    private const double SiegeEarlyLeadPerMinute = 750;
     private const int SiegeTowersInLane = 2;
+
+    // Savunanın ev sahibi avantajı: kule ve inhibitör altında savaşır, saldıranın d'si −3. Sadece önde olanı etkiler
+    // (kuşatmaya önde olan gider); tutulursa throw: savunan kill ve ödül alır, fark kapanır. Faz D: önde olan farkı
+    // fazla kolay maça çeviriyordu (15. dk 5.000+ önde %82, hedef ~%75).
+    private const double SiegeDefenseBonus = 3;
 
     // Buff'lar (DESIGN.md §16.7): Baron 3 dk kuşatma d +4 ve eşik yarıya; Elder 2 dk tüm takım savaşlarında d +6.
     private const double BaronBuffSeconds = 180;
@@ -41,7 +50,7 @@ internal sealed partial class MatchRun
             _elderUntil[(int)side] = t + ElderBuffSeconds;
     }
 
-    // 20. dk'dan sonra objektifsiz her dakika 45. saniyeye kaydolur; şartlar o saniyedeki altına ve kulelere bakar.
+    // 16. dk'dan sonra objektifsiz her dakika 45. saniyeye kaydolur; şartlar o saniyedeki altına ve kulelere bakar.
     private void ScheduleSiege(int minute)
     {
         if (minute >= SiegeMinMinute && !_objectiveAt.ContainsKey(minute))
@@ -55,7 +64,7 @@ internal sealed partial class MatchRun
         var lead = TeamGold(TeamSide.Blue, t) - TeamGold(TeamSide.Red, t);
         var attacker = lead > 0 ? TeamSide.Blue : TeamSide.Red;
         var defender = attacker.Opponent();
-        var needed = HasBaron(attacker, t) ? SiegeGoldLeadWithBaron : SiegeGoldLead;
+        var needed = SiegeLeadNeeded(minute) / (HasBaron(attacker, t) ? 2 : 1);
 
         if (Math.Abs(lead) < needed || !AtTheGates(attacker) || minute - _lastSiegeMinute < SiegeCooldownMinutes)
             return;
@@ -85,6 +94,10 @@ internal sealed partial class MatchRun
         At(t + 6, () => _events.Add(new ThrowEvent(t + 6,
             $"{attacker.DisplayName()} bitirmeye gitti ama {defender.DisplayName()} savunmayı tuttu. Throw!", defender, 1 - probability)));
     }
+
+    // Baron'suz eşik: 16. dk 7.000, 17. 6.250, 18. 5.500, 19. 4.750, 20+ 4.000.
+    internal static double SiegeLeadNeeded(int minute) =>
+        SiegeGoldLead + SiegeEarlyLeadPerMinute * Math.Max(0, SiegeFullMinute - minute);
 
     // Kapıya dayanmak: en az bir koridorda dış ve iç kule yıkılmış.
     private bool AtTheGates(TeamSide side) =>

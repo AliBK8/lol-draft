@@ -19,13 +19,17 @@ internal static class TeamRules
     // d += 1,0 × fark (±4). Örnek: erken comp en 7 − 3,5 = 3,5, scale comp en 3 − 1,5 = 1,5 → Mavi +2.
     private const double EngageWeight = 1.0;
     private const double EngageCap = 4;
-    private const double EngageCounterShare = 0.5;
+    private const double EngageCounterShare = 1.0;
 
-    // K6 Poke: kuşatmada d += 1,0 × poke farkı (±4). Objektif savaşında rakip en toplamı ≥ 5 ise poke'u fazla olana −2
-    // (engage üstüne atlar, poke'a vakit kalmaz).
+    // K6 Poke: kuşatmada d += 1,0 × poke farkı (±4). Objektif savaşında rakip en toplamı ≥ 8 ise poke'u fazla olana −2
+    // (sert engage üstüne atlar, poke'a vakit kalmaz). 8 ≈ havuzda beklenen takım en toplamı (5) × 1,6: iki tank + bir
+    // engage'çi. Eskiden 5'ti: ortalama takımı da cezalandırıyordu, Poke kimliği %42 kazanıyordu (DESIGN.md faz D).
+    // Sert engage yoksa objektifte poke farkı yarım ağırlıkla (±2): "engage'i olmayanı objektif öncesi erit".
     private const double PokeWeight = 1.0;
     private const double PokeCap = 4;
-    private const int HardEngage = 5;
+    private const int HardEngage = 8;
+    private const double PokeObjectiveWeight = 0.5;
+    private const double PokeObjectiveCap = 2;
     private const double PokeEngagedPenalty = 2;
 
     // K7 Pick (nehir çatışması): gelenlerin pick farkı, d += 1,0 × fark (±3).
@@ -59,13 +63,18 @@ internal static class TeamRules
     private const double MaxApShare = 0.8;
     private const double OneDamageTypePenalty = 2;
 
-    // K13 Kombo (takım savaşı): iki şampiyon aynı takımdaysa d +2. 40 şampiyonla genişleyecek.
+    // K13 Kombo (takım savaşı): iki şampiyon aynı takımdaysa d +2. Havuz: tools/LolDraft.Balance/champions.json.
     private const double ComboBonus = 2;
 
     private static readonly (string A, string B)[] Combos =
     [
-        ("kayle", "lulu"),   // Lulu koruması + hiper taşıyıcı
-        ("leona", "draven"), // Leona engage + Draven hasarı
+        ("kayle", "lulu"),      // Lulu koruması + hiper taşıyıcı
+        ("jinx", "lulu"),
+        ("vayne", "lulu"),
+        ("leona", "draven"),    // Leona engage + Draven hasarı
+        ("yasuo", "malphite"),  // knock-up → Yasuo ultisi
+        ("yasuo", "alistar"),
+        ("orianna", "amumu"),   // Amumu ultisi + Orianna shockwave (wombo)
     ];
 
     /// <summary>
@@ -145,11 +154,16 @@ internal static class TeamRules
             return;
 
         var (side, poke, engage) = diff > 0 ? (TeamSide.Blue, blue, red) : (TeamSide.Red, red, blue);
+        var source = poke.MaxBy(c => c.Tags.Poke)!;
         if (engage.Sum(c => c.Tags.Engage) >= HardEngage)
         {
-            var source = poke.MaxBy(c => c.Tags.Poke)!;
             effects.Add(new RuleEffect("K6", side, -PokeEngagedPenalty, source, $"Poke, engage'e yakalandı ({source.Name})"));
+            return;
         }
+
+        // Sert engage yoksa poke objektifi kurar: rakibi objektif öncesi aşındırır.
+        effects.Add(new RuleEffect("K6", side, Math.Min(PokeObjectiveWeight * Math.Abs(diff), PokeObjectiveCap), source,
+            $"Poke objektifi kurdu ({source.Name})"));
     }
 
     private static void DiveThreat(TeamSide side, IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them, List<RuleEffect> effects)

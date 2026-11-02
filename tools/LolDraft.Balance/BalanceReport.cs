@@ -1,4 +1,5 @@
 using System.Globalization;
+using LolDraft.Engine;
 
 namespace LolDraft.Balance;
 
@@ -64,6 +65,26 @@ internal static class BalanceReport
         w.WriteLine("  hedef: belirgin iyi draft tek maçta %60-65");
         w.WriteLine();
 
+        w.WriteLine("## Kurallar (çalıştığı maç · ortalama doğrudan etki · net lehine olan taraf kazanıyor)");
+        foreach (var ((number, context), (matches, decided, wins, impact)) in s.Rules)
+        {
+            var lane = context == RuleContext.TopLane;
+            var effect = lane ? $"{impact / Math.Max(1, decided):0} altın" : $"{impact / Math.Max(1, decided):0.0} puan";
+            Row(w, $"K{number} {ContextName(context)}",
+                $"{Pct(matches, s.Matches),6} maç · {effect,-10} · {Pct(wins, decided)}{Margin(wins, decided)}", "");
+        }
+        w.WriteLine("  koridor: farm altını farkına maç başı katkı; savaş: olay başına kazanma şansı (yüzde puan)");
+        w.WriteLine();
+
+        w.WriteLine("## Kimlikler (en belirgin etiket, havuz ortalamasına göre; ≥ %125 değilse karma)");
+        foreach (var (identity, (games, wins)) in s.Identities)
+            Row(w, IdentityClassifier.Name(identity), $"{Pct(games, s.Matches * 2),6} takım · kazanıyor {Pct(wins, games)}{Margin(wins, games)}", "");
+        w.WriteLine("  Eşleşmeler (soldaki kazanıyor, 200+ maç):");
+        foreach (var ((a, b), (games, aWins)) in s.IdentityMatchups.Where(m => m.Value.Games >= 200))
+            Row(w, $"  {IdentityClassifier.Name(a)} vs {IdentityClassifier.Name(b)}", $"{Pct(aWins, games)}{Margin(aWins, games)}  ({games} maç)", "");
+        w.WriteLine("  hedef: üstün kimlik %55-60");
+        w.WriteLine();
+
         w.WriteLine($"## Belirgin erken comp (Σ(erken − geç) farkı ≥ {o.EarlyCompThreshold})");
         Row(w, "Maç", $"{s.EarlyCompMatches}", "");
         Row(w, "Erken comp kazanıyor", Pct(s.EarlyCompWins, s.EarlyCompMatches) + Margin(s.EarlyCompWins, s.EarlyCompMatches), "");
@@ -81,6 +102,17 @@ internal static class BalanceReport
         foreach (var (_, (name, games, wins)) in s.Champions.OrderByDescending(c => (double)c.Value.Wins / c.Value.Games))
             w.WriteLine($"  {name,-20} {Pct(wins, games),6}{Margin(wins, games),-8} {games,6} maç");
     }
+
+    private static string ContextName(RuleContext context) => context switch
+    {
+        RuleContext.TopLane => "koridor",
+        RuleContext.Gank => "gank",
+        RuleContext.Skirmish => "çatışma",
+        RuleContext.Objective => "objektif",
+        RuleContext.Siege => "kuşatma",
+        RuleContext.FinalFight => "son savaş",
+        _ => context.ToString(),
+    };
 
     private static void Row(TextWriter w, string label, string value, string target) =>
         w.WriteLine(target.Length == 0 ? $"  {label,-55} {value}" : $"  {label,-55} {value,-24} hedef {target}");

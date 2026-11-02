@@ -21,6 +21,13 @@ internal sealed class ChampionPool
 
     public IReadOnlyList<ChampionProfile> For(Role role) => _byRole[role];
 
+    /// <summary>Her şampiyon bir kez, dosya sırasıyla (çok rollü şampiyon ilk rolünde).</summary>
+    public IReadOnlyList<ChampionProfile> All =>
+        Enum.GetValues<Role>().SelectMany(For).DistinctBy(c => c.Id).ToList();
+
+    public IReadOnlyCollection<Role> RolesOf(ChampionProfile champion) =>
+        Enum.GetValues<Role>().Where(role => For(role).Contains(champion)).ToList();
+
     public static ChampionPool Load(string path)
     {
         using var file = File.OpenRead(path);

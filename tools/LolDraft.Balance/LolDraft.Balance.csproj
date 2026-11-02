@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="sample-champions.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="champions.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

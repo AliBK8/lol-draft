@@ -21,8 +21,8 @@ public sealed class PowerTests
 
     [Theory]
     [InlineData(5000, 5000, 1.0)]     // başa baş
-    [InlineData(5500, 4500, 1.15)]    // r = 1,1 → 1 + 1,5 × 0,1
-    [InlineData(4500, 5500, 0.85)]
+    [InlineData(5500, 4500, 1.135)]   // r = 1,1 → 1 + 1,35 × 0,1
+    [InlineData(4500, 5500, 0.865)]
     [InlineData(10000, 1000, 1.4)]    // tavan
     [InlineData(1000, 10000, 0.5)]    // taban
     public void Altin_carpani_rakiple_kiyaslanir_ve_sinirlidir(double gold, double counterpart, double expected)
@@ -37,12 +37,12 @@ public sealed class PowerTests
         Assert.Equal(1.0, MatchRun.GoldFactor(3000, 3000, economy: 0), 9);
     }
 
-    // s = 0,5 + 0,5 × econ. r = 1,1 (5.500 vs 4.500) ve r = 0,9.
+    // s = 0,45 + 0,45 × econ. r = 1,1 (5.500 vs 4.500) ve r = 0,9.
     [Theory]
-    [InlineData(0, 1.05, 0.95)]
-    [InlineData(1, 1.10, 0.90)]
-    [InlineData(2, 1.15, 0.85)]
-    [InlineData(3, 1.20, 0.80)]
+    [InlineData(0, 1.045, 0.955)]
+    [InlineData(1, 1.09, 0.91)]
+    [InlineData(2, 1.135, 0.865)]
+    [InlineData(3, 1.18, 0.82)]
     public void Altina_bagimli_sampiyon_altindan_daha_cok_etkilenir(int economy, double ahead, double behind)
     {
         Assert.Equal(ahead, MatchRun.GoldFactor(5500, 4500, economy), 9);

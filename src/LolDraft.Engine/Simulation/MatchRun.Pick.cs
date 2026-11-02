@@ -11,11 +11,13 @@ internal sealed partial class MatchRun
     private const int CatchMinMinute = 15;
     private const double CatchMinTeamLead = 1000;
 
-    // Yakalanma ihtimali: p = min(0.03 + 0.01 × takım altın farkı / 1000, 0.12) × (1 + 0.15 × rakip pick toplamı)
-    // Örnek: 3.000 önde → her dakika %6; 9.000+ önde → %12 (tavan). Rakipte pick toplamı 4 → ×1,6: %9,6 / %19,2.
+    // Yakalanma ihtimali: p = min(0.03 + 0.02 × takım altın farkı / 1000, 0.2) × (1 + 0.15 × rakip pick toplamı)
+    // Örnek: 3.000 önde → her dakika %9; 8.500+ önde → %20 (tavan). Rakipte pick toplamı 4 → ×1,6: %14,4 / %32.
+    // Faz D: eskiden 1.000 başına %1, tavan %12. Büyük farkı köreltir, draft tarzına bakmaz (15. dk 5.000+ önde
+    // olanın kazanma oranını indirmek için).
     private const double CatchBaseChance = 0.03;
-    private const double CatchChancePerThousand = 0.01;
-    private const double CatchMaxChance = 0.12;
+    private const double CatchChancePerThousand = 0.02;
+    private const double CatchMaxChance = 0.2;
     private const double CatchChancePerPick = 0.15;
 
     // Kaçma şansı: 0.2 + 0.1 × mob. Örnek: Draven (mob 1) %30, LeBlanc (mob 3) %50.

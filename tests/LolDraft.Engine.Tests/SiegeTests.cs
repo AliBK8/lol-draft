@@ -9,8 +9,18 @@ public sealed class SiegeTests
 
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
+    [Theory]
+    [InlineData(16, 7000)]
+    [InlineData(18, 5500)]
+    [InlineData(20, 4000)]
+    [InlineData(30, 4000)]
+    public void Erken_kusatma_daha_buyuk_fark_ister(int minute, double expected)
+    {
+        Assert.Equal(expected, Simulation.MatchRun.SiegeLeadNeeded(minute), 9);
+    }
+
     [Fact]
-    public void Kusatma_20_dakikadan_sonra_objektifsiz_dakikalarin_45_saniyesinde()
+    public void Kusatma_16_dakikadan_sonra_objektifsiz_dakikalarin_45_saniyesinde()
     {
         var count = 0;
         foreach (var events in Results().Select(r => r.Events))
@@ -20,7 +30,7 @@ public sealed class SiegeTests
             foreach (var siege in events.OfType<SiegeEvent>().Where(s => s.T % 60 == 45))
             {
                 var minute = (int)(siege.T / 60) + 1;
-                Assert.True(minute >= 20);
+                Assert.True(minute >= 16);
                 Assert.DoesNotContain(minute, objectiveMinutes);
                 count++;
             }

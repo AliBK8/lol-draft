@@ -9,20 +9,22 @@ public sealed class DraftReportTests
 {
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
-    // Erken comp'un engage'i her objektif ve son savaşta işler (K5 Mavi +2); karnede savaş sayısı kadar, Mavi lehine.
+    // Leona + Draven kombosu her objektif ve son savaşta işler (K13 Mavi +2); karnede savaş sayısı kadar, Mavi lehine.
     [Fact]
-    public void Engage_her_objektif_savasinda_sayilir_ve_mavinin_lehine()
+    public void Kombo_her_objektif_savasinda_sayilir_ve_mavinin_lehine()
     {
         for (var seed = 0u; seed < 50; seed++)
         {
             var result = _simulator.Simulate(TestTeams.Match(seed));
             var fights = result.Events.OfType<ObjectiveEvent>().Count();
-            var engage = result.Report.Rules
-                .Where(r => r.Rule == "K5" && r.Context is RuleContext.Objective or RuleContext.FinalFight).ToList();
+            var combo = result.Report.Rules
+                .Where(r => r.Text == "Kombo: Leona + Draven" && r.Context is RuleContext.Objective or RuleContext.FinalFight)
+                .ToList();
 
-            Assert.Equal(fights, engage.Sum(r => r.Count));
-            Assert.All(engage, r => Assert.Equal((TeamSide.Blue, "leona"), (r.Side, r.ChampionId)));
-            Assert.All(engage, r => Assert.InRange(r.Impact, 0.5, 10));   // d +2 → kazanma şansı birkaç puan
+            Assert.Equal(fights, combo.Sum(r => r.Count));
+            Assert.All(combo, r => Assert.Equal((TeamSide.Blue, "K13"), (r.Side, r.Rule)));
+            // d +2 → kazanma şansı birkaç puan; %10/%90 sınırına yakın savaşta etki küçülür (sıfıra iner).
+            Assert.All(combo, r => Assert.InRange(r.Impact, 0, 10));
         }
     }
 
