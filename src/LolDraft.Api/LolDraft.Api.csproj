@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- Geliştirmede sırlar (GATEWAY_SECRET) repo dışında: dotnet user-secrets set ... -->
+    <UserSecretsId>lol-draft-api-4b9e8f61</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../LolDraft.Application/LolDraft.Application.csproj" />
     <ProjectReference Include="../LolDraft.Infrastructure/LolDraft.Infrastructure.csproj" />
@@ -7,6 +12,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="LolDraft.Api.Tests" />
+    <InternalsVisibleTo Include="LolDraft.Gateway.Tests" />
   </ItemGroup>
 
 </Project>

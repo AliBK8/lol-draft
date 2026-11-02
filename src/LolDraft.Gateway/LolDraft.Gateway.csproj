@@ -1,3 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <!-- Geliştirmede sırlar (GATEWAY_SECRET, JWT_SIGNING_KEY) repo dışında: dotnet user-secrets set ... -->
+    <UserSecretsId>lol-draft-gateway-7d3f1c2a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Yarp.ReverseProxy" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LolDraft.Gateway.Tests" />
+  </ItemGroup>
+
 </Project>

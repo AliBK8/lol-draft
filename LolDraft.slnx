@@ -11,6 +11,7 @@
     <Project Path="tests/LolDraft.Api.Tests/LolDraft.Api.Tests.csproj" />
     <Project Path="tests/LolDraft.Domain.Tests/LolDraft.Domain.Tests.csproj" />
     <Project Path="tests/LolDraft.Engine.Tests/LolDraft.Engine.Tests.csproj" />
+    <Project Path="tests/LolDraft.Gateway.Tests/LolDraft.Gateway.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/LolDraft.Balance/LolDraft.Balance.csproj" />

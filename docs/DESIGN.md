@@ -356,6 +356,7 @@ tests/
   LolDraft.Engine.Tests/    deterministiklik, denge
   LolDraft.Domain.Tests/    draft durum makinesi, fearless
   LolDraft.Api.Tests/       uç nokta + yetki testleri (WebApplicationFactory)
+  LolDraft.Gateway.Tests/   gateway → API hattı uçtan uca (bellekte), rate limit, JWT, başlıklar
 ```
 
 Diğer klasörler: `web/` (React + TypeScript), `data-pipeline/` (Python), `prototype/mac-motoru.html` (referans JS motoru; `LolDraft.Engine` aynı kuralları uygular, aynı seed'le birebir aynı sonucu vermesi gerekmez).
@@ -518,6 +519,38 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | Lobi temizliği | `LolDraft.Api/Background/LobbyJanitorService.cs` |
 | İç başlık kontrolü (sadece gateway'den gelen) | `LolDraft.Api/Middleware/GatewayOnlyMiddleware.cs` |
 | Simülasyon motoru | `LolDraft.Engine/` (sadece `IMatchSimulator` public) |
+
+### 8.10 Uygulama: 4c (gateway + API hattı)
+
+**Bir isteğin yolu:** İstemci → Gateway: iletilmiş başlıklar (sadece güvenilen proxy) → correlation id → güvenlik başlıkları (OnStarting) → gövde sınırı → HTTPS/HSTS (production) → yönlendirme (beyaz liste) → rate limit → JWT → rota politikası → YARP (istemcinin sır başlığı silinir, gerçek sır eklenir) → API: `GatewayOnlyMiddleware` → correlation id = TraceIdentifier → uç nokta.
+
+| Önlem | Nerede | Karar ve neden |
+|---|---|---|
+| Sadece gateway'den | `Api/Middleware/GatewayOnlyMiddleware.cs` | `X-Gateway-Secret` tam bir değer ve eşleşmeli; ikisi de SHA-256'dan geçip `FixedTimeEquals` (zamanlama saldırısı, uzunluk sızıntısı yok). Red **404** (403 "burada bir şey var" der). |
+| Sır taklidi | `Gateway/Proxy/GatewayTransforms.cs` | İstemcinin gönderdiği sır başlığı silinir, yerine gerçeği yazılır. |
+| Beyaz liste | `Gateway/appsettings.json` `ReverseProxy:Routes` | Sadece listedeki yol + metot iletilir; API'ye eklenen uç nokta otomatik dışarı açılmaz. Bilinmeyen yol 404, yanlış metot 405, ikisi de API'ye ulaşmaz. |
+| Rate limit | `Gateway/RateLimiting/GatewayRateLimiting.cs` | §8.5 tablosu (global token bucket + rota politikaları), IP'ye göre. **Kimlik doğrulamadan önce**: sel saldırısı imza doğrulamasına CPU harcatmaz. 429 + `Retry-After`. `simulate-heavy` ağır uçlar gelince. |
+| JWT | `Gateway/Auth/GuestAuthentication.cs` | HS256 dışı algoritma reddedilir (`alg: none`), yayıncı `lol-draft`, hedef `lol-draft-game`, saat toleransı 30 sn (varsayılan 5 dk), `MapInboundClaims = false`. Hub yolunda token `access_token` sorgusundan, diğer yollarda sadece `Authorization` başlığından. `guest` politikası: imza + `lobby` + `seat` claim'i; yoksa 403. |
+| Token loglanmaz | `appsettings.json` | `Microsoft.AspNetCore.Hosting.Diagnostics` ve `Yarp` Warning: Information seviyesi istek URL'sini (sorgudaki `access_token` dahil) yazardı. |
+| İstemci IP'si | `Gateway/Program.cs` ForwardedHeaders | Varsayılan "localhost'a güven" de silinir; sadece `Gateway:TrustedProxies` listesi. Yoksa herkes `X-Forwarded-For`'a sahte IP yazıp rate limit'i atlatırdı. |
+| Başlıklar | `Gateway/Middleware/SecurityHeadersMiddleware.cs` | CSP (kendi origin + Google Fonts, `frame-ancestors 'none'`, `object-src 'none'`), nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy; `Server` silinir. OnStarting'de: proxy'lenen cevaba da girer, API ezemez. |
+| Gövde sınırı | `Gateway/Middleware/RequestSizeLimitMiddleware.cs` + Kestrel | 16 KB; Content-Length büyükse gövde okunmadan 413, chunked'da Kestrel sınırı. |
+| Correlation id | `Gateway/Middleware/CorrelationIdMiddleware.cs` | Gelen değer sadece `[A-Za-z0-9-]{1,64}` ise korunur (log enjeksiyonu), yoksa yeni GUID; API'ye iletilir, cevaba yazılır. |
+| Sırlar | `GatewaySettings.cs`, `ApiSettings.cs` | `GATEWAY_SECRET` (≥ 32 karakter), `JWT_SIGNING_KEY` (≥ 32 bayt); eksik/zayıfsa uygulama açılmaz. |
+
+**Uç noktalar (şu an):** sadece `GET /api/health` (API'de gerçek). Lobi, maç ve hub rotaları gateway'de tanımlı (politikalarıyla) ama API'de henüz uç noktaları yok (404); sıradaki adımda gelecekler.
+
+**Testler:** `LolDraft.Api.Tests/GatewayOnlyTests` (8) ve yeni `LolDraft.Gateway.Tests` (21). Gateway testleri iki uygulamayı bellekte bağlar: YARP'ın HTTP istemcisi (`IForwarderHttpClientFactory`) API test sunucusunun handler'ına yönlendirilir; API'nin önündeki gözcü (`IStartupFilter`) API'ye hangi isteğin hangi sır başlığıyla ulaştığını kaydeder ("API'ye hiç ulaşmadı" kanıtlanabilir). Ayrıca gerçek süreçlerle (Kestrel + gerçek HTTP) duman testi yapıldı: sağlık 200 + başlıklar, API'ye doğrudan 404, tokensiz 401, beyaz liste dışı 404, 6. lobi 429, 20 KB 413.
+
+**Geliştirmede çalıştırma:**
+```
+dotnet user-secrets set GATEWAY_SECRET "<en az 32 rastgele karakter>" --project src/LolDraft.Api
+dotnet user-secrets set GATEWAY_SECRET "<aynı değer>"                  --project src/LolDraft.Gateway
+dotnet user-secrets set JWT_SIGNING_KEY "<en az 32 rastgele karakter>" --project src/LolDraft.Gateway
+dotnet run --project src/LolDraft.Api       # http://localhost:5100 (iç)
+dotnet run --project src/LolDraft.Gateway   # https://localhost:5001, http://localhost:5000 (dış)
+```
+Rastgele değer: `openssl rand -base64 48`. JWT anahtarı lobi adımında API'ye de verilecek (token'ı API üretir).
 
 ---
 
@@ -962,6 +995,7 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 
      **Yapısal gerilim:** 15. dk'da büyük farkla önde olan çoğunlukla erken comp; önde olanı yavaşlatan her mekanik geride kalan scale comp'a yarar. Bu yüzden "ezilen scale comp kurtarıyor" hedefi %25-40'a genişletildi (geride kalanın şansı = eğlence). C'de diğerleri: Mavi %49,8, süre 29,8 dk, ruhu alan %65,9, yakalanma maç başı 1,06, Engage %57,0, Poke %46,2, Dive %44,0.
      Açık (tur 3): erken comp %46,6'ya düştü (35'ten önce %29,8, hedefin hemen altı) → küçük telafi adayı: 16-19. dk kuşatma eşiği biraz düşük ya da erken güç eğrisi.
+   - **Ayar turu 3 (denendi, geri alındı):** erken kuşatma eşiği dakikada −750 yerine −500 (16. dk 6.000). Etkisiz: erken comp %46,5, 35'ten önce %29,9 (gürültü içinde). Eşik bağlayıcı değil; erken comp 16-19. dk'da kuşatma şartını (bir koridorda iki kule) nadiren sağlıyor. Erken comp'un %46,5'i tur 2'nin (C) bilinen bedeli olarak kalıyor; telafi motor yerine veride aranabilir (erken şampiyonların `e`/`m` değerleri) ya da kule şartında. Şimdilik açık, öncelik düşük.
    - ~~Gerçek eğri~~ (bitti: `data-pipeline/05_economy.py` → `out/economy.json`; denge aracıyla aynı ölçümler). Not: `DRAGON_SOUL_GIVEN` ruhun alındığı an değil (2. ejderden sonra ruh türü, `teamId` 0); ruh = 4. ejderi ilk kesen takım.
 
      | Ölçüm | Gerçek (EUW Challenger/GM solo, 495 maç) | Motor (10.000 draft, adım 11) | Hedef |
