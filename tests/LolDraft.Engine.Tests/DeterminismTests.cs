@@ -13,6 +13,7 @@ public sealed class DeterminismTests
         // Record içindeki liste referansla karşılaştırılır; olayları tek tek (değerle) karşılaştır.
         Assert.Equal(first.Events, second.Events);
         Assert.Equal(first.End, second.End);
+        Assert.Equal(first.Report, second.Report);
         foreach (var category in Enum.GetValues<ScoreCategory>())
             Assert.Equal(first.Breakdown[category], second.Breakdown[category]);
     }

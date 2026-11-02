@@ -27,14 +27,39 @@ public sealed class PowerTests
     [InlineData(1000, 10000, 0.5)]    // taban
     public void Altin_carpani_rakiple_kiyaslanir_ve_sinirlidir(double gold, double counterpart, double expected)
     {
-        Assert.Equal(expected, MatchRun.GoldFactor(gold, counterpart), 9);
+        Assert.Equal(expected, MatchRun.GoldFactor(gold, counterpart, economy: 2), 9);
     }
 
     [Fact]
     public void Support_rakip_supportla_kiyaslanir_rolu_yuzunden_geride_sayilmaz()
     {
         // Support 3.000, karşı support 3.000: koridorcuların 5.000'i önemli değil.
-        Assert.Equal(1.0, MatchRun.GoldFactor(3000, 3000), 9);
+        Assert.Equal(1.0, MatchRun.GoldFactor(3000, 3000, economy: 0), 9);
+    }
+
+    // s = 0,5 + 0,5 × econ. r = 1,1 (5.500 vs 4.500) ve r = 0,9.
+    [Theory]
+    [InlineData(0, 1.05, 0.95)]
+    [InlineData(1, 1.10, 0.90)]
+    [InlineData(2, 1.15, 0.85)]
+    [InlineData(3, 1.20, 0.80)]
+    public void Altina_bagimli_sampiyon_altindan_daha_cok_etkilenir(int economy, double ahead, double behind)
+    {
+        Assert.Equal(ahead, MatchRun.GoldFactor(5500, 4500, economy), 9);
+        Assert.Equal(behind, MatchRun.GoldFactor(4500, 5500, economy), 9);
+    }
+
+    [Fact]
+    public void Hiper_tasiyici_nisanci_ya_da_buyucu_econ_3_ve_gec_gucu_yuksek()
+    {
+        var blue = TestTeams.EarlyBlue();
+        var red = TestTeams.ScaleRed();
+
+        Assert.True(red.Top.IsHyperCarry);      // Kayle: nişancı/büyücü, econ 3, l 10
+        Assert.True(red.Mid.IsHyperCarry);      // Kassadin: suikastçı/büyücü (ikincil sınıf da sayılır)
+        Assert.True(red.Bot.IsHyperCarry);      // Jinx
+        Assert.False(blue.Bot.IsHyperCarry);    // Draven: econ 2, l 5
+        Assert.False(red.Jungle.IsHyperCarry);  // Sejuani: tank
     }
 
     // Eşit draft'ta fark sadece altından gelir: objektif savaşında, dakika başında 1.500+ altın önde olan daha çok kazanır.

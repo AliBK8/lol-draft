@@ -21,7 +21,6 @@ internal sealed partial class MatchRun
     private readonly ScoreSheet _scores = new();
     private readonly List<MatchEvent> _events = [];
     private readonly DeathTracker _deaths = new();
-    private readonly int _synergyDiff;
 
     // Zaman çizelgesi: dakikanın işleri saniye sırasıyla çözülür. Eşit saniyede kayıt sırası (Seq) belirler,
     // böylece sıra her çalıştırmada aynıdır (deterministik).
@@ -34,13 +33,14 @@ internal sealed partial class MatchRun
         _blue = input.Blue;
         _red = input.Red;
         _rng = rng;
-        // sinerji = sinerji(Mavi) − sinerji(Kırmızı) (DESIGN.md §4.4)
-        _synergyDiff = SynergyCalculator.Score(_blue) - SynergyCalculator.Score(_red);
     }
 
     public MatchResult Play()
     {
-        _scores.Add(ScoreCategory.Synergy, _synergyDiff);
+        // Döküm için draft'ın tek sayısı: son savaştaki takım kuralları farkı (potansiyel güçle). Hiçbir karara girmez;
+        // kurallar her savaşta kendi türüne göre ayrıca hesaplanır (DESIGN.md §16.8). Karne (adım 10) gelince değişecek.
+        var draftRules = TeamRules.Effects(FightKind.Final, _blue.Champions, _red.Champions, FinalMinute, c => c.PowerAt(FinalMinute));
+        _scores.Add(ScoreCategory.Synergy, draftRules.Sum(e => e.Signed));
         RecordGoldFrame(0, 0);
 
         for (var minute = 1; _end is null; minute++)
@@ -69,7 +69,8 @@ internal sealed partial class MatchRun
         var ordered = _events.OrderBy(e => e.T).ToList();
         var nexusT = ordered.OfType<NexusEvent>().First().T;
         RecordGoldFrame(_end.Minute, nexusT);
-        return new MatchResult(ordered.Where(e => e.T <= nexusT).ToArray(), _scores.ToBreakdown(), _end, _goldFrames);
+        return new MatchResult(ordered.Where(e => e.T <= nexusT).ToArray(), _scores.ToBreakdown(), _end, _goldFrames,
+            BuildReport(_end.Minute, nexusT));
     }
 
     /// <summary>İşi zaman çizelgesine yazar; dakika içinde saniyesi gelince çözülür.</summary>

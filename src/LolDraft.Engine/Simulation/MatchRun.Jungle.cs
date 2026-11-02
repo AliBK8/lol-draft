@@ -73,7 +73,13 @@ internal sealed partial class MatchRun
         string[] parts = withSupport ? [jungler.Id, support.Id] : [jungler.Id];
         _events.Add(new MoveEvent(t, "", parts, lane, River: null, GankMoveLead, GankMoveTail));
 
-        if (_rng.NextDouble() < (withSupport ? GankSuccessWithSupport : GankSuccessSolo))
+        // Başarı: tek başına %60, support'la %75; K7: ± %5 × (gelenlerin pick toplamı − hedefin mob'u), ±%15.
+        // Örnek: Lee Sin (pick 3) Kayle'a (mob 1) tek başına → %70.
+        var gankers = withSupport ? new[] { jungler, support } : [jungler];
+        var pickBonus = TeamRules.GankPickBonus(gankers, victim);
+        ReportGankRule(side, jungler, pickBonus);
+        var success = (withSupport ? GankSuccessWithSupport : GankSuccessSolo) + pickBonus;
+        if (_rng.NextDouble() < success)
         {
             _scores.Add(ScoreCategory.Jungle, side.Sign() * (withSupport ? GankWinValueWithSupport : GankWinValueSolo));
             var text = withSupport

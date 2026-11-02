@@ -15,7 +15,40 @@ public sealed class CatchTests
     [InlineData(20000, 0.12)]   // tavan
     public void Yakalanma_ihtimali_takim_farkiyla_artar_ve_sinirlidir(double lead, double expected)
     {
-        Assert.Equal(expected, MatchRun.CatchChance(lead), 9);
+        Assert.Equal(expected, MatchRun.CatchChance(lead, opponentPickTotal: 0), 9);
+    }
+
+    [Theory]
+    [InlineData(3000, 4, 0.096)]    // %6 × (1 + 0,15 × 4)
+    [InlineData(9000, 4, 0.192)]    // tavan %12 × 1,6
+    public void Rakibin_pick_toplami_yakalanma_ihtimalini_artirir(double lead, int pickTotal, double expected)
+    {
+        Assert.Equal(expected, MatchRun.CatchChance(lead, pickTotal), 9);
+    }
+
+    [Fact]
+    public void Hareketli_sampiyon_daha_kolay_kacar()
+    {
+        Assert.Equal(0.3, MatchRun.EscapeChance(TestTeams.EarlyBlue().Bot), 9);   // Draven mob 1
+        Assert.Equal(0.5, MatchRun.EscapeChance(TestTeams.EarlyBlue().Mid), 9);   // LeBlanc mob 3
+    }
+
+    // Katil, geride olan takımın müsait oyuncuları içinde en yüksek pick'li. Erken comp önde olunca katil Kırmızı'dan:
+    // Sejuani (pick 2) müsaitse o; Kassadin (1) ancak Sejuani yoksa.
+    [Fact]
+    public void Katil_en_yuksek_pickli_musait_oyuncudur()
+    {
+        var simulator = MatchEngine.CreateSimulator();
+        var killers = new Dictionary<string, int>();
+        for (var seed = 0u; seed < MatchCount; seed++)
+        {
+            var result = simulator.Simulate(TestTeams.Match(seed));
+            foreach (var kill in result.Events.OfType<KillEvent>().Where(k => k.Text.Contains("yakalandı") && k.Side == TeamSide.Red))
+                killers[kill.KillerId] = killers.GetValueOrDefault(kill.KillerId) + 1;
+        }
+
+        Assert.True(killers.GetValueOrDefault("sejuani") > killers.Where(k => k.Key != "sejuani").Sum(k => k.Value),
+            string.Join(", ", killers.Select(k => $"{k.Key} {k.Value}")));
     }
 
     // dk ≥ 15, objektifsiz dakikada, 5-40. saniyede; katil geride olan takımdan; kurbanın takımı dakika başında önde.

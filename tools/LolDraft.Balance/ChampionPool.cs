@@ -30,7 +30,14 @@ internal sealed class ChampionPool
         var byRole = Enum.GetValues<Role>().ToDictionary(r => r, _ => new List<ChampionProfile>());
         foreach (var c in data.Champions)
         {
-            var profile = new ChampionProfile(c.Id, c.Name, c.E, c.M, c.L, c.Fl, c.En, c.Ap);
+            if (c.Classes is not { Count: 1 or 2 })
+                throw new InvalidDataException($"{c.Id}: 1 ya da 2 sınıf olmalı.");
+
+            var t = c.Tags ?? new TagsEntry();
+            var profile = new ChampionProfile(
+                c.Id, c.Name, ParseRange(c.Range), ParseClass(c.Classes[0]), c.Classes.Count == 2 ? ParseClass(c.Classes[1]) : null,
+                c.E, c.M, c.L, c.Econ, c.Ap,
+                new ChampionTags(t.Fl, t.En, t.Dis, t.Peel, t.Poke, t.Pick, t.Dive, t.Split, t.Mob));
             foreach (var role in c.Roles)
                 byRole[ParseRole(role)].Add(profile);
         }
@@ -55,7 +62,32 @@ internal sealed class ChampionPool
         _ => throw new InvalidDataException($"Bilinmeyen rol: {role} (top, jg, mid, adc, sup)."),
     };
 
+    private static AttackRange ParseRange(string range) => range switch
+    {
+        "melee" => AttackRange.Melee,
+        "ranged" => AttackRange.Ranged,
+        _ => throw new InvalidDataException($"Bilinmeyen menzil: {range} (melee, ranged)."),
+    };
+
+    private static ChampionClass ParseClass(string championClass) => championClass switch
+    {
+        "tank" => ChampionClass.Tank,
+        "fighter" => ChampionClass.Fighter,
+        "assassin" => ChampionClass.Assassin,
+        "mage" => ChampionClass.Mage,
+        "marksman" => ChampionClass.Marksman,
+        "enchanter" => ChampionClass.Enchanter,
+        _ => throw new InvalidDataException(
+            $"Bilinmeyen sınıf: {championClass} (tank, fighter, assassin, mage, marksman, enchanter)."),
+    };
+
     private sealed record PoolFile(List<ChampionEntry> Champions);
 
-    private sealed record ChampionEntry(string Id, string Name, List<string> Roles, int E, int M, int L, int Fl, int En, double Ap);
+    // DESIGN.md §16.2 biçimi; tags'te verilmeyen etiket 0.
+    private sealed record ChampionEntry(
+        string Id, string Name, List<string> Roles, string Range, List<string> Classes,
+        int E, int M, int L, int Econ, double Ap, TagsEntry? Tags);
+
+    private sealed record TagsEntry(
+        int Fl = 0, int En = 0, int Dis = 0, int Peel = 0, int Poke = 0, int Pick = 0, int Dive = 0, int Split = 0, int Mob = 0);
 }

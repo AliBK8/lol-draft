@@ -22,10 +22,12 @@ public sealed class ArchitectureTests
         string[] allowed =
         [
             "IMatchSimulator", "MatchEngine", "MatchInput", "MatchResult", "MatchEnd", "MatchEndKind",
-            "ScoreBreakdown", "ScoreCategory", "Seed", "TeamSide", "Lane", "ChampionProfile", "TeamDraft",
+            "ScoreBreakdown", "ScoreCategory", "Seed", "TeamSide", "Lane", "ChampionProfile", "ChampionTags", "ChampionClass",
+            "AttackRange", "TeamDraft",
             "MatchEvent", "Objective", "ObjectiveEvent", "KillEvent", "SiegeEvent", "NexusEvent",
             "TowerEvent", "PlateEvent", "CsEvent", "SurpriseEvent", "GankFailEvent", "MoveEvent",
-            "SkirmishEvent", "RiverSide", "ThrowEvent", "DragonSoulEvent", "GoldFrame", "ChampionGold",
+            "SkirmishEvent", "SplitEvent", "RiverSide", "ThrowEvent", "DragonSoulEvent", "GoldFrame", "ChampionGold",
+            "DraftReport", "RuleImpact", "RuleContext", "CarryReport", "TeamGoldReport",
         ];
 
         var exported = typeof(IMatchSimulator).Assembly.GetExportedTypes().Select(t => t.Name);

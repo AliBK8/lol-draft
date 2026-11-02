@@ -36,8 +36,10 @@ public sealed class NarratorTests
     {
         foreach (var events in Matches())
         {
-            // Savaş sonrası kule (objektiften 12 sn sonra) anlatıcıdan gelmez; ayrı sayılır.
-            var postFight = events.OfType<ObjectiveEvent>().Select(o => o.T + 12).ToHashSet();
+            // Savaş sonrası kule (objektiften 12 sn sonra) ve split kulesi (split'ten 10 sn sonra) anlatıcıdan gelmez.
+            var postFight = events.OfType<ObjectiveEvent>().Select(o => o.T + 12)
+                .Concat(events.OfType<SplitEvent>().Select(s => s.T + 10))
+                .ToHashSet();
             var narrated = events
                 .Where(e => e is TowerEvent or PlateEvent or CsEvent && !postFight.Contains(e.T))
                 .GroupBy(e => (Lane(e), Minute(e)));

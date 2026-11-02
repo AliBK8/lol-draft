@@ -41,7 +41,11 @@ internal sealed partial class MatchRun
     private void FarmSample(double t)
     {
         foreach (var lane in Lanes)
-            FarmPair(LaneChampions(TeamSide.Blue, lane)[0], LaneChampions(TeamSide.Red, lane)[0], _laneDelta[(int)lane], t);
+        {
+            var (blue, red) = (LaneChampions(TeamSide.Blue, lane)[0], LaneChampions(TeamSide.Red, lane)[0]);
+            FarmPair(blue, red, _laneDelta[(int)lane], t);
+            ReportLaneFarm(lane, blue, red, t);
+        }
 
         // Ormancı kamp keser; orman akışında önde olan rakibin kamplarından da çalar (aynı kural).
         FarmPair(_blue.Jungle, _red.Jungle, _jungleDelta, t);

@@ -58,6 +58,8 @@ Temel ilkeler:
 
 ## 3. Şampiyon veri modeli
 
+> **Geçerli model v2: §16.2** (range, sınıf, econ, 9 etiket; uygulandı, `ChampionProfile` + `ChampionTags`). Aşağıdaki v1 biçimi prototipin referansı olarak duruyor.
+
 ```json
 { "id": "renekton", "name": "Renekton", "roles": ["top"],
   "e": 9, "m": 6, "l": 4,          // güç eğrisi: erken (<14 dk), orta (14-25), geç (25+), 1-10
@@ -695,7 +697,18 @@ Draft oyunun asıl kararı. Motor şu zinciri kurar; her halka gerçek etkidir v
 | `split` | yan koridorda tek başına baskı | kule fırsatı, objektifte yokluk |
 | `mob` | hareket kabiliyeti | range'e yaklaşma, yakalanmadan kaçma |
 
+**`range` = koridor menzili (karar):** `range`'e sadece K1 bakar, o da lane fazında (dk < 14). Geç oyundaki menzil sınıf ve etiketlerde (poke, peel, dive). Form değiştiren şampiyon, **lane'de hangi formda baskı kuruyorsa** öyle etiketlenir. `hybrid` ya da dakikaya bağlı menzil denendi, elendi: kural bir dal fazla, veri modeline zaman girer.
+
+| Şampiyon | Etiket | Neden |
+|---|---|---|
+| Jayce | `ranged` | lane'de range formda poke |
+| Kayle | `melee` | 6'ya kadar melee, lane'de zayıf; geç gücü `l` 10 ve `econ` 3'te |
+| Gnar | `ranged` | lane'i mini formda oynar |
+| Elise, Nidalee (orman) | önemsiz | K1 koridorda; mid/sup Nidalee `ranged` (mızrak poke'u) |
+
 **`econ` (altın bağımlılığı):** 0 = altınsız da işler (bazı destekler/tanklar), 1 = az, 2 = normal, 3 = item'sız işe yaramaz (hiper taşıyıcı). Etiketleme yükü: şampiyon başı ~13 değer × 40 şampiyon.
+
+**Uygulama (adım 8):** `ChampionProfile(id, name, range, ana sınıf, ikincil sınıf?, e, m, l, econ, ap, ChampionTags)`. Sınıf liste değil ana + ikincil (record eşitliği değer üzerinden kalsın); ikincil sınıf ana sınıfla aynı olamaz. `ChampionTags` değer nesnesi, verilmeyen etiket 0. `IsHyperCarry` ikincil sınıfa da bakar (Kassadin: suikastçı/büyücü). Karar (kullanıcı): sınıf listesi bu 6'sı, `cc` ve `waveclear` etiketi yok (`pick`/`en` ve sınıf yeterli); gerekirse sonra eklenir. JSON'da `range`, `classes` (1-2), `econ`, `tags` (eksik etiket 0).
 
 ### 16.3 Güç eğrisi (yumuşak)
 Bugün güç 14. ve 25. dakikada basamakla değişiyor; scale yavaş yavaş olmalı:
@@ -752,7 +765,7 @@ G_eff = G_pot(dk) × clamp(1 + s × (r − 1), 0,5, 1,4)
 ```
 - **Scale şampiyon altına daha duyarlıdır** (`econ` 3): az altınla potansiyelinin yarısına iner, çok altınla en fazla %40 artar.
 - Taban ve tavan kartopu sınırlar (azalan getiri): 10 kill alan, 3 kill alandan çok daha güçlü olmaz.
-- Uygulama (`MatchRun.Power.cs`): `econ` henüz yok (adım 8), herkes `s = 1,5`. Örnek: Renekton 5.150 vs Kayle 4.050 altın → r 1,12 / 0,88 → güç ×1,18 / ×0,82.
+- Uygulama (`MatchRun.Power.cs`): `s = 0,5 + 0,5 × econ` (adım 8'den beri şampiyona göre; öncesinde herkes 1,5). Örnek r = 1,1: Jinx (econ 3) ×1,20, Draven (econ 2) ×1,15, Leona (econ 0) ×1,05.
 - **Duyarlılık deneyi** (herkes aynı s; eşit draft 5.000 maç + denge aracı 4.000 draft):
 
 | Ölçüm | s 0,9 | **s 1,5 (seçildi)** | s 2 | s 3 | Hedef |
@@ -803,6 +816,13 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | K3 | Suikastçı all-in | mid: suikastçı (`mob` ≥ 2) vs mage/marksman | dk < 10: suikastçıya +0,3 · dk ≥ 18: büyücüye +0,2 | "Erken all-in (Zed)" / "Dalga temizliği (Orianna)" |
 | K4 | Bot engage | destek `en` ≥ 2 ve rakip bot `peel + dis` < 2 | bot'a +0,25/dk | "Bot'ta engage baskısı (Leona)" |
 
+**Uygulama (adım 9a, `LaneRules.cs`):** saf statik sınıf; her kural `RuleEffect(kural, taraf, değer, kaynak şampiyon)` döndürür (karne, adım 10, bunları toplar). Koridorda `Δ = 0,1 × güç farkı + Σ kural + gürültü`, K2 tutarsa tüm Δ (gürültü dahil) × 0,7. Yorumlar:
+- K1 ve K2 sadece üst ve ortada: bot 2v2, oranın melee/tank'ı genelde engage destek (tampon değil); bot'u K4 karşılar. K1'de melee `max(mob, en)` ≥ 2 ise bonus +0,3 yerine +0,1.
+- K2: koridorda ana sınıfı tank olan; iki tarafta da olsa bir kez × 0,7.
+- K3: sınıf ana ya da ikincil (LeBlanc vs Kassadin: iki yöne de tutar, sıfırlanır). dk 10-17 arası etkisiz.
+- Kurallar toplanır: Zed vs Orianna 5. dk → K3 +0,3, K1 Orianna +0,1 → net +0,2.
+- Ağırlıklar şimdilik `LaneRules` sabitlerinde; JSON'a taşıma faz D'de (ayar orada denge aracıyla yapılacak).
+
 **Takım kuralları** (d'ye eklenir, olay türüne göre):
 
 | # | Kural | Koşul | Nerede | Etki |
@@ -814,10 +834,28 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | K9 | Korunan taşıyıcı | takımda hiper taşıyıcı | dk ≥ 25 takım savaşları | `peel` ≥ 3 → d +2 · `peel + fl` < 2 → taşıyıcının `G_eff` × 0,85 |
 | K10 | Frontline eksik | `fl` toplamı < 2 | takım savaşları | d −3 (rakip `en` ≥ 4 ise −4) |
 | K11 | Tek tip hasar | AP payı < %20 ya da > %80 | takım savaşları | d −2 |
-| K12 | Split | top/mid'de `split` ≥ 2 | dk ≥ 14 objektif savaşları | o şampiyon savaşa gelmez (takım 4 kişi savaşır), aynı anda kendi koridorunda kule fırsatı arar |
+| K12 | Split | top/mid'de `split` ≥ 2, takım savaşı kaybetmeye yakın | dk ≥ 14 ejder/Herald/Baron | bir karar zinciri (aşağıda): splitter savaşa gelmez; rakip ya cevap verir (4v4 + düello) ya da kuleyi kaybeder (4v5) |
 | K13 | Kombo | tablo (Orianna+Malphite, Yasuo+knock-up…) | tablodaki olay türü | d +2 |
 
-Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11, K13'e dağılır; maç başı tek "sinerji puanı" kalkar.
+Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11, K13'e dağılır; maç başı tek "sinerji puanı" kalkar (uygulandı, `SynergyCalculator` silindi).
+
+**Uygulama (adım 9b, `TeamRules.cs`):** `FightKind` (objektif, kuşatma, son savaş, nehir çatışması); takım savaşlarında iki takımın tamamı, çatışmada sadece gelenler. Etkiler `RuleEffect` (koridor kurallarıyla aynı). Yorumlar:
+- K5: etkin engage = `en` toplamı − rakibin `dis + peel` toplamının yarısı (≥ 0); fark ±4. Örnek: erken comp 7 − 3,5 = 3,5, scale comp 3 − 1,5 = 1,5 → Mavi +2.
+- K6: objektif cezası poke toplamı fazla olan takıma. Son savaşta poke yok.
+- K7: çatışmada gelenlerin `pick` farkı. Gank: başarı += %5 × (gelenlerin `pick` toplamı − hedefin `mob`'u), ±%15 (pick yakalar, mob kaçar; yakalanmayla aynı mantık). Yakalanmadaki pick adım 8'de.
+- K9 korumasız taşıyıcı: d'den 0,15 × taşıyıcının `G_eff`'i düşer (her hiper taşıyıcı için).
+- K12 split: bonus değil davranış, `MatchRun.Split.cs` (aşağıda "K12 karar zinciri").
+- Döküm: `ScoreCategory.Synergy` artık "son savaştaki takım kuralları farkı" (potansiyel güçle, dk 35); karara girmez, denge aracının "kural farkı" tablosu buna bakar.
+- Örnek, test takımları son savaş dk 30: K5 Mavi +2, K9 Kırmızı +2, K13 ikisi de +2 → 0: erken comp'un engage'i scale comp'un geç korumasıyla dengelenir. 20. dk objektif: K5 +2, K6 (scale poke'u engage'e yakalanır) +2 → Mavi +4.
+
+**K12 karar zinciri (uygulandı, kullanıcıyla kararlaştırıldı):** split bir karardır, etiket varsa hep gidilmez. Takım savaşını kaybedeceğini düşünen takım haritanın öbür ucunda karşılık arar; rakip ya cevap verir ya da bedelini öder. Her objektif savaşından hemen önce:
+1. **Aday var mı:** dk ≥ 14; objektif ejder, Herald ya da Baron (Elder ve son savaşta herkes toplanır); takımın top ya da mid'i, `split` ≥ 2, koridorunda ve rakibini 1v1 yeniyor (`G_eff` yüksek). İkisi de uygunsa en yüksek split'li (eşitlikte top).
+2. **Gidiyor mu:** sadece 5v5 ihtimali < %50 olan takım; ihtimal split 2 → %40, split 3 → %60 (aynı şampiyon bazen gider bazen gitmez).
+3. **Rakip cevap veriyor mu:** aynı roldeki rakip koridordaysa %50.
+   - Cevap verirse: objektif **4v4**; objektiften 6 sn sonra yan koridorda **düello** (`p = clamp(1/(1+e^(−G_eff farkı/6)))`), kazanan kill alır; splitter kazandıysa 10. sn'de kule.
+   - Vermezse: objektif **4v5**; splitter 10. sn'de kuleyi karşılıksız alır (normal kule şartları aranmaz; koridorda kule kaldıysa).
+- Savaşta olmayanlar ne güçleriyle ne etiketleriyle d'ye girer, savaş kill'lerinde ölmez. `SplitEvent` (splitter, cevap veren) log'a: "Kayle üst koridorda split yapıyor, Renekton cevap verdi". Split kulesi 10. sn'de (savaş sonrası itiş 12'de, karışmasın).
+- Örnek: Fiora (split 3), 18. dk ejder, takımı geride (5v5 %38). %60 ihtimalle split'e gider. Renekton cevap verirse ejder 4v4 (~%45), Fiora düelloyu kazanırsa kill + kule; cevap vermezse ejder 4v5 (~%25) ama kule kesin.
 
 ### 16.9 Yakalanma (geri dönüş kapısı)
 Çok önde olan takım bazen bir yerde yakalanır:
@@ -826,7 +864,7 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 - İhtimal: `p = min(0,03 + 0,01 × takım altın farkı / 1000, 0,12) × (1 + 0,15 × rakip pick toplamı)`. 3.000 önde → %6/dk, 9.000+ → %12.
 - Yakalanırsa kaçma şansı `0,2 + 0,1 × mob`; kaçamazsa rakibin en yüksek `pick`'li müsait şampiyonu öldürür ve katil **ödülü** alır. Log: "Shutdown! Draven alt koridorda yakalandı, kill Lee Sin aldı (+650 ödül altını)". Kill olayı `Lane` boş (koridor anlatıcısının kill'i değil).
 - Önde olan için risk, geride olan için umut; son savaştan önce farkın kapanmasını sağlayan mekaniklerden.
-- Uygulama (`MatchRun.Pick.cs`): `pick` ve `mob` henüz yok (adım 8): ihtimal sadece altın farkına bağlı, kaçma %20, katil nehre yakınlık sırasıyla ilk müsait (ormancı, support, mid, adc, top).
+- Uygulama (`MatchRun.Pick.cs`): formül yukarıdaki gibi (adım 8'den beri `pick` ve `mob` gerçek). Katil: rakibin müsait oyuncuları içinde en yüksek `pick`'li; eşitlikte nehre yakınlık sırası (ormancı, support, mid, adc, top).
 - Ölçüm (5.000 maç, yakalanmalı / yakalanmasız): maç başı 0,6 yakalanma, ortalama ödül ~680. Eşit draft'ta 15. dk 5.000+ önde olan %79,4 / %81,3, erken vs scale'de %73,4 / %74,9 kazanıyor; büyük farkta ~2 puan geri dönüş.
 
 ### 16.10 Kuşatma ve maç sonu
@@ -841,6 +879,18 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 - **Dakika kareleri** (`GoldFrame`, uygulandı): k. kare = k. dakikanın başındaki (t = k × 60) her şampiyonun altını ve CS'si (aşağı yuvarlanmış), `TeamGold(side)` takım toplamı. 0. kare herkes 500; son kare maçın bittiği dakika, Nexus anı → front'ta altın grafiği.
 - **Draft karnesi:** maçta etkili olan kurallar (kural, taraf, nerede, ne kadar etki, metin) ve altın farkının kaynakları (koridorlar, kill'ler, ödüller, objektifler). Örnek: "Top: range üstünlüğü (Jayce) → +900 altın · Kayle scale edemedi: 28. dk'da potansiyelinin %55'i · Draven yakalandı → 650 ödül, fark kapandı".
 - `ScoreBreakdown` yerine altın kaynakları dökümü.
+
+**Uygulama (adım 10):** `MatchResult.Report` (`DraftReport`), `MatchRun.Report.cs`. Zar atmaz, maç akışını değiştirmez (denge aracı birebir aynı sonucu veriyor).
+- **Kurallar** (`RuleImpact`: kural, taraf, yer, kaynak şampiyon, sayı, etki, metin). Etki **doğrudan etki**dir: kuralın katkısı çıkarılınca o an ne değişirdi; kazanılan altının sonraki kartopu sayılmaz (onun için maçı kuralsız yeniden oynatmak gerekirdi).
+  - Koridor (K1-K4): her farm diliminde CS gerçek Δ'yla ve kuralın katkısı çıkarılmış Δ'yla (K2'de yumuşatılmamış Δ'yla) hesaplanır; farm altını farkına toplam katkı. Sayı = etkili olduğu dakika.
+  - Savaş (objektif, kuşatma, son savaş, çatışma): kuralın tarafının kazanma ihtimali kuralla ve kuralsız d'yle; olay başına ortalama, yüzde puan. Split kararındaki "savaş olsa" hesabı yazılmaz. Gank: K7 payı doğrudan.
+  - Her `RuleEffect` kendi karne metnini taşır ("Range üstünlüğü (Jayce)", "Poke, engage'e yakalandı (Jinx)", "Kombo: Leona + Draven").
+  - İki yöne de tutan kural (LeBlanc vs Kassadin, K3) iki satır olur: ikisi de gerçekten işledi, birbirini götürür.
+- **Taşıyıcılar** (`CarryReport`): her hiper taşıyıcının maç sonunda `G_eff / geç gücü`. Altın çarpanı < 0,9 → "scale edemedi (altını rakibinin gerisinde)"; maç 28. dk'dan önce bittiyse "geç oyuna ulaşamadı"; değilse "scale etti".
+- **Altın kaynakları** (`TeamGoldReport`, takım başına): pasif, farm, support item'ı, kill, ödül, asist, plaka, kule, objektif.
+- `ScoreBreakdown` şimdilik duruyor (testler ona bakıyor, karara girmiyor); kaldırılması ayrı temizlik.
+- K12 split karnede kural satırı değil: log'da zaten (split, düello, kule).
+- Örnek (test takımları, seed 7, Mavi 20. dk kuşatmayla): "Erken all-in (LeBlanc) +151 altın, 9 dk", "Gank'ta yakalama (Lee Sin) +10 puan, 4 gank", "Engage üstünlüğü (Leona) +1,7 puan, 4 savaş", "Poke, engage'e yakalandı (Jinx) −1,7 puan", "Kayle scale edemedi (altını rakibinin gerisinde): 20. dk'da gücü geç potansiyelinin %40 kadarı"; altın Mavi 35.749 (kill 4.500) vs Kırmızı 27.029 (kill 900, ödül 1.850).
 
 ### 16.12 Denge hedefleri (araçla ölçülecek)
 | Ölçüm | Hedef |
@@ -869,9 +919,12 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 7. ~~Denge aracı altına geçer → ara ölçüm (ayna ~%50, süre, geri dönüş oranı).~~ (bitti) **Faz A sonu ölçümü** (10.000 draft): Mavi %49,5; süre 29,3 dk; %52,7 kuşatmayla bitiyor; kill 21,9; ruhu alan %69,3; 14. dk CS 102; 15. dk ort. takım farkı 3.228; maç başı 6,3 shutdown (ort. 509), 0,49 yakalanma (ort. 679). 15. dk'da önde olan: 0-1.499 → %53, 1.500-2.999 → %60, 3.000-4.999 → %69, 5.000+ → %80 (hedef 3.000+ %70-80 ✓). Erken comp %47,3 kazanıyor, %32,6'sını 35'ten önce bitiriyor ✓; 14. dk 3.000+ geride scale comp %33,6 kurtarıyor ✓ (%25-35). Açık: sinerji 5 farkta %66, 7'de %72 (faz B kurallarıyla), 20. dk bitiş birikmesi %15 (faz D).
 
 **Faz B — Şampiyon modeli v2 ve kurallar**
-8. `ChampionProfile` v2 (range, sınıf, econ, etiketler) + `sample-champions.json`.
+8. ~~`ChampionProfile` v2 (range, sınıf, econ, etiketler) + `sample-champions.json`.~~ (bitti; 16.2 "Uygulama") Hemen devreye girenler: `s` econ'dan (16.5), yakalanmada `pick`/`mob` (16.9). Kurallar henüz yok, eski sinerji `Tags` üzerinden. Ölçüm (10.000 draft, faz A sonu → adım 8): Mavi %49,5 → %50,2; süre 29,3 → 29,8 dk; kuşatmayla biten %52,7 → %49,2; yakalanma 0,49 → 0,69; 15. dk 3.000-4.999 önde %69 → %67, 5.000+ %80 → %78; erken comp %47,3 → %46,2 kazanıyor, %32,6 → %29,7'sini 35'ten önce bitiriyor (hedefin hemen altında); geride scale comp %33,6 → %36,3 kurtarıyor (hedefin hemen üstünde); 20. dk birikmesi %15 → %12,4. Beklenen yön: econ 3 taşıyıcılar öndeyken daha güçlü, econ 0 destek/tank altından az etkileniyor, pick'li takımlar daha çok yakalıyor → geri dönüş biraz arttı. Sinerji 5 farkta %67, 7'de %73 (adım 9'da kalkacak).
 9. Koridor kuralları (K1-K4), sonra takım kuralları (K5-K13); her kural kendi testiyle.
-10. Draft karnesi çıktısı (16.11).
+   - ~~9a: K1-K4~~ (bitti; 16.8 "Uygulama"). Ölçüm (10.000 draft, adım 8 → 9a): Mavi %50,2 → %50,3; süre 29,8 → 29,7; erken comp %46,2 → %46,7 kazanıyor, 35'ten önce %29,7 → %30,9; scale comp kurtarıyor %36,3 → %36,7. Genel tablo neredeyse aynı: koridor kuralları küçük (+0,1-0,3/dk, gürültü σ 0,8) ve örnek havuzda K1 sadece ortada çalışıyor (üstte ranged şampiyon yok). Şampiyon bazında: Büyücü Destek %47,1 → %45,9 (K4'e açık), Roam Mid %43,5 → %44,4 (K3). Motor testi: eşit draft'ta Mavi üstü range'e çevirmek (karşısı mesafe kapatamayan melee) 14. dk'da ortalama 5+ CS fark açıyor. Kural etkisinin ayrıntılı ölçümü adım 11'de (denge aracında kural raporu).
+   - ~~9b: K5-K11, K13 (eski tek sinerji puanı kalkar).~~ (bitti; 16.8 "Uygulama") Ölçüm (10.000 draft, 9a → 9b): Mavi %50,3; süre 29,7 → 29,6; erken comp %46,7 → %48,4 kazanıyor, %30,9 → %32,9'unu 35'ten önce bitiriyor ✓; scale comp kurtarıyor %36,7 → %34,3 ✓ (ilk kez hedefte); 15. dk 3.000-4.999 önde %68, 5.000+ %79 ✓; sınıra takılan savaş %2,7 → %5,0. **Kural farkı → kazanma** eğrisi düzgün ve tekdüze: 2 → %56, 4 → %62,5, 6 → %67,5, 8 → %73, 10 → %77, 12+ → %80-90. Hedef (belirgin iyi draft %60-65, en iyisi ≤ %70) fark ~4-6'da tutuyor ama uç draft'lar (fark 8+, maçların ~%7'si) fazla kazanıyor: cezalar üst üste biniyor (frontline yok −4, tek tip hasar −2, korumasız taşıyıcıya dive +3...). Şampiyonlar: engage tank'lar önde (Leona %57, Sejuani %56, Tank Top %55: hem `en` hem `fl` ödülleniyor, K5 + K10), Büyücü Destek %37,6 (fl/en/peel 0 → K10, K4, K5'e açık). Faz D adayları: kural toplamına tavan (ör. ±8) ya da ağırlıkları küçültme; K5 + K10 tank'ı iki kez ödüllüyor mu bakılacak; örnek havuz arketipleri de gerçek veriyle değişecek.
+   - ~~9c: K12 split~~ (bitti; 16.8 "K12 karar zinciri"). Ölçüm (10.000 draft): maç başı 0,59 split, %50'si cevaplanıyor, %76'sı kule getiriyor; split yapan takım o objektifi %33 alıyor, maçı %39 kazanıyor (zaten geride olan takım). Genel tablo aynı: Mavi %49,8, süre 29,5, maç başı kule 4,8 → 5,3, scale comp kurtarıyor %34,2 ✓. Dövüşçü Top (split 3) %47,8 → %48,7. Denge aracına split satırları eklendi.
+10. ~~Draft karnesi çıktısı (16.11).~~ (bitti; 16.11 "Uygulama")
 11. Denge aracına kural etkisi ve kimlik-kimlik raporu → ölçüm.
 
 **Faz C — Veri**
@@ -881,8 +934,8 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 13. Veri hattından gerçek altın eğrisi ("X. dk Y altın önde → kazanma oranı"), altın duyarlılığı ve kural ağırlıkları 16.12 hedeflerine oturtulur.
 
 ### 16.14 Kullanıcıya açık sorular
-1. Sınıf listesi yeterli mi? (`tank`, `fighter`, `assassin`, `mage`, `marksman`, `enchanter`)
-2. `cc` ve `waveclear` ayrı etiket olsun mu, yoksa `pick`/`en` ve sınıf yeterli mi?
+1. ~~Sınıf listesi yeterli mi?~~ Evet, şimdilik bu 6'sı; gerekirse sonra eklenir.
+2. ~~`cc` ve `waveclear` ayrı etiket olsun mu?~~ Hayır, `pick`/`en` ve sınıf yeterli.
 3. K1-K13'te oyun bilgisine göre yanlış ya da eksik olan var mı? Yönler ve büyüklükler (ör. range baskısı +0,3) mantıklı mı?
 4. Yakalanma (16.9) ve throw'un ödülle kapanması: geri dönüş sıklığı hedefi ne olsun? Öneri: lane'de belirgin geride kalan %25-35 kurtarır.
 5. Oyuncu ne görsün? Öneri: draft sırasında kimlik çubuğu (hangi kimliğin neyi yendiği gizli), maç sonunda tam karne.

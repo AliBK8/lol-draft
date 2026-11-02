@@ -12,13 +12,15 @@ internal sealed partial class MatchRun
     private const double CatchMinTeamLead = 1000;
 
     // Yakalanma ihtimali: p = min(0.03 + 0.01 × takım altın farkı / 1000, 0.12) × (1 + 0.15 × rakip pick toplamı)
-    // Örnek: 3.000 önde → her dakika %6; 9.000+ önde → %12 (tavan). pick etiketi şampiyon modeli v2'de gelecek (şimdilik 0).
+    // Örnek: 3.000 önde → her dakika %6; 9.000+ önde → %12 (tavan). Rakipte pick toplamı 4 → ×1,6: %9,6 / %19,2.
     private const double CatchBaseChance = 0.03;
     private const double CatchChancePerThousand = 0.01;
     private const double CatchMaxChance = 0.12;
+    private const double CatchChancePerPick = 0.15;
 
-    // Kaçma şansı: 0.2 + 0.1 × mob. mob etiketi şampiyon modeli v2'de gelecek (şimdilik 0).
+    // Kaçma şansı: 0.2 + 0.1 × mob. Örnek: Draven (mob 1) %30, LeBlanc (mob 3) %50.
     private const double EscapeBaseChance = 0.2;
+    private const double EscapeChancePerMobility = 0.1;
 
     // dk ≥ 15, objektif olmayan dakikalarda (objektifte herkes savaşta), 5-40. saniyede (45. sn kuşatmadan önce).
     // Zar sırası: kayıtta saniye; çözümde yakalanma, kaçma.
@@ -45,20 +47,27 @@ internal sealed partial class MatchRun
         if (victim is null)
             return;
 
-        if (_rng.NextDouble() >= CatchChance(Math.Abs(lead)) || _rng.NextDouble() < EscapeBaseChance)
+        var behind = ahead.Opponent();
+        var pickTotal = Team(behind).Champions.Sum(c => c.Tags.Pick);
+        if (_rng.NextDouble() >= CatchChance(Math.Abs(lead), pickTotal) || _rng.NextDouble() < EscapeChance(victim))
             return;
 
-        // Katil: rakibin müsait ilk oyuncusu, nehre yakınlık sırasıyla (pick etiketi gelince en yüksek pick'li).
-        var behind = ahead.Opponent();
-        var killer = SkirmishPriority(Team(behind)).FirstOrDefault(c => IsInLane(c, t));
+        // Katil: rakibin müsait oyuncuları içinde en yüksek pick'li; eşitlikte nehre yakınlık sırası (sıralama kararlı).
+        var killer = SkirmishPriority(Team(behind)).Where(c => IsInLane(c, t))
+            .OrderByDescending(c => c.Tags.Pick)
+            .FirstOrDefault();
         if (killer is null)
             return;
 
         Kill(behind, killer, victim, t, $"{victim.Name} {CatchPlace(ahead, victim)} yakalandı, kill {killer.Name} aldı");
     }
 
-    internal static double CatchChance(double teamLead) =>
-        Math.Min(CatchBaseChance + CatchChancePerThousand * teamLead / 1000, CatchMaxChance);
+    internal static double CatchChance(double teamLead, int opponentPickTotal) =>
+        Math.Min(CatchBaseChance + CatchChancePerThousand * teamLead / 1000, CatchMaxChance)
+        * (1 + CatchChancePerPick * opponentPickTotal);
+
+    internal static double EscapeChance(ChampionProfile victim) =>
+        EscapeBaseChance + EscapeChancePerMobility * victim.Tags.Mobility;
 
     private double TeamGold(TeamSide side, double t)
     {

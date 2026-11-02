@@ -31,6 +31,10 @@ internal static class BalanceReport
             $"{(double)s.Shutdowns / s.Matches:0.00} / {s.ShutdownGold / Math.Max(1, s.Shutdowns):0}", "—");
         Row(w, "Maç başı yakalanma / ortalama ödül",
             $"{(double)s.Catches / s.Matches:0.00} / {s.CatchGold / Math.Max(1, s.Catches):0}", "—");
+        Row(w, "Maç başı split / cevaplanan / kule getiren",
+            $"{(double)s.Splits / s.Matches:0.00} / {Pct(s.SplitsAnswered, s.Splits)} / {Pct(s.SplitTowers, s.Splits)}", "—");
+        Row(w, "Split yapan objektifi alıyor / maçı kazanıyor",
+            $"{Pct(s.SplitObjectiveWins, s.Splits)} / {Pct(s.SplitMatchWins, s.Splits)}", "—");
         w.WriteLine();
 
         w.WriteLine("## Altın farkı → kazanma (o dakikada altında önde olan kazanıyor; o dakikaya ulaşan maçlar)");
@@ -54,9 +58,9 @@ internal static class BalanceReport
             Row(w, $"güç farkı {bucket}-{bucket + o.PowerGapBucket - 1}", $"{Pct(wins, games)}{Margin(wins, games)}  ({games} maç)", "");
         w.WriteLine();
 
-        w.WriteLine("## Sinerjisi daha iyi draft ne kadar kazanıyor? (frontline, engage, AP/AD dengesi, kombo)");
+        w.WriteLine("## Kuralları daha iyi draft ne kadar kazanıyor? (son savaştaki takım kuralları farkı, K5-K11, K13)");
         foreach (var (gap, (games, wins)) in s.BySynergyGap)
-            Row(w, $"sinerji farkı {gap}", $"{Pct(wins, games)}{Margin(wins, games)}  ({games} maç)", "");
+            Row(w, $"kural farkı {gap}", $"{Pct(wins, games)}{Margin(wins, games)}  ({games} maç)", "");
         w.WriteLine("  hedef: belirgin iyi draft tek maçta %60-65");
         w.WriteLine();
 

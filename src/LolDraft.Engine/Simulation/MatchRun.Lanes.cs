@@ -36,11 +36,19 @@ internal sealed partial class MatchRun
 
         foreach (var lane in Lanes)
         {
-            // Δ = 0.1 × (G_eff_koridor_Mavi − G_eff_koridor_Kırmızı) + N(0, 0.8)   (DESIGN.md §16.6)
+            // Δ = 0.1 × (G_eff_koridor_Mavi − G_eff_koridor_Kırmızı) + koridor kuralları + N(0, 0.8)   (DESIGN.md §16.6)
             // Gerçek güç farkı akışın yönünü belirler. Gürültü tek bir dakikayı çevirebilir ama güç farkı birikir.
+            // Kurallar (K1, K3, K4) draft'tan gelen koridor avantajı; K2 (tank tamponu) tüm Δ'yı yumuşatır.
             // Koridor içi kartopu: Δ → CS → altın → G_eff → Δ. Taban/tavan (0,5-1,4) ve ödül dengeler.
-            var delta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
-                        + _rng.NextNormal() * LaneNoiseSigma;
+            var blue = LaneChampions(TeamSide.Blue, lane);
+            var red = LaneChampions(TeamSide.Red, lane);
+            var rules = LaneRules.Effects(lane, blue, red, minute);
+            var rawDelta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
+                           + rules.Sum(e => e.Signed)
+                           + _rng.NextNormal() * LaneNoiseSigma;
+            var (factor, damping) = LaneRules.Damping(lane, blue, red, minute);
+            var delta = rawDelta * factor;
+            ReportLaneRules(lane, rules, rawDelta, factor, damping);
 
             // Δ hem puana hem anlatıcı bütçesine yazılır; puan burada eklenir, anlatıcı sadece anlatır.
             _scores.Add(LaneCategory(lane), delta);

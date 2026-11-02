@@ -61,8 +61,8 @@ internal sealed partial class MatchRun
             return;
 
         _lastSiegeMinute = minute;
-        // Başarı ihtimali = takım savaşı ihtimali (Baron buff'ı kuşatmada +4), önde olanın tarafından.
-        var probability = FightProbability(attacker, minute, t, siege: true);
+        // Başarı ihtimali = takım savaşı ihtimali (Baron buff'ı kuşatmada +4, K6 poke), önde olanın tarafından.
+        var probability = FightProbability(attacker, minute, t, FightKind.Siege, report: RuleContext.Siege);
 
         _events.Add(new SiegeEvent(t, "", attacker, Lead: 20, Tail: 4));
         MarkAway([.. AliveAt(attacker, t), .. AliveAt(defender, t)], t + AwayAfterFightSeconds);

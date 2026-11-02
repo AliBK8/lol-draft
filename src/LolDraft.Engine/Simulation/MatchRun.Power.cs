@@ -6,23 +6,26 @@ namespace LolDraft.Engine.Simulation;
 /// </summary>
 internal sealed partial class MatchRun
 {
-    // Altına duyarlılık s. Şampiyon modeli v2'de econ'dan gelecek (econ 0: 0,5 · 1: 1 · 2: 1,5 · 3: 2);
-    // o zamana kadar herkes econ 2. Deney (DESIGN.md §16.13 adım 4): 0,9 çok zayıf, 3 kartopu; 2 de aday.
-    private const double GoldSensitivity = 1.5;
+    // Altına duyarlılık s = 0,5 + 0,5 × econ (econ 0: 0,5 · 1: 1 · 2: 1,5 · 3: 2). econ 2 = faz A'daki herkesin s'i.
+    // Deney (DESIGN.md §16.5): herkes 0,9 çok zayıf, herkes 3 kartopu.
+    private const double BaseGoldSensitivity = 0.5;
+    private const double GoldSensitivityPerEconomy = 0.5;
     private const double MinGoldFactor = 0.5;
     private const double MaxGoldFactor = 1.4;
 
     // Gerçek güç:
     //   r     = altın / (rolün iki oyuncusunun ortalama altını)     1 = başa baş, 1,1 = rakibinden %22 fazla
     //   G_eff = G_pot(dk) × clamp(1 + s × (r − 1), 0,5, 1,4)
-    // Örnek: Renekton 5.150 vs Kayle 4.050 altın → r 1,12 / 0,88 → güç ×1,18 / ×0,82.
+    // Örnek r = 1,1: Jinx (econ 3) ×1,20, Draven (econ 2) ×1,15, Leona (econ 0) ×1,05.
     private double EffectivePower(ChampionProfile champion, int minute, double t) =>
-        champion.PowerAt(minute) * GoldFactor(_gold.GoldAt(champion, t), _gold.GoldAt(Counterpart(champion), t));
+        champion.PowerAt(minute)
+        * GoldFactor(_gold.GoldAt(champion, t), _gold.GoldAt(Counterpart(champion), t), champion.Economy);
 
-    internal static double GoldFactor(double gold, double counterpartGold)
+    internal static double GoldFactor(double gold, double counterpartGold, int economy)
     {
         var ratio = gold / ((gold + counterpartGold) / 2);
-        return Math.Clamp(1 + GoldSensitivity * (ratio - 1), MinGoldFactor, MaxGoldFactor);
+        var sensitivity = BaseGoldSensitivity + GoldSensitivityPerEconomy * economy;
+        return Math.Clamp(1 + sensitivity * (ratio - 1), MinGoldFactor, MaxGoldFactor);
     }
 
     // Toplam gerçek güç; sırayla toplanır (deterministik toplama sırası).

@@ -66,6 +66,13 @@ public sealed record SkirmishEvent(
 /// <summary>Görünmez hareket ipucu: takım <paramref name="Lead"/> sn önce toplanır, <paramref name="Tail"/> sn kalır.</summary>
 public sealed record SiegeEvent(double T, string Text, TeamSide Side, int Lead, int Tail) : MatchEvent(T, Text);
 
+/// <summary>
+/// Split (DESIGN.md §16.8 K12): objektif savaşı sırasında <paramref name="SplitterId"/> yan koridorda baskı kurar.
+/// Cevap veren rakip (<paramref name="AnswererId"/>) varsa ikisi düello yapar; yoksa splitter kuleyi karşılıksız alır.
+/// </summary>
+public sealed record SplitEvent(double T, string Text, TeamSide Side, Lane Lane, string SplitterId, string? AnswererId)
+    : MatchEvent(T, Text);
+
 /// <summary>4. ejderi alan takım ejder ruhunu kazanır; ardından Elder doğar.</summary>
 public sealed record DragonSoulEvent(double T, string Text, TeamSide Side) : MatchEvent(T, Text);
 

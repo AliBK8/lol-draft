@@ -57,6 +57,11 @@ internal sealed class BalanceStats
     public double ShutdownGold { get; private set; }
     public int Catches { get; private set; }
     public double CatchGold { get; private set; }
+    public int Splits { get; private set; }
+    public int SplitsAnswered { get; private set; }
+    public int SplitTowers { get; private set; }
+    public int SplitObjectiveWins { get; private set; }
+    public int SplitMatchWins { get; private set; }
 
     // (dakika, fark dilimi) → (o dakikaya ulaşan maç, o dakikada altında önde olanın kazandığı).
     public SortedDictionary<(int Minute, int Bucket), (int Games, int LeaderWins)> ByGoldLead { get; } = [];
@@ -109,8 +114,8 @@ internal sealed class BalanceStats
             ByPowerGap[bucket] = (games + 1, wins + (strongerWon ? 1 : 0));
         }
 
-        // Sinerji farkı puan dökümünde: Synergy kategorisi = sinerji(Mavi) − sinerji(Kırmızı).
-        var synergyGap = (int)result.Breakdown[ScoreCategory.Synergy];
+        // Kural farkı puan dökümünde: Synergy kategorisi = son savaştaki takım kuralları farkı (K5-K11, K13), yuvarlanmış.
+        var synergyGap = (int)Math.Round(result.Breakdown[ScoreCategory.Synergy]);
         if (synergyGap != 0)
         {
             var betterWon = (synergyGap > 0) == (winner == TeamSide.Blue);
@@ -183,6 +188,20 @@ internal sealed class BalanceStats
                 Catches++;
                 CatchGold += kill.Bounty;
             }
+        }
+
+        // Split (DESIGN.md §16.8 K12): sıklık, cevap, kule (split'ten 10 sn sonra), split yapan objektifi/maçı alıyor mu.
+        foreach (var split in result.Events.OfType<SplitEvent>())
+        {
+            Splits++;
+            if (split.AnswererId is not null)
+                SplitsAnswered++;
+            if (result.Events.OfType<TowerEvent>().Any(t => t.T == split.T + 10 && t.Side == split.Side))
+                SplitTowers++;
+            if (result.Events.OfType<ObjectiveEvent>().Any(o => o.T == split.T && o.Side == split.Side))
+                SplitObjectiveWins++;
+            if (result.End.Winner == split.Side)
+                SplitMatchWins++;
         }
     }
 

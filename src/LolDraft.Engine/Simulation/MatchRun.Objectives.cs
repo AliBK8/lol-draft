@@ -71,11 +71,21 @@ internal sealed partial class MatchRun
         PlanObjective(minute + ElderRespawnMinutes, Objective.Elder);
     }
 
-    // Zar sırası: kazanan, kill sayısı (kill'ler kendi saniyelerinde). Son savaşsa Nexus'u kaydeder.
+    // Zar sırası: split (gidiyor mu, cevap veriyor mu), kazanan, kill sayısı (kill'ler kendi saniyelerinde).
+    // Son savaşsa Nexus'u kaydeder.
     private void PlayObjective(int minute, Objective objective)
     {
         var t = (minute - 1) * 60 + ObjectiveSecond;
-        var blueProbability = FightProbability(TeamSide.Blue, minute, t);
+        var kind = objective == Objective.FinalFight ? FightKind.Final : FightKind.Objective;
+
+        // Split (K12): splitter (ve cevap veren) savaşta yok; savaş 4v5 ya da 4v4.
+        var split = PlanSplit(minute, objective, t);
+        ChampionProfile[] absent = split?.Absent ?? [];
+        if (split is not null)
+            PlaySplit(split, minute, t);
+
+        var blueProbability = FightProbability(TeamSide.Blue, minute, t, kind, absent,
+            report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective);
         var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
 
@@ -91,10 +101,10 @@ internal sealed partial class MatchRun
         if (objective is Objective.Dragon or Objective.Elder)
             AfterDragonOrElder(objective, winner, minute, t);
 
-        // Savaşa iki takımın yaşayanları gelir; bir süre koridorlarında değiller.
-        var losers = AliveAt(winner.Opponent(), t);
-        MarkAway([.. AliveAt(winner, t), .. losers], t + AwayAfterFightSeconds);
-        ScheduleFightKills(winner, t, MaxKills(objective));
+        // Savaşa iki takımın yaşayanları gelir (split'tekiler hariç); bir süre koridorlarında değiller.
+        var losers = AliveAt(winner.Opponent(), t).Except(absent).ToList();
+        MarkAway([.. AliveAt(winner, t).Except(absent), .. losers], t + AwayAfterFightSeconds);
+        ScheduleFightKills(winner, t, MaxKills(objective), absent);
 
         if (objective != Objective.FinalFight)
         {
@@ -113,10 +123,11 @@ internal sealed partial class MatchRun
 
     // Savaş kill'leri (DESIGN.md §4.5): kazananın yaşayanları kaybedenin yaşayanlarından 1..max kişi keser.
     // Katılımcılar ve kill sayısı savaş anında belirlenir; kill'ler 1.5 sn arayla t+2'den başlar.
-    private void ScheduleFightKills(TeamSide winner, double t, int maxKills)
+    // absent: savaşta olmayanlar (split).
+    private void ScheduleFightKills(TeamSide winner, double t, int maxKills, IReadOnlyCollection<ChampionProfile>? absent = null)
     {
-        var winners = AliveAt(winner, t);
-        var losers = AliveAt(winner.Opponent(), t);
+        var winners = AliveAt(winner, t).Except(absent ?? []).ToList();
+        var losers = AliveAt(winner.Opponent(), t).Except(absent ?? []).ToList();
         var killCount = Math.Min(losers.Count, 1 + _rng.NextIndex(maxKills));
 
         ScheduleKills(winner, winners, losers, killCount, t + 2,
@@ -124,16 +135,26 @@ internal sealed partial class MatchRun
     }
 
     // Takım savaşı ihtimali (DESIGN.md §16.7):
-    //   d      = (ΣG_eff Mavi − ΣG_eff Kırmızı) + sinerji farkı + ruh (±2) + Elder buff'ı (±6) + kuşatmada Baron buff'ı (±4)
+    //   d      = (ΣG_eff Mavi − ΣG_eff Kırmızı) + takım kuralları (savaş türüne göre) + ruh (±2) + Elder buff'ı (±6)
+    //            + kuşatmada Baron buff'ı (±4)
     //   p_Mavi = clamp(1 / (1 + e^(−d/15)), 0.1, 0.9)
     // Bölen 15 eğrinin dikliği: d = 15 → ~%73. Altın üstünlüğü G_eff'in içinde; sonucu zar belirler.
-    // Sinerji tek kez sayılır (eskiden toplam puanın içinden ikinci kez giriyordu); kurallar K5-K13 gelince kalkacak.
+    // Kurallar (K5-K11, K13) draft'ın kimliği: engage objektifte, poke kuşatmada, korunan taşıyıcı 25. dk'dan sonra...
     // Kırmızı için d'nin işareti çevrilir: p_Kırmızı = 1 − p_Mavi (clamp simetrik olduğu için aynı kalır).
-    private double FightProbability(TeamSide side, int minute, double t, bool siege = false)
+    // absent: savaşta olmayanlar (split); ne güçleri ne etiketleri savaşa girer.
+    // report: gerçek savaşsa karneye yazılacağı yer (split kararındaki "savaş olsa" hesabı yazılmaz).
+    private double FightProbability(TeamSide side, int minute, double t, FightKind kind,
+        IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null)
     {
+        var siege = kind == FightKind.Siege;
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
-        var d = (EffectivePower(_blue.Champions, minute, t) - EffectivePower(_red.Champions, minute, t)) + _synergyDiff
+        var blue = _blue.Champions.Except(absent ?? []).ToList();
+        var red = _red.Champions.Except(absent ?? []).ToList();
+        var rules = TeamRules.Effects(kind, blue, red, minute, c => EffectivePower(c, minute, t));
+        var d = (EffectivePower(blue, minute, t) - EffectivePower(red, minute, t)) + rules.Sum(e => e.Signed)
                 + soulBonus + BuffBonus(TeamSide.Blue, t, siege) - BuffBonus(TeamSide.Red, t, siege);
+        if (report is { } context)
+            ReportFightRules(rules, context, d, FightDivisor);
         return Probability.Clamp(Probability.Logistic(side.Sign() * d / FightDivisor));
     }
 

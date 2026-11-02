@@ -1,36 +1,71 @@
 namespace LolDraft.Engine;
 
 /// <summary>
-/// Motorun bir şampiyondan bilmesi gerekenler (DESIGN.md §3). Kurucu doğrular; aralık dışı değerle nesne oluşmaz.
+/// Motorun bir şampiyondan bilmesi gerekenler (DESIGN.md §16.2). Kurucu doğrular; aralık dışı değerle nesne oluşmaz.
 /// </summary>
 public sealed record ChampionProfile
 {
-    public ChampionProfile(string id, string name, int early, int mid, int late, int frontline, int engage, double apShare)
+    public ChampionProfile(
+        string id, string name, AttackRange range, ChampionClass primaryClass, ChampionClass? secondaryClass,
+        int early, int mid, int late, int economy, double apShare, ChampionTags tags)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentNullException.ThrowIfNull(tags);
+
+        if (!Enum.IsDefined(range))
+            throw new ArgumentOutOfRangeException(nameof(range), range, "Bilinmeyen menzil.");
+        if (!Enum.IsDefined(primaryClass))
+            throw new ArgumentOutOfRangeException(nameof(primaryClass), primaryClass, "Bilinmeyen sınıf.");
+        if (secondaryClass is { } secondary && (!Enum.IsDefined(secondary) || secondary == primaryClass))
+            throw new ArgumentOutOfRangeException(nameof(secondaryClass), secondaryClass, "İkincil sınıf geçerli ve ana sınıftan farklı olmalı.");
 
         Id = id;
         Name = name;
+        Range = range;
+        PrimaryClass = primaryClass;
+        SecondaryClass = secondaryClass;
         Early = InRange(early, 1, 10, nameof(early));
         Mid = InRange(mid, 1, 10, nameof(mid));
         Late = InRange(late, 1, 10, nameof(late));
-        Frontline = InRange(frontline, 0, 3, nameof(frontline));
-        Engage = InRange(engage, 0, 3, nameof(engage));
+        Economy = InRange(economy, 0, 3, nameof(economy));
 
         if (!(apShare is >= 0 and <= 1))
             throw new ArgumentOutOfRangeException(nameof(apShare), apShare, "AP payı 0 ile 1 arasında olmalı.");
         ApShare = apShare;
+        Tags = tags;
     }
 
     public string Id { get; }
     public string Name { get; }
+    public AttackRange Range { get; }
+
+    /// <summary>Ana sınıf; şampiyonun kimliği.</summary>
+    public ChampionClass PrimaryClass { get; }
+
+    public ChampionClass? SecondaryClass { get; }
+
+    /// <summary>Güç potansiyeli (1-10); altınla gerçekleşir.</summary>
     public int Early { get; }
+
     public int Mid { get; }
     public int Late { get; }
-    public int Frontline { get; }
-    public int Engage { get; }
+
+    /// <summary>econ: altın/item bağımlılığı. 0 = altınsız da işler, 3 = item'sız işe yaramaz.</summary>
+    public int Economy { get; }
+
     public double ApShare { get; }
+    public ChampionTags Tags { get; }
+
+    public bool HasClass(ChampionClass championClass) =>
+        PrimaryClass == championClass || SecondaryClass == championClass;
+
+    /// <summary>
+    /// Hiper taşıyıcı (türetilen tip): nişancı ya da büyücü, econ 3 ve geç güç ≥ 9. Ör. Jinx, Kassadin, Kayle.
+    /// Korunan taşıyıcı ve dive kuralları (§16.8 K8, K9) buna bakar.
+    /// </summary>
+    public bool IsHyperCarry =>
+        (HasClass(ChampionClass.Marksman) || HasClass(ChampionClass.Mage)) && Economy == 3 && Late >= 9;
 
     // Güç potansiyeli G_pot(dk), yumuşak eğri (DESIGN.md §16.3):
     //   dk ≤ 10: erken · 10 → 18: erkenden ortaya doğrusal · 18 → 28: ortadan geçe doğrusal · dk ≥ 28: geç
