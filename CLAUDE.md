@@ -41,11 +41,11 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): ~~A ekonomi~~ (bitti) → B şampiyon modeli v2 + kurallar (bitti: model v2, K1-K13, karne, kural/kimlik raporu) → ~~C 40 şampiyon~~ (bitti: `tools/LolDraft.Balance/champions.json`) → D dengeleme (tur 1: K5, K6, kuşatma eşiği; tur 2: 15. dk 5.000+ önde %77 (savunma avantajı, yakalanma, s −%10); açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+; DESIGN.md §16.13 adım 13)
 5. ~~4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`~~ (bitti, DESIGN.md §8.10)
 6. **← KALDIĞIMIZ YER (2026-11-03 sonu).** 4d: Draft durum makinesi (`LolDraft.Domain`, şu an boş). Plan kullanıcıyla konuşuldu:
-   - `DraftSession`: ban/pick sırası (DESIGN.md §2: Ban 1 M1 K1 M2 K2 M3 K3 · Pick 1 M1 K1 K2 M2 M3 K3 · Ban 2 K4 M4 K5 M5 · Pick 2 K4 M4 M5 K5 · Swap), faz geçişleri, swap/rol atama; bitince motorun `TeamDraft`'ı.
+   - ~~`DraftSession`: sıra tablosu, doğrulama, zaman aşımı, swap (yuva değiştir + kilitle); bitince `DraftResult` (Application `TeamDraft`'a çevirir)~~ (bitti, DESIGN.md §8.3 "Uygulama (4d)", 34 test). Kalan: seri + fearless kilitleri. Kullanıcıya açık 2 soru (2026-11-04 sonu): (a) koltuk ≠ renk: JWT'de `seat` Blue/Red yerine Host/Guest, renk her maç seriden (kaybeden seçer, soft fearless kilidi oyuncuya bağlı); (b) 40'lık havuzda full fearless bo5 sığmıyor: lobide kapatılsın mı, havuz mu büyüsün?
    - Her hamle doğrulanır (sıra, faz, havuz, tekrar, fearless); geçersizse durum değişmez, `Result.Fail`.
    - Zaman aşımı (boş ban / rastgele uygun pick), saat dışarıdan (`IClock`/`Instant`): test beklemeden.
    - Seri (bo1/3/5, kaybeden taraf seçer) ve fearless (full/soft) kilitleri; ban'lar sonraki maça taşınmaz.
    - Saf: ASP.NET, ağ, DB, BackgroundService yok (onlar lobi/hub adımında).
-   - Açık soru (kullanıcıya): sadece açık draft mı (öneri), gizli/eşzamanlı seçim modu da olsun mu?
+   - Karar (2026-11-04): sadece açık draft; gizli/eşzamanlı seçim modu yok.
 7. 4e: Lobi uç noktaları + misafir JWT üretimi (Domain: Lobby, Application: CreateLobby/JoinLobby, Infrastructure: GuestTokenService), sonra DraftHub (SignalR, `IHubFilter` mesaj limiti, sunucu sayacı).
 8. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

@@ -396,13 +396,23 @@ public sealed class DraftSession
     public TeamSide Turn { get; private set; }
     public IReadOnlyList<DraftAction> Actions => _actions;
 
-    public Result Ban(PlayerSeat seat, ChampionId champion, Instant now) { /* sıra, faz, süre, havuz, fearless kontrolü */ }
-    public Result Pick(PlayerSeat seat, ChampionId champion, Instant now) { /* aynı kontroller */ }
-    public Result Swap(PlayerSeat seat, RoleAssignment roles) { /* sadece swap fazında */ }
-    internal Result Timeout(Instant now) { /* sunucu sayacı: boş ban / rastgele uygun pick */ }
+    public Result Ban(Side side, ChampionId champion, Instant now) { /* faz, süre, sıra, havuz, tekrar, fearless */ }
+    public Result Pick(Side side, ChampionId champion, Instant now) { /* aynı kontroller */ }
+    public Result SwapRoles(Side side, Role a, Role b, Instant now) { /* swap fazında iki yuvayı değiştir */ }
+    public Result LockLineup(Side side, Instant now) { /* iki takım da kilitleyince draft biter */ }
+    public Result Timeout(Instant now, IDraftRandom random) { /* sunucu sayacı: boş ban / rastgele uygun pick / swap biter */ }
 }
 ```
 Dışarıdan `Phase` ya da `Turn` set edilemez; geçersiz hamle `Result.Fail` döner ve durum değişmez.
+
+**Uygulama (4d, `LolDraft.Domain`):**
+- Durum = sabit adım tablosu (`DraftOrder`, 20 adım) + adım sayacı; faz ve sıra tablodan okunur, ayrı değişken yok.
+- Domain Engine'i bilmez (§8.2): draft bitince `DraftResult` (taraf → 5 yuvalık `TeamLineup` + hamleler) üretir; Application bunu `IChampionCatalog` ile motorun `TeamDraft`'ına çevirir. Domain'in kendi `Side`'ı var.
+- Sadece açık draft (gizli/eşzamanlı seçim yok; karar 2026-11-04).
+- Swap: 20. adımdan sonra her takımın pick'leri pick sırasıyla yuvalara dizilir (1. pick top … 5. pick support). Takım istediği kadar iki yuvayı yer değiştirir (arayüzde top pick'ine, sonra adc yuvasına tıklamak), sonra kilitler. İkisi de kilitleyince ya da süre dolunca o anki dizilimle biter.
+- Zaman aşımı: ban → boş ban; pick → o taraf için uygun (havuz − ban − seçilen − fearless kilidi) şampiyonlar id sırasıyla dizilir, zar birini seçer.
+- Fearless kilidi pick'i engeller; ban'ı sadece iki tarafa da kilitliyse (kimsenin seçemeyeceği şampiyonu ban'lamak anlamsız).
+- Havuz kuralı: kilitler düşüldükten sonra her tarafa ≥ 20 şampiyon (10 ban + 10 pick) kalmalı, yoksa `pool_too_small`. 40'lık havuzda full fearless bo3 tam sığar, bo5 sığmaz (5. maç 40 kilit); soft fearless bo5 sığar.
 
 **Application portları:**
 ```csharp
