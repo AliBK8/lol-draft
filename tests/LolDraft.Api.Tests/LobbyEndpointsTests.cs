@@ -152,9 +152,11 @@ public sealed class LobbyEndpointsTests : IDisposable
         var guest = await Join(host.Code);
         var after = await GetLobby(host.Code, guest.Token);
 
-        Assert.Equal(new LobbyState(host.Code, "bo3", true, "A", false, 1, before.BlueTeam, 0, 0), before);
-        Assert.Contains(before.BlueTeam, new[] { "A", "B" });
-        Assert.Equal(before with { YourSeat = "B", IsFull = true }, after);
+        Assert.Equal("A", before.YourSeat);
+        Assert.Equal(new LobbyState(host.Code, "bo3", true, false, 1, before.Lobby.BlueTeam, 0, 0, null), before.Lobby);
+        Assert.Contains(before.Lobby.BlueTeam, new[] { "A", "B" });
+        Assert.Equal("B", after.YourSeat);
+        Assert.Equal(before.Lobby with { IsFull = true }, after.Lobby);
     }
 
     [Fact]
@@ -217,7 +219,7 @@ public sealed class LobbyEndpointsTests : IDisposable
 
     private async Task<Ticket> Join(string code) => await Read<Ticket>(await PostJoin(code));
 
-    private async Task<LobbyState> GetLobby(string code, string token) => await Read<LobbyState>(await SendGet(code, token));
+    private async Task<LobbyResponse> GetLobby(string code, string token) => await Read<LobbyResponse>(await SendGet(code, token));
 
     private Task<HttpResponseMessage> SendGet(string code, string? token)
     {
@@ -249,8 +251,11 @@ public sealed class LobbyEndpointsTests : IDisposable
 
     private sealed record Ticket(string Code, string Seat, string Token);
 
+    private sealed record LobbyResponse(string YourSeat, LobbyState Lobby);
+
+    // Taslak (draft) ve saat alanları burada okunmaz; JSON'daki fazla alanlar yok sayılır.
     private sealed record LobbyState(
-        string Code, string Format, bool Fearless, string YourSeat, bool IsFull, int GameNumber, string BlueTeam, int WinsA, int WinsB);
+        string Code, string Format, bool Fearless, bool IsFull, int GameNumber, string BlueTeam, int WinsA, int WinsB, object? Draft);
 
     private sealed record ErrorBody(string Error, string Message);
 }

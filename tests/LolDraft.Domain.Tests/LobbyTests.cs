@@ -106,6 +106,120 @@ public sealed class LobbyTests
         Assert.Throws<ArgumentException>(() => PlayerId.FromBytes(new byte[17]));
     }
 
+    // --- Hazır ve draft hamleleri ---
+
+    [Fact]
+    public void Iki_oyuncu_da_hazir_olunca_draft_baslar()
+    {
+        var (lobby, host, guest) = FullLobby();
+
+        Assert.True(lobby.Ready(host, NewAction(), DraftTimings.Default, T0).IsSuccess);
+        Assert.Null(lobby.Series.CurrentDraft);
+        Assert.Equal([TeamSlot.A], lobby.ReadySeats);
+
+        Assert.True(lobby.Ready(guest, NewAction(), DraftTimings.Default, T0).IsSuccess);
+        Assert.NotNull(lobby.Series.CurrentDraft);
+        Assert.Empty(lobby.ReadySeats);
+    }
+
+    [Fact]
+    public void Rakip_gelmeden_hazir_olunamaz()
+    {
+        var host = Player(1);
+        var lobby = Create(host);
+
+        Assert.Equal(LobbyErrors.NotFull, lobby.Ready(host, NewAction(), DraftTimings.Default, T0).Error);
+    }
+
+    [Fact]
+    public void Draft_surerken_hazir_denemez()
+    {
+        var (lobby, host, _) = StartedDraft();
+
+        Assert.Equal(SeriesErrors.GameInProgress, lobby.Ready(host, NewAction(), DraftTimings.Default, T0).Error);
+    }
+
+    [Fact]
+    public void Draft_baslamadan_hamle_yapilamaz()
+    {
+        var (lobby, host, _) = FullLobby();
+
+        Assert.Equal(DraftErrors.PhaseClosed, lobby.Ban(host, NewAction(), Id("c01"), T0).Error);
+    }
+
+    [Fact]
+    public void Koltuk_bu_mactaki_renge_cevrilir()
+    {
+        // İlk mavi A: A'nın oyuncusu mavi olarak ban'lar, B'nin oyuncusu sırası gelmeden ban'layamaz.
+        var (lobby, host, guest) = StartedDraft(firstBlue: TeamSlot.A);
+
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(guest, NewAction(), Id("c01"), T0).Error);
+        Assert.True(lobby.Ban(host, NewAction(), Id("c01"), T0).IsSuccess);
+        Assert.Equal(Side.Blue, lobby.Series.CurrentDraft!.Actions[0].Side);
+    }
+
+    [Fact]
+    public void Ilk_mavi_B_ise_misafir_baslar()
+    {
+        var (lobby, host, guest) = StartedDraft(firstBlue: TeamSlot.B);
+
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(host, NewAction(), Id("c01"), T0).Error);
+        Assert.True(lobby.Ban(guest, NewAction(), Id("c01"), T0).IsSuccess);
+    }
+
+    [Fact]
+    public void Lobide_olmayan_hamle_yapamaz()
+    {
+        var (lobby, _, _) = StartedDraft();
+
+        Assert.Equal(LobbyErrors.NotInLobby, lobby.Ban(Player(9), NewAction(), Id("c01"), T0).Error);
+        Assert.Equal(LobbyErrors.NotInLobby, lobby.Ready(Player(9), NewAction(), DraftTimings.Default, T0).Error);
+    }
+
+    [Fact]
+    public void Ayni_hamle_kimligi_ikinci_kez_uygulanmaz()
+    {
+        var (lobby, host, _) = StartedDraft();
+        var action = NewAction();
+
+        Assert.True(lobby.Ban(host, action, Id("c01"), T0).IsSuccess);
+        // Çift tıklama: aynı kimlik → aynı sonuç, draft ilerlemez (yoksa ikinci ban "sıra sende değil" derdi).
+        Assert.True(lobby.Ban(host, action, Id("c01"), T0).IsSuccess);
+        Assert.Single(lobby.Series.CurrentDraft!.Actions);
+
+        // Yeni kimlikle aynı hamle: gerçekten ikinci hamle sayılır ve kurala takılır.
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(host, NewAction(), Id("c02"), T0).Error);
+    }
+
+    [Fact]
+    public void Hatali_hamlenin_tekrari_da_ayni_hatayi_doner()
+    {
+        var (lobby, _, guest) = StartedDraft();
+        var action = NewAction();
+
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(guest, action, Id("c01"), T0).Error);
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(guest, action, Id("c01"), T0).Error);
+    }
+
+    private static (Lobby Lobby, PlayerId Host, PlayerId Guest) FullLobby(TeamSlot firstBlue = TeamSlot.A)
+    {
+        var host = Player(1);
+        var guest = Player(2);
+        var lobby = Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, firstBlue).Value;
+        lobby.Join(guest);
+        return (lobby, host, guest);
+    }
+
+    private static (Lobby Lobby, PlayerId Host, PlayerId Guest) StartedDraft(TeamSlot firstBlue = TeamSlot.A)
+    {
+        var (lobby, host, guest) = FullLobby(firstBlue);
+        lobby.Ready(host, NewAction(), DraftTimings.Default, T0);
+        lobby.Ready(guest, NewAction(), DraftTimings.Default, T0);
+        return (lobby, host, guest);
+    }
+
+    private static ActionId NewAction() => ActionId.Create(Guid.NewGuid()).Value;
+
     private static Lobby Create(PlayerId host) =>
         Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, TeamSlot.A).Value;
 

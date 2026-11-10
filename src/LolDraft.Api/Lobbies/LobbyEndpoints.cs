@@ -1,4 +1,5 @@
-using LolDraft.Application;
+using System.Security.Claims;
+using LolDraft.Api.Auth;
 using LolDraft.Application.Lobbies;
 using LolDraft.Domain;
 
@@ -10,21 +11,22 @@ namespace LolDraft.Api.Lobbies;
 /// </summary>
 internal static class LobbyEndpoints
 {
-    private const string BearerPrefix = "Bearer ";
-
     private static readonly Error InvalidFormat = new("invalid_format", "Seri formatı bo1, bo3 ya da bo5 olmalı.");
-    private static readonly Error Unauthorized = new("unauthorized", "Geçerli bir token gerekli.");
 
     public static void MapLobbyEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/api/lobbies", Create);
         app.MapPost("/api/lobbies/{code}/join", Join);
-        app.MapGet("/api/lobbies/{code}", Get);
+        // Token yoksa ya da geçersizse 401 (GuestAuthenticationHandler); API gateway'e güvenir ama kendisi de doğrular.
+        app.MapGet("/api/lobbies/{code}", Get)
+            .RequireAuthorization(policy => policy
+                .AddAuthenticationSchemes(GuestAuthenticationHandler.SchemeName)
+                .RequireAuthenticatedUser());
     }
 
     private static async Task<IResult> Create(CreateLobbyRequest request, CreateLobby createLobby, CancellationToken ct)
     {
-        if (ParseFormat(request.Format) is not { } format)
+        if (Names.ParseFormat(request.Format) is not { } format)
             return Failure(InvalidFormat);
 
         var ticket = await createLobby.Handle(format, request.Fearless, ct);
@@ -42,13 +44,9 @@ internal static class LobbyEndpoints
         return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
     }
 
-    private static async Task<IResult> Get(
-        string code, HttpRequest request, IGuestTokenService tokens, GetLobby getLobby, CancellationToken ct)
+    private static async Task<IResult> Get(string code, ClaimsPrincipal user, GetLobby getLobby, CancellationToken ct)
     {
-        // Gateway token'ı doğrulayıp geçirdi; API yine de kendisi doğrular ve kimliği imzalı claim'lerden okur.
-        var identity = await ReadIdentity(request, tokens);
-        if (identity is null)
-            return Failure(Unauthorized);
+        var identity = GuestAuthenticationHandler.IdentityOf(user);
 
         // Token başka bir lobi için verilmişse bu lobiyi göremez.
         if (identity.Lobby.Value != code)
@@ -58,33 +56,11 @@ internal static class LobbyEndpoints
         return view.IsSuccess ? Results.Ok(LobbyResponse.Of(view.Value)) : Failure(view.Error!);
     }
 
-    private static async Task<GuestIdentity?> ReadIdentity(HttpRequest request, IGuestTokenService tokens)
-    {
-        if (request.Headers.Authorization is not [{ } header]
-            || !header.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return await tokens.Read(header[BearerPrefix.Length..]);
-    }
-
-    private static SeriesFormat? ParseFormat(string? value) => value switch
-    {
-        "bo1" => SeriesFormat.Bo1,
-        "bo3" => SeriesFormat.Bo3,
-        "bo5" => SeriesFormat.Bo5,
-        _ => null,
-    };
-
-    private static string FormatName(SeriesFormat format) => $"bo{(int)format}";
-
     // İş hatası → HTTP kodu. Gövde her zaman aynı biçimde: { error, message }.
     private static IResult Failure(Error error)
     {
         var status = error.Code switch
         {
-            "unauthorized" => StatusCodes.Status401Unauthorized,
             "not_in_lobby" => StatusCodes.Status403Forbidden,
             "lobby_not_found" => StatusCodes.Status404NotFound,
             "lobby_full" => StatusCodes.Status409Conflict,
@@ -102,12 +78,10 @@ internal static class LobbyEndpoints
             new(ticket.Identity.Lobby.Value, ticket.Identity.Seat.ToString(), ticket.Token);
     }
 
-    internal sealed record LobbyResponse(
-        string Code, string Format, bool Fearless, string YourSeat, bool IsFull, int GameNumber, string BlueTeam, int WinsA, int WinsB)
+    /// <summary>İsteyenin koltuğu + hub'ın LobbyUpdated olayıyla aynı biçimde lobi durumu.</summary>
+    internal sealed record LobbyResponse(string YourSeat, LobbyStateDto Lobby)
     {
-        public static LobbyResponse Of(LobbyView view) => new(
-            view.Code.Value, FormatName(view.Format), view.Fearless, view.YourSeat.ToString(), view.IsFull,
-            view.GameNumber, view.BlueTeam.ToString(), view.WinsA, view.WinsB);
+        public static LobbyResponse Of(SeatedLobbyView view) => new(view.YourSeat.ToString(), LobbyStateDto.Of(view.Lobby));
     }
 
     internal sealed record ErrorResponse(string Error, string Message);

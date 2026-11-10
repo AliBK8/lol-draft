@@ -520,9 +520,9 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | POST | `/api/lobbies` | yok | Lobi oluştur, JWT + davet kodu döner |
 | POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
 | POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
-| GET | `/api/lobbies/{code}` | JWT (lobide) | Lobi ve draft durumu |
+| GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
 | GET | `/api/matches/{id}` | JWT ya da paylaşım linki | Olay listesi (tekrar izleme) |
-| WS | `/hubs/draft` | JWT | `Ban`, `Pick`, `Swap`, `Ready` → `DraftUpdated`, `TimerTick`, `MatchReady`, `RateLimited` |
+| WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow`; saniyelik `TimerTick` yok, karar 2026-11-10), ileride `MatchReady`, `RateLimited` |
 
 ### 8.8 Dağıtım
 
@@ -599,7 +599,24 @@ Rastgele değer: `openssl rand -base64 48`. JWT anahtarı iki uygulamada aynı: 
 | Şampiyon listesi | `Infrastructure/Champions/EmbeddedChampionCatalog.cs` | `tools/LolDraft.Balance/champions.json` derlemeye gömülür (tek kaynak); şimdilik sadece kimlikler. |
 | Kayıt | `Infrastructure/InfrastructureServices.cs` | `AddInfrastructure(jwtSigningKey)` tek public kapı; gerçekler `internal sealed`. API açılışta `JWT_SIGNING_KEY` ister (≥ 32 bayt), yoksa açılmaz. |
 
-Kalan (4e-2 ve sonrası): DraftHub, sunucu sayacı, hub mesaj limiti, lobi temizliği (30 dk) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin, `actionId` ile idempotent hamle.
+### 8.12 Uygulama: 4e-2a (canlı draft hub'ı)
+
+**Bir hamlenin yolu:** istemci `Pick("zed", actionId)` → (gateway: JWT, `hub-connect`) → API `GuestAuthenticationHandler` (token Bearer başlığından, hub yolunda başlık yoksa `access_token` sorgusundan) → `DraftHub.Pick` (metin → `ChampionId`, `Guid` → `ActionId`) → `LobbyCommands.Pick` → `ILobbyRepository.Execute` (lobi kilidi) → token'daki koltuk = lobideki koltuk mu → `Lobby.Pick(player, actionId, …)`: tekrar kontrolü, koltuk → bu maçtaki renk (`Series.SideOf`) → `DraftSession.Pick` → başarılıysa yeni durum (`LobbyView`) aynı kilidin altında üretilir → hamleyi yapana `{ok, error, message}`, gruptaki herkese `LobbyUpdated`.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Draft başlangıcı | `Domain/Lobby.Ready` | İki koltuk da hazır deyince `Series.StartDraft`; hazırlar sıfırlanır, serinin sonraki maçında yeniden "hazır" denir (karar 2026-11-10). Lobi dolmadan `lobby_not_full`, maç sürerken `game_in_progress`. |
+| Yetki ve renk | `Domain/Lobby` | Hamle oyuncu kimliğiyle gelir; lobide değilse `not_in_lobby`. Token renk taşımaz: koltuk her maç seriden renge çevrilir. |
+| Tekrar koruması | `Domain/Lobby.Once`, `ActionId` | Aynı oyuncu + aynı `actionId` → ilk sonuç (başarılı ya da hatalı) aynen döner, hamle tekrarlanmaz. Lobi başına son 64 kimlik. Lobide olmayanın kimliği saklanmaz. Boş Guid `invalid_action_id`. |
+| Kimlik doğrulama | `Api/Auth/GuestAuthenticationHandler.cs` | Doğrulamanın tek gerçeği `IGuestTokenService`; handler sadece token'ı bulur. REST GET de aynı handler'ı kullanır (`RequireAuthorization`). Hub `[Authorize]`: token yoksa negotiate 401. Token geçerli ama oyuncu lobide değilse `OnConnectedAsync` bağlantıyı kapatır. |
+| Yayın | `Api/Hubs/DraftHub.cs` | Her lobi bir SignalR grubu (`lobby:{kod}`). Bağlanan önce güncel durumu alır. Başarısız hamle yayınlanmaz, sadece yapana hata döner. |
+| Geri sayım | `LobbyStateDto.serverNow` + `draft.deadline` | Saniyelik mesaj yok: kalan = deadline − serverNow, istemci kendi saatiyle çizer (saat farkını serverNow'dan düzeltir). Süre dolunca karar sunucunun (4e-2b sayaç servisi). |
+| JSON sözleşmesi | `Api/Lobbies/LobbyDtos.cs` | Domain tipleri doğrudan serileştirilmez; adlar elle çevrilir: faz `ban1…completed`, taraf `blue/red`, adım `ban/pick`, koltuk `A/B`, yuvalar `top, jungle, mid, bot, support`. |
+| SignalR sınırları | `Api/Program.cs` | Mesaj ≤ 4 KB, canlılık 15 sn, istemci zaman aşımı 30 sn (§8.6). |
+
+Testler: Domain (hazır, renk çevirisi, tekrar), Api (gerçek SignalR istemcisi, long polling: bağlanma, yayın, sıra dışı hamle, tekrar, geçersiz şampiyon, token'sız/bozuk token), Gateway (hub YARP üzerinden uçtan uca; token'sız hub isteği API'ye ulaşmaz).
+
+Kalan (4e-2b, 4e-2c): sunucu sayacı (`DraftSession.Timeout`), hub mesaj limiti (`IHubFilter`), bağlantı takibi + hükmen galibiyet (2 dk), lobi temizliği (30 dk) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` sonraki adımda.
 
 ---
 

@@ -45,6 +45,11 @@ internal sealed class GatewayPipeline : IDisposable
 
     public HttpClient CreateClient() => _gateway.CreateClient();
 
+    /// <summary>Gateway'in adresi ve handler'ı: HttpClient dışındaki istemciler (SignalR) için.</summary>
+    public Uri BaseAddress => _gateway.Server.BaseAddress;
+
+    public HttpMessageHandler CreateHandler() => _gateway.Server.CreateHandler();
+
     /// <summary>API'nin üreteceği misafir token'ının aynısı (§8.4): sub, lobby, seat; HS256.</summary>
     public static string Token(
         string key = SigningKey, TimeSpan? expiresIn = null, bool withLobby = true, string issuer = "lol-draft",

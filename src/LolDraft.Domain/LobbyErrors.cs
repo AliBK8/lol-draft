@@ -9,4 +9,6 @@ public static class LobbyErrors
     public static readonly Error Full = new("lobby_full", "Lobi dolu.");
     public static readonly Error AlreadyInLobby = new("already_in_lobby", "Oyuncu zaten bu lobide.");
     public static readonly Error NotInLobby = new("not_in_lobby", "Oyuncu bu lobide değil.");
+    public static readonly Error NotFull = new("lobby_not_full", "Rakip henüz katılmadı.");
+    public static readonly Error InvalidActionId = new("invalid_action_id", "Geçersiz hamle kimliği.");
 }
