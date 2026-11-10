@@ -201,6 +201,44 @@ public sealed class LobbyTests
         Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(guest, action, Id("c01"), T0).Error);
     }
 
+    // --- Lobi saati ---
+
+    [Fact]
+    public void Saat_draft_yokken_bir_sey_yapmaz()
+    {
+        var (lobby, _, _) = FullLobby();
+
+        Assert.False(lobby.Advance(T0 + TimeSpan.FromHours(1), new FixedRandom(0)));
+    }
+
+    [Fact]
+    public void Saat_sure_dolmadan_bir_sey_yapmaz()
+    {
+        var (lobby, _, _) = StartedDraft();
+
+        Assert.False(lobby.Advance(T0 + TimeSpan.FromSeconds(29), new FixedRandom(0)));
+        Assert.Empty(lobby.Series.CurrentDraft!.Actions);
+    }
+
+    [Fact]
+    public void Saat_suresi_dolan_adimi_zaman_asimiyla_oynar()
+    {
+        var (lobby, host, _) = StartedDraft();
+        var expired = T0 + TimeSpan.FromSeconds(30);
+
+        Assert.True(lobby.Advance(expired, new FixedRandom(0)));
+
+        var draft = lobby.Series.CurrentDraft!;
+        var action = Assert.Single(draft.Actions);
+        Assert.True(action.ByTimeout);
+        Assert.Null(action.Champion);   // ban adımı → boş ban
+        Assert.Equal(Side.Red, draft.Turn);
+        Assert.Equal(expired + TimeSpan.FromSeconds(30), draft.Deadline);
+
+        // Süre dolduktan sonra gelen hamle reddedilir: saatle yarışan hamle iki kez sayılmaz.
+        Assert.Equal(DraftErrors.NotYourTurn, lobby.Ban(host, NewAction(), Id("c01"), expired).Error);
+    }
+
     private static (Lobby Lobby, PlayerId Host, PlayerId Guest) FullLobby(TeamSlot firstBlue = TeamSlot.A)
     {
         var host = Player(1);

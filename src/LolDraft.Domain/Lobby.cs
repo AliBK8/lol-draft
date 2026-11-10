@@ -113,6 +113,23 @@ public sealed class Lobby
     public Result LockLineup(PlayerId player, ActionId action, Instant now) =>
         OnDraft(player, action, (draft, side) => draft.LockLineup(side, now));
 
+    /// <summary>
+    /// Lobi saatinin tiki (sunucunun arka plan döngüsü çağırır): zamana bağlı ne varsa yürütür.
+    /// Şimdilik: draft adımının süresi dolduysa zaman aşımı (boş ban / rastgele pick / swap biter).
+    /// Hamleyle yarışmaz: ikisi de lobinin kilidinden geçer; süre dolduktan sonra gelen hamleyi
+    /// <see cref="DraftSession"/> zaten reddeder (turn_expired), süre dolmadan zaman aşımı olmaz.
+    /// </summary>
+    /// <returns>Durum değişti mi (değiştiyse yeni durum yayınlanır).</returns>
+    public bool Advance(Instant now, IDraftRandom random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+
+        if (Series.CurrentDraft is { Deadline: { } deadline } draft && now >= deadline)
+            return draft.Timeout(now, random).IsSuccess;
+
+        return false;
+    }
+
     // Koltuk → bu maçtaki renk. Token renk taşımaz; renk her maç seriden okunur.
     private Result OnDraft(PlayerId player, ActionId action, Func<DraftSession, Side, Result> act) =>
         Once(player, action, seat => Series.CurrentDraft is { } draft

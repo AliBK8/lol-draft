@@ -47,7 +47,9 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 7. ~~4e-1: Lobi uç noktaları + misafir JWT (Domain: `Lobby`, `LobbyCode`, `PlayerId`; Application: `CreateLobby`/`JoinLobby`/`GetLobby` + portlar; Infrastructure: `GuestTokenService`, bellekte lobi deposu, gömülü şampiyon listesi)~~ (bitti, DESIGN.md §8.11). Kararlar (2026-11-10): aktif lobiler bellekte (`ILobbyRepository` arkasında, lobi başına kilit); rejoin ertelendi; açan A koltuğuna oturur. API artık `JWT_SIGNING_KEY` ister (gateway ile aynı değer).
 8. 4e-2: DraftHub (SignalR). Kararlar (2026-11-10): draft iki oyuncu `Ready` deyince başlar (seride her maç); saniyelik `TimerTick` yok, durumda `deadline` + `serverNow`; seri başladıktan sonra 2 dk kesintisiz bağlı olmayan oyuncu seriyi hükmen kaybeder.
    - ~~4e-2a: hub, hamleler (Ready/Ban/Pick/SwapRoles/LockLineup) lobi kilidi altında, `actionId` tekrar koruması, `LobbyUpdated` DTO'su, API'de `GuestAuthenticationHandler`~~ (bitti, DESIGN.md §8.12).
-   - **← KALDIĞIMIZ YER (2026-11-10).** 4e-2b: sunucu sayacı (`BackgroundService` → `DraftSession.Timeout`, sonucu yayınla), `IHubFilter` mesaj limiti (sn'de 5, dk'da 60).
-   - 4e-2c: bağlantı takibi + hükmen galibiyet (2 dk), lobi temizliği (30 dk) + IP başına 3 lobi.
-   - Simülasyon bağlanırken: rol dışı cezası −%25 (DESIGN.md §16.8 sonu; `ChampionProfile.Roles`, karne satırı, denge aracına rol dışı oranı).
-9. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket
+   - ~~4e-2b: lobi saati (`LobbyClockService` → `Lobby.Advance` → `DraftSession.Timeout`), `RateLimitHubFilter` (sn'de 5, dk'da 60; dk'da 10 ihtar → bağlantı kapanır)~~ (bitti, DESIGN.md §8.13).
+   - **← KALDIĞIMIZ YER (2026-11-11).** 4e-2c: bağlantı takibi (koltuk başına bağlantı sayısı, birden fazla sekme) + hükmen galibiyet (seri başladıktan sonra 2 dk; `Series.Forfeit`, bitiş sebebi), iki oyuncu birden yoksa kimse kazanmaz ve lobi 5 dk sonra kapanır (karar 2026-11-11), lobi temizliği (30 dk hareketsiz, `LobbyClosed`), IP başına 3 lobi (`X-Forwarded-For`, depoda atomik `TryAdd`, 429 `too_many_lobbies`). Hepsi lobi saatine bağlanır (`Lobby.Advance`).
+9. 4f: Simülasyon bağlantısı: `DraftResult` → `TeamDraft` (katalogdan profil, rol dışı cezası), seed, motor, `RecordGame`, `MatchReady`.
+   - Rol dışı cezası −%25 (DESIGN.md §16.8 sonu; `ChampionProfile.Roles`, karne satırı, denge aracına rol dışı oranı).
+10. 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). 6: Docker + CI.
+11. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

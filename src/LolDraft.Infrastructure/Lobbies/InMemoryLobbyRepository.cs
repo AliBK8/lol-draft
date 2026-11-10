@@ -21,6 +21,8 @@ internal sealed class InMemoryLobbyRepository : ILobbyRepository
         return Task.CompletedTask;
     }
 
+    public IReadOnlyCollection<LobbyCode> Codes() => [.. _lobbies.Keys];
+
     public Task<Result<T>> Execute<T>(LobbyCode code, Func<Lobby, Result<T>> action, CancellationToken ct)
     {
         if (!_lobbies.TryGetValue(code, out var lobby))

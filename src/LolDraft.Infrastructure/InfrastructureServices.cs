@@ -17,6 +17,7 @@ public static class InfrastructureServices
         // Hepsi singleton: lobi deposu uygulama boyunca tek olmalı, diğerleri durumsuz.
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<ISecureRandom, CryptoRandom>();
+        services.AddSingleton<IDraftRandom, CryptoDraftRandom>();
         services.AddSingleton<IChampionCatalog, EmbeddedChampionCatalog>();
         services.AddSingleton<ILobbyRepository, InMemoryLobbyRepository>();
         services.AddSingleton<IGuestTokenService>(provider =>
@@ -33,5 +34,11 @@ public static class InfrastructureServices
     private sealed class CryptoRandom : ISecureRandom
     {
         public byte[] Bytes(int count) => RandomNumberGenerator.GetBytes(count);
+    }
+
+    // Zaman aşımındaki rastgele pick: tahmin edilemez olmalı (yoksa oyuncu "süreyi bitirirsem X gelir" diye oynar).
+    private sealed class CryptoDraftRandom : IDraftRandom
+    {
+        public int Next(int maxExclusive) => RandomNumberGenerator.GetInt32(maxExclusive);
     }
 }

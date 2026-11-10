@@ -10,6 +10,9 @@ public interface ILobbyRepository
 {
     Task Add(Lobby lobby, CancellationToken ct);
 
+    /// <summary>Şu an açık lobilerin kodları (anlık kopya; lobi saati bunları sırayla ilerletir).</summary>
+    IReadOnlyCollection<LobbyCode> Codes();
+
     /// <summary>
     /// Lobiyi bulur ve işlemi o lobinin kilidi altında çalıştırır: aynı lobiye aynı anda gelen iki istek
     /// sırayla işlenir (ör. iki kişi aynı boş koltuğa oturamaz). Lobi yoksa <see cref="LobbyErrors.NotFound"/>.

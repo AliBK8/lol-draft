@@ -616,7 +616,25 @@ Rastgele değer: `openssl rand -base64 48`. JWT anahtarı iki uygulamada aynı: 
 
 Testler: Domain (hazır, renk çevirisi, tekrar), Api (gerçek SignalR istemcisi, long polling: bağlanma, yayın, sıra dışı hamle, tekrar, geçersiz şampiyon, token'sız/bozuk token), Gateway (hub YARP üzerinden uçtan uca; token'sız hub isteği API'ye ulaşmaz).
 
-Kalan (4e-2b, 4e-2c): sunucu sayacı (`DraftSession.Timeout`), hub mesaj limiti (`IHubFilter`), bağlantı takibi + hükmen galibiyet (2 dk), lobi temizliği (30 dk) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` sonraki adımda.
+### 8.13 Uygulama: 4e-2b (lobi saati + hub mesaj limiti)
+
+**Lobi saati:** tek arka plan döngüsü, zamana bağlı her şey buradan (sayaç; 4e-2c'de hükmen galibiyet ve temizlik de). `LobbyClockService` (`PeriodicTimer`, 250 ms) → `AdvanceLobbies` → her lobi kendi kilidi altında `Lobby.Advance(now, random)` → durumu değişenler gruba `LobbyUpdated`.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Karar Domain'de | `Domain/Lobby.Advance` | Adımın süresi dolduysa `DraftSession.Timeout` (boş ban / rastgele uygun pick / swap biter). Servis sadece zamanlar ve yayınlar. |
+| Hamleyle yarış | aynı | İkisi de lobi kilidinden geçer. Süre dolduktan sonra gelen hamle `turn_expired` (ya da sıra çoktan geçmiş), süre dolmadan zaman aşımı olmaz: aynı adım iki kez oynanamaz. |
+| Gecikme | `Api/Background/LobbyClockService.cs` | Süre dolduktan en geç ~250 ms sonra uygulanır. Tikteki hata loglanır, döngü durmaz (durursa hiçbir draft'ın süresi dolmaz). |
+| Rastgele pick | `Infrastructure/InfrastructureServices.cs` | `IDraftRandom` = `RandomNumberGenerator.GetInt32`: tahmin edilemez (yoksa "süreyi bitirirsem X gelir" diye oynanırdı). |
+| Ölçek | `Application/Lobbies/AdvanceLobbies.cs` | Her tikte bütün lobiler gezilir (`ILobbyRepository.Codes()`); yüzlerce lobi milisaniyeler. Binlerce olursa bitiş anına göre sıralı kuyruk. |
+| Test | `LobbyClockTests` | `IClock` elle ilerletilir ("31 sn geçti"), döngü gerçek. Test saati gerçek "şimdi"den başlar: token o saatle imzalanır, doğrulama sistem saatine bakar. |
+
+**Hub mesaj limiti** (`Api/Hubs/RateLimitHubFilter.cs`, `IHubFilter`): bağlantı başına saniyede 5, dakikada 60. Aşan mesaj hub metoduna hiç ulaşmaz, yapana `rate_limited` döner. Her ret bir ihtar; dakikada 10 ihtar → bağlantı kapatılır (karar 2026-11-10).
+- Sayaç `SlidingWindow` (kayan pencere, olay zamanları kuyrukta): .NET'in hazır sınırlayıcıları otomatik yenileme için bağlantı başına zamanlayıcı açar, bu açmaz. Zaman `TimeProvider`'dan: test elle ilerletir.
+- Sayaçlar bağlantının `Items`'ında yaşar, bağlantıyla birlikte gider. Kilit yok: SignalR bir bağlantının çağrılarını sırayla işler.
+- Önce saniye, sonra dakika: saniyeye takılan mesaj dakika bütçesini harcamaz; reddedilen deneme pencereye yazılmaz (ısrar pencereyi uzatmaz).
+
+Kalan (4e-2c): bağlantı takibi + hükmen galibiyet (2 dk; iki oyuncu birden yoksa kimse kazanmaz, lobi 5 dk sonra kapanır, karar 2026-11-11), lobi temizliği (30 dk hareketsiz) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` 4f'de.
 
 ---
 

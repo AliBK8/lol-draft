@@ -1,12 +1,14 @@
 // Oyun API'si (DESIGN.md §8.1): sadece iç ağda; dışarıdan her istek gateway'den geçer.
 using LolDraft.Api;
 using LolDraft.Api.Auth;
+using LolDraft.Api.Background;
 using LolDraft.Api.Hubs;
 using LolDraft.Api.Lobbies;
 using LolDraft.Api.Middleware;
 using LolDraft.Application.Lobbies;
 using LolDraft.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +22,11 @@ builder.Services.AddSingleton<CreateLobby>();
 builder.Services.AddSingleton<JoinLobby>();
 builder.Services.AddSingleton<GetLobby>();
 builder.Services.AddSingleton<LobbyCommands>();
+builder.Services.AddSingleton<AdvanceLobbies>();
+
+// Lobi saati: draft adımlarının süresini sunucu tutar (istemcinin saati kullanılmaz).
+builder.Services.AddHostedService<LobbyClockService>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Misafir token'ı: doğrulamanın tek gerçeği GuestTokenService, handler token'ı istekten bulur.
 builder.Services.AddAuthentication(GuestAuthenticationHandler.SchemeName)
@@ -33,7 +40,10 @@ builder.Services.AddSignalR(hub =>
     hub.MaximumReceiveMessageSize = 4 * 1024;
     hub.KeepAliveInterval = TimeSpan.FromSeconds(15);
     hub.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+    // Mesaj limiti (§8.5): bağlantı başına saniyede 5, dakikada 60.
+    hub.AddFilter<RateLimitHubFilter>();
 });
+builder.Services.AddSingleton<RateLimitHubFilter>();
 
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
