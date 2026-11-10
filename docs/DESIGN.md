@@ -29,13 +29,15 @@ Temel ilkeler:
 | Hareket | Şimdilik senaryo kuralları (v2 prototip). Hedef: gerçek maç timeline'larından bölge geçiş olasılıkları (Markov tablosu). ML yok. | ML gereksiz; dakikalık konum verisiyle Markov yeterli ve basit. |
 | Stack | ASP.NET Core + SignalR (tek API uygulaması) önünde YARP gateway, React + TypeScript, SQLite ile başla. Veri hattı Python. | Gateway; tek giriş noktası, rate limiting, TLS ve auth için sonradan eklendi. Mikroservis, Redis, Hangfire MVP için gereksiz. Node/TS alternatifi değerlendirildi; motor paylaşımına gerek olmadığı ve Monte Carlo ağır olduğu için .NET. |
 | Güvenlik | Sunucu otoriter, kayıtsız misafir JWT, iki katmanlı rate limiting (gateway + hub), katmanlı mimari ve sıkı kapsülleme. | §8 |
+| Seri: taraf ve fearless | Takım kimliği sabit koltuk (`TeamSlot` A/B), renk maçlık: ilk mavi rastgele, sonra renkler her maç değişir. Fearless tek tür: seçilen şampiyon iki takıma da kilitlenir. Fearless + bo5 havuz yetene kadar kapalı (40'lık havuza sığmıyor). (2026-11-10) | Reddedildi: "kaybeden taraf seçer" (ek bir seçim ekranı, otomatik değişim daha basit). Reddedildi: Host/Guest koltuk adı (2v2 ve turnuva modunda anlamsız). Reddedildi: soft fearless. |
+| Rol dışı oynama | Serbest ama cezalı: rolü dışındaki yuvada şampiyonun gücü −%25 (ölçülüp ayarlanacak), karnede görünür (§16.8). (2026-11-10) | Reddedildi: swap'ta yasak (fearless 3. maçta uygun şampiyon kalmayabilir). Reddedildi: cezasız bırakmak (motor rolü bilmiyor, istismar açılır). |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
 ---
 
 ## 2. Oyun akışı
 
-1. **Lobi.** Mod (1v1, ileride 2v2), seri (bo1/bo3/bo5), draft kuralı (normal, soft fearless, full fearless), şampiyon havuzu. Arkadaş link ile davet edilir, kayıt yok.
+1. **Lobi.** Mod (1v1, ileride 2v2), seri (bo1/bo3/bo5), draft kuralı (normal, fearless), şampiyon havuzu. Arkadaş link ile davet edilir, kayıt yok.
 2. **Draft.** Turnuva sırası, her adım 30 sn:
    - Ban fazı 1: M1 K1 M2 K2 M3 K3
    - Pick fazı 1: M1 · K1 K2 · M2 M3 · K3
@@ -46,12 +48,12 @@ Temel ilkeler:
 3. **(İleride) Koç direktifi.** Draft bitince 20 sn içinde maç planı seçilir (§4.10). Güç vermez, olayların dağılımını değiştirir.
 4. **Simülasyon.** Sunucu maçı seed ile hesaplar, olay listesini gönderir; istemci 1 dk oyun = 3 sn hızında oynatır (2x, 4x, sona atla).
 5. **Maç sonu.** Kazanan, bitiş türü, son savaşın ihtimali, puan dökümü. (İleride: draft kalitesi Monte Carlo, paylaşım kartı.)
-6. **Seri.** Seri devam ediyorsa fearless kilitleri uygulanır; kaybeden taraf seçer.
+6. **Seri.** İlk maçta mavi taraf rastgele belirlenir, sonraki her maçta renkler değişir. Skor renge değil takıma yazılır. Seri devam ediyorsa fearless kilitleri uygulanır.
 
 **Fearless:**
-- **Full:** Seride seçilen şampiyon iki takım için de kilitlenir.
-- **Soft:** Sadece seçen takım için kilitlenir (bir şampiyon seride en fazla iki kez, her takımda bir).
+- Seride seçilen şampiyon iki takım için de kilitlenir (soft fearless yok).
 - Banlar sonraki maça taşınmaz.
+- Havuz serinin en uzun hâline yetmeli: 40'lık havuzda bo1 ve bo3 açık, bo5 kapalı (§8.3).
 
 **2v2 (ileride):** Takımda iki kişi: biri top/jg/mid, diğeri adc/sup draft eder; sıra takım arkadaşları arasında döner.
 
@@ -410,17 +412,33 @@ Dışarıdan `Phase` ya da `Turn` set edilemez; geçersiz hamle `Result.Fail` d�
 - Domain Engine'i bilmez (§8.2): draft bitince `DraftResult` (taraf → 5 yuvalık `TeamLineup` + hamleler) üretir; Application bunu `IChampionCatalog` ile motorun `TeamDraft`'ına çevirir. Domain'in kendi `Side`'ı var.
 - Sadece açık draft (gizli/eşzamanlı seçim yok; karar 2026-11-04).
 - Swap: 20. adımdan sonra her takımın pick'leri pick sırasıyla yuvalara dizilir (1. pick top … 5. pick support). Takım istediği kadar iki yuvayı yer değiştirir (arayüzde top pick'ine, sonra adc yuvasına tıklamak), sonra kilitler. İkisi de kilitleyince ya da süre dolunca o anki dizilimle biter.
-- Zaman aşımı: ban → boş ban; pick → o taraf için uygun (havuz − ban − seçilen − fearless kilidi) şampiyonlar id sırasıyla dizilir, zar birini seçer.
-- Fearless kilidi pick'i engeller; ban'ı sadece iki tarafa da kilitliyse (kimsenin seçemeyeceği şampiyonu ban'lamak anlamsız).
-- Havuz kuralı: kilitler düşüldükten sonra her tarafa ≥ 20 şampiyon (10 ban + 10 pick) kalmalı, yoksa `pool_too_small`. 40'lık havuzda full fearless bo3 tam sığar, bo5 sığmaz (5. maç 40 kilit); soft fearless bo5 sığar.
+- Zaman aşımı: ban → boş ban; pick → uygun (havuz − ban − seçilen − fearless kilidi) şampiyonlar id sırasıyla dizilir, zar birini seçer.
+- Fearless kilidi (`FearlessLocks`, tek ortak liste) hem pick'i hem ban'ı engeller (kimsenin seçemeyeceği şampiyonu ban'lamak anlamsız).
+- Havuz kuralı: kilitler düşüldükten sonra ≥ 20 şampiyon (10 ban + 10 pick) kalmalı, yoksa `pool_too_small`.
+
+**Seri (`Series`, 4d):**
+- Kimlik `TeamSlot` (A/B), seri boyunca sabit; renk (`Side`) maçlık. İlk mavi dışarıdan gelir (sunucu CSPRNG), sonra her maç değişir: `BlueTeam`, `SideOf(team)`, `TeamOn(side)`.
+- Akış: `StartDraft(timings, now)` → draft oynanır → simülasyon → `RecordGame(kazanan renk)`. Seri kazanan rengi o maçta o renkteki takıma çevirir, skoru takıma yazar. Bitiş: bo1 → 1, bo3 → 2, bo5 → 3 galibiyet.
+- Seri o anki draft'ın sahibidir (`CurrentDraft`): maç sürerken ikinci draft başlamaz (`game_in_progress`), draft bitmeden sonuç yazılmaz (`draft_not_completed`), biten seride ikisi de `series_finished`. Aynı maç iki kez yazılamaz.
+- Fearless kilitleri: biten maçların bütün pick'leri (maç başına 10); ban'lar taşınmaz.
+- Havuz kontrolü seri başlarken, en uzun hâle göre: `havuz − (maç sayısı − 1) × 10 ≥ 20`. 40'lık havuz: fearless bo3 tam sığar (3. maçta 20 kilit, 20 kalır), fearless bo5 sığmaz (4. maçta 30 kilit, 10 kalır) → `pool_too_small`. Kural havuz boyutundan hesaplandığı için havuz 60'a çıkınca bo5 kendiliğinden açılır.
 
 **Application portları:**
 ```csharp
-public interface ILobbyRepository { Task<Lobby?> Get(LobbyCode code, CancellationToken ct); Task Save(Lobby lobby, CancellationToken ct); }
-public interface IMatchRepository { Task Save(MatchRecord record, CancellationToken ct); Task<MatchRecord?> Get(MatchId id, CancellationToken ct); }
-public interface IChampionCatalog { bool Exists(ChampionId id); ChampionData Get(ChampionId id); }
-public interface ISeedGenerator { Seed Next(); }   // CSPRNG
+// Yazıldı (4e-1, Application/Ports.cs):
+public interface ILobbyRepository      // lobi başına kilit: işlem kilidin altında koşar, canlı Lobby dışarı çıkmaz
+{
+    Task Add(Lobby lobby, CancellationToken ct);
+    Task<Result<T>> Execute<T>(LobbyCode code, Func<Lobby, Result<T>> action, CancellationToken ct);
+}
+public interface IGuestTokenService { string Issue(GuestIdentity identity); Task<GuestIdentity?> Read(string token); }
+public interface ISecureRandom { byte[] Bytes(int count); }   // CSPRNG: lobi kodu, oyuncu kimliği, yazı tura
 public interface IClock { Instant Now { get; } }
+public interface IChampionCatalog { IReadOnlyCollection<ChampionId> All { get; } }   // profil verisi simülasyon adımında
+
+// Sırada (simülasyon adımı):
+public interface IMatchRepository { Task Save(MatchRecord record, CancellationToken ct); Task<MatchRecord?> Get(MatchId id, CancellationToken ct); }
+public interface ISeedGenerator { Seed Next(); }   // CSPRNG
 ```
 
 ### 8.4 Kimlik ve yetki (kayıtsız)
@@ -430,8 +448,8 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 1. **Lobi oluşturma:** `POST /api/lobbies` → sunucu `LobbyCode` (128 bit rastgele, URL-güvenli) ve oluşturana bir **misafir JWT'si** üretir.
 2. **Davet linki:** `/l/{LobbyCode}`. Kod tahmin edilemez; boş koltuk bir kez alınır.
 3. **Katılma:** `POST /api/lobbies/{code}/join` → ikinci oyuncuya JWT.
-4. **JWT içeriği:** `sub` (PlayerId), `lobby` (LobbyCode), `seat` (Blue/Red), `exp` (2 saat). HMAC-SHA256 ile imzalanır, anahtar ortam değişkeninde.
-5. **Yeniden bağlanma:** JWT ile birlikte uzun ömürlü olmayan bir `rejoinToken` (tek kullanımlık, lobi ömrü kadar) verilir. Sayfa yenilenirse koltuk geri alınır.
+4. **JWT içeriği:** `sub` (PlayerId), `lobby` (LobbyCode), `seat` (takım koltuğu A/B; renk değil, renk her maç seriden gelir), `exp` (2 saat). HMAC-SHA256 ile imzalanır, anahtar ortam değişkeninde.
+5. **Yeniden bağlanma (ertelendi, karar 2026-11-10):** JWT 2 saat geçerli; istemci saklarsa sayfa yenileme çalışır. Token kaybolursa koltuğu geri almak için ileride: JWT ile birlikte uzun ömürlü olmayan bir `rejoinToken` (tek kullanımlık, lobi ömrü kadar) verilir. Sayfa yenilenirse koltuk geri alınır.
 6. **Doğrulama:** Gateway JWT imzasını ve süresini kontrol eder; geçersizse isteği API'ye hiç iletmez. API ayrıca **yetkiyi** kontrol eder: oyuncu bu lobide mi, bu koltukta mı, sıra onda mı. Yetki kontrolü domain'in işidir, gateway'in değil.
 7. SignalR bağlantısında token `access_token` sorgu parametresiyle gelir (WebSocket başlık gönderemez); gateway ve hub bu parametreyi okur. Bu parametre loglara yazılmaz.
 
@@ -501,7 +519,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 |---|---|---|---|
 | POST | `/api/lobbies` | yok | Lobi oluştur, JWT + davet kodu döner |
 | POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
-| POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al |
+| POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
 | GET | `/api/lobbies/{code}` | JWT (lobide) | Lobi ve draft durumu |
 | GET | `/api/matches/{id}` | JWT ya da paylaşım linki | Olay listesi (tekrar izleme) |
 | WS | `/hubs/draft` | JWT | `Ban`, `Pick`, `Swap`, `Ready` → `DraftUpdated`, `TimerTick`, `MatchReady`, `RateLimited` |
@@ -557,10 +575,31 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 dotnet user-secrets set GATEWAY_SECRET "<en az 32 rastgele karakter>" --project src/LolDraft.Api
 dotnet user-secrets set GATEWAY_SECRET "<aynı değer>"                  --project src/LolDraft.Gateway
 dotnet user-secrets set JWT_SIGNING_KEY "<en az 32 rastgele karakter>" --project src/LolDraft.Gateway
+dotnet user-secrets set JWT_SIGNING_KEY "<aynı değer>"                 --project src/LolDraft.Api
 dotnet run --project src/LolDraft.Api       # http://localhost:5100 (iç)
 dotnet run --project src/LolDraft.Gateway   # https://localhost:5001, http://localhost:5000 (dış)
 ```
-Rastgele değer: `openssl rand -base64 48`. JWT anahtarı lobi adımında API'ye de verilecek (token'ı API üretir).
+Rastgele değer: `openssl rand -base64 48`. JWT anahtarı iki uygulamada aynı: API imzalar, gateway doğrular.
+
+### 8.11 Uygulama: 4e-1 (lobi + misafir token)
+
+**Lobi açmanın yolu:** `POST /api/lobbies {format, fearless}` → gateway (`lobby-create` limiti) → `LobbyEndpoints.Create` (format metni → `SeriesFormat`) → `CreateLobby`: CSPRNG'den kod (16 bayt), oyuncu kimliği (16 bayt) ve yazı tura (ilk mavi) → `Lobby.Create` (seri ayarı havuza sığıyor mu) → depoya ekle → token üret → `{code, seat: "A", token}`.
+
+**Katılmanın yolu:** `POST /api/lobbies/{code}/join` → `JoinLobby`: yeni oyuncu kimliği → `ILobbyRepository.Execute(code, lobby => lobby.Join(player))` (lobinin kilidi altında) → koltuk alındıysa token → `{code, seat: "B", token}`.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Lobi kuralları | `Domain/Lobby.cs` | Açan A'ya, katılan B'ye oturur; boş koltuk bir kez alınır (`lobby_full`). Lobi serinin sahibi; seri ayarı lobi açılırken doğrulanır (rakip davet edildikten sonra değil). |
+| Kod ve kimlik | `Domain/LobbyCode.cs`, `PlayerId.cs` | 128 bit, base64url, 22 karakter. Rastgele baytlar dışarıdan gelir (Domain saf); istemciden gelen değer katı biçimden geçer. |
+| Aktif lobiler bellekte | `Infrastructure/Lobbies/InMemoryLobbyRepository.cs` | Canlı draft her hamlede değişir, diske yazmak gereksiz. Bedeli: yeniden başlatmada açık lobiler düşer, tek API kopyası. Port async ve kilit portun içinde: kalıcı depoya geçiş sadece bu sınıfı değiştirir. |
+| Eşzamanlılık | aynı | `Execute` işlemi lobi başına `lock` altında koşturur; `Lobby` eşzamanlılık bilmez. Aynı anda 10 katılmadan biri oturur (test). Canlı `Lobby` dışarı verilmez, okuma da kilit altında kopya (`LobbyView`) üretir. |
+| Token | `Infrastructure/Auth/GuestTokenService.cs` | Üretir ve doğrular. Doğrulama gateway'le aynı kurallar (sadece HS256, yayıncı, hedef, süre, 30 sn tolerans). Claim'ler değer nesnelerinden geçer; `seat` sadece tam "A"/"B". |
+| API de doğrular | `Api/Lobbies/LobbyEndpoints.cs` | Gateway imzayı doğrulayıp geçirir; API claim'leri imzasız okumaz, kendisi de doğrular. Sonra yetki: token'daki lobi = yoldaki lobi ve oyuncu o koltukta oturuyor mu (`not_in_lobby`, 403). |
+| Hata → HTTP | aynı | `unauthorized` 401, `not_in_lobby` 403, `lobby_not_found` 404 (biçimi bozuk kod da), `lobby_full` 409, diğerleri (`pool_too_small`, `invalid_format`) 400. Gövde: `{error, message}`. |
+| Şampiyon listesi | `Infrastructure/Champions/EmbeddedChampionCatalog.cs` | `tools/LolDraft.Balance/champions.json` derlemeye gömülür (tek kaynak); şimdilik sadece kimlikler. |
+| Kayıt | `Infrastructure/InfrastructureServices.cs` | `AddInfrastructure(jwtSigningKey)` tek public kapı; gerçekler `internal sealed`. API açılışta `JWT_SIGNING_KEY` ister (≥ 32 bayt), yoksa açılmaz. |
+
+Kalan (4e-2 ve sonrası): DraftHub, sunucu sayacı, hub mesaj limiti, lobi temizliği (30 dk) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin, `actionId` ile idempotent hamle.
 
 ---
 
@@ -617,8 +656,8 @@ dotnet run --project tools/LolDraft.Balance -c Release -- --drafts 10000 --seed 
 
 ## 10. Yol haritası
 
-- **v0.1 (MVP, ~5-7 hafta):** 40 elle etiketli şampiyon, 1v1 link daveti, bo1/bo3, full fearless, turnuva draft sırası + sunucu sayacı, C# motoru (bu dokümandaki kurallar), harita oynatıcı + log, maç sonu dökümü. Gateway (YARP) + rate limiting + misafir JWT + güvenlik başlıkları + docker-compose dağıtımı.
-- **v0.2:** Veri hattı + Markov hareket tablosu + kill ısı haritası, soft fearless, bo5, koç direktifleri, draft kalitesi (Monte Carlo).
+- **v0.1 (MVP, ~5-7 hafta):** 40 elle etiketli şampiyon, 1v1 link daveti, bo1/bo3, fearless, turnuva draft sırası + sunucu sayacı, C# motoru (bu dokümandaki kurallar), harita oynatıcı + log, maç sonu dökümü. Gateway (YARP) + rate limiting + misafir JWT + güvenlik başlıkları + docker-compose dağıtımı.
+- **v0.2:** Veri hattı + Markov hareket tablosu + kill ısı haritası, bo5 (fearless bo5 havuz büyüyünce), koç direktifleri, draft kalitesi (Monte Carlo).
 - **v0.3:** 2v2, turnuva modu (4/8 kişi), paylaşım kartı + tekrar linki.
 
 **Hemen sıradaki işler:**
@@ -900,6 +939,12 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
    - Vermezse: objektif **4v5**; splitter 10. sn'de kuleyi karşılıksız alır (normal kule şartları aranmaz; koridorda kule kaldıysa).
 - Savaşta olmayanlar ne güçleriyle ne etiketleriyle d'ye girer, savaş kill'lerinde ölmez. `SplitEvent` (splitter, cevap veren) log'a: "Kayle üst koridorda split yapıyor, Renekton cevap verdi". Split kulesi 10. sn'de (savaş sonrası itiş 12'de, karışmasın).
 - Örnek: Fiora (split 3), 18. dk ejder, takımı geride (5v5 %38). %60 ihtimalle split'e gider. Renekton cevap verirse ejder 4v4 (~%45), Fiora düelloyu kazanırsa kill + kule; cevap vermezse ejder 4v5 (~%25) ama kule kesin.
+
+**Rol dışı cezası (karar 2026-11-10, henüz uygulanmadı; simülasyon Application'a bağlanırken):**
+- Sorun: motor yuvayı rol sayar, şampiyonun `roles`'unu bilmez (`ChampionProfile`'da yok). `e/m/l` şampiyonun kendi rolündeki gücü; rol dışında da aynen kullanılınca istismar açılır (ör. erken gücü yüksek Leona top'ta tam farm alır, cezası yok).
+- Karar: yasak değil ceza. Swap'ta yerleştirme serbest, arayüz rol dışı yuvayı uyarır. Yasak olsa fearless bo3'ün 3. maçında (kalan 20 şampiyon) bir rol için uygun şampiyon kalmayabilir, draft kilitlenirdi.
+- Uygulama: `ChampionProfile`'a `Roles` eklenir (Application kataloktan taşır). Rolü dışındaki yuvada oynayan şampiyonun gücü **−%25** (ayar düğmesi; kullanıcı %20-30 arası düşünüyor, denge aracıyla ölçülecek). Karnede görünür: "Rol dışı: Leona top'ta (−%25)".
+- Denge aracı: `RandomDrafter` hep rolünde draft yapıyor; "rol dışı oranı" parametresi eklenip cezanın etkisi ölçülecek.
 
 ### 16.9 Yakalanma (geri dönüş kapısı)
 Çok önde olan takım bazen bir yerde yakalanır:

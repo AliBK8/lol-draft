@@ -30,6 +30,7 @@ internal sealed class GatewayPipeline : IDisposable
     {
         _api = new WebApplicationFactory<GatewayOnlyMiddleware>().WithWebHostBuilder(host => host
             .UseSetting("GATEWAY_SECRET", Secret)
+            .UseSetting("JWT_SIGNING_KEY", SigningKey)
             .ConfigureTestServices(services => services.AddSingleton<IStartupFilter>(new ProbeFilter(Probe))));
 
         var apiHandler = _api.Server.CreateHandler();

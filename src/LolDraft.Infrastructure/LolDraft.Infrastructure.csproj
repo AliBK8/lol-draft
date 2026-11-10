@@ -4,4 +4,14 @@
     <ProjectReference Include="../LolDraft.Application/LolDraft.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Oyunun şampiyon listesi tek dosyada (denge aracıyla ortak); derlemeye gömülür, sunucuda dosya yolu aranmaz. -->
+    <EmbeddedResource Include="../../tools/LolDraft.Balance/champions.json" LogicalName="champions.json" />
+  </ItemGroup>
+
 </Project>

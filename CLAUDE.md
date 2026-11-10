@@ -40,12 +40,11 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti; §14 bilinen sorunlar çözüldü (zaman çizelgesi, gank sınırı, kule = fırsat); nehir çatışması aralıklı/eşitsiz ve ejder ruhu/Elder eklendi (§4.5). Denge aracı bitti (§9).
 4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): ~~A ekonomi~~ (bitti) → B şampiyon modeli v2 + kurallar (bitti: model v2, K1-K13, karne, kural/kimlik raporu) → ~~C 40 şampiyon~~ (bitti: `tools/LolDraft.Balance/champions.json`) → D dengeleme (tur 1: K5, K6, kuşatma eşiği; tur 2: 15. dk 5.000+ önde %77 (savunma avantajı, yakalanma, s −%10); açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+; DESIGN.md §16.13 adım 13)
 5. ~~4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`~~ (bitti, DESIGN.md §8.10)
-6. **← KALDIĞIMIZ YER (2026-11-03 sonu).** 4d: Draft durum makinesi (`LolDraft.Domain`, şu an boş). Plan kullanıcıyla konuşuldu:
-   - ~~`DraftSession`: sıra tablosu, doğrulama, zaman aşımı, swap (yuva değiştir + kilitle); bitince `DraftResult` (Application `TeamDraft`'a çevirir)~~ (bitti, DESIGN.md §8.3 "Uygulama (4d)", 34 test). Kalan: seri + fearless kilitleri. Kullanıcıya açık 2 soru (2026-11-04 sonu): (a) koltuk ≠ renk: JWT'de `seat` Blue/Red yerine Host/Guest, renk her maç seriden (kaybeden seçer, soft fearless kilidi oyuncuya bağlı); (b) 40'lık havuzda full fearless bo5 sığmıyor: lobide kapatılsın mı, havuz mu büyüsün?
-   - Her hamle doğrulanır (sıra, faz, havuz, tekrar, fearless); geçersizse durum değişmez, `Result.Fail`.
-   - Zaman aşımı (boş ban / rastgele uygun pick), saat dışarıdan (`IClock`/`Instant`): test beklemeden.
-   - Seri (bo1/3/5, kaybeden taraf seçer) ve fearless (full/soft) kilitleri; ban'lar sonraki maça taşınmaz.
-   - Saf: ASP.NET, ağ, DB, BackgroundService yok (onlar lobi/hub adımında).
-   - Karar (2026-11-04): sadece açık draft; gizli/eşzamanlı seçim modu yok.
-7. 4e: Lobi uç noktaları + misafir JWT üretimi (Domain: Lobby, Application: CreateLobby/JoinLobby, Infrastructure: GuestTokenService), sonra DraftHub (SignalR, `IHubFilter` mesaj limiti, sunucu sayacı).
-8. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket
+6. ~~4d: Draft durum makinesi (`LolDraft.Domain`): `DraftSession` (sıra tablosu, doğrulama, zaman aşımı, swap) + `Series` (bo1/3/5, skor, renk değişimi, fearless kilitleri)~~ (bitti, DESIGN.md §8.3 "Uygulama (4d)" ve "Seri", 52 test). Kararlar:
+   - (2026-11-04) Sadece açık draft; gizli/eşzamanlı seçim modu yok.
+   - (2026-11-10) Soft fearless yok; fearless tek tür (iki takıma da kilit). Fearless + bo5 40'lık havuza sığmıyor, `Series.Start` reddediyor; havuz 60 olunca kendiliğinden açılır.
+   - (2026-11-10) Kimlik `TeamSlot` A/B (Host/Guest değil: 2v2/turnuva modu), JWT `seat` = A/B. İlk mavi rastgele (sunucu), sonra renkler her maç değişir; "kaybeden seçer" kaldırıldı.
+7. ~~4e-1: Lobi uç noktaları + misafir JWT (Domain: `Lobby`, `LobbyCode`, `PlayerId`; Application: `CreateLobby`/`JoinLobby`/`GetLobby` + portlar; Infrastructure: `GuestTokenService`, bellekte lobi deposu, gömülü şampiyon listesi)~~ (bitti, DESIGN.md §8.11). Kararlar (2026-11-10): aktif lobiler bellekte (`ILobbyRepository` arkasında, lobi başına kilit); rejoin ertelendi; açan A koltuğuna oturur. API artık `JWT_SIGNING_KEY` ister (gateway ile aynı değer).
+8. **← KALDIĞIMIZ YER (2026-11-10).** 4e-2: DraftHub (SignalR): hamleler (`Ban`, `Pick`, `Swap`, `Ready`) lobi kilidi altında, sunucu sayacı (`BackgroundService` → `DraftSession.Timeout`), `IHubFilter` mesaj limiti, lobi temizliği (30 dk) + IP başına 3 lobi, draft durum DTO'su. Ayrıca (karar 2026-11-10) kaçan oyuncu: bağlantı takibi, uzun süre bağlı olmayan rakibe hükmen galibiyet (süre ve ayrıntı hub tasarımında konuşulacak).
+   - Simülasyon bağlanırken: rol dışı cezası −%25 (DESIGN.md §16.8 sonu; `ChampionProfile.Roles`, karne satırı, denge aracına rol dışı oranı).
+9. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

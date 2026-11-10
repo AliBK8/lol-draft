@@ -5,7 +5,7 @@ namespace LolDraft.Gateway.Auth;
 
 /// <summary>
 /// Misafir JWT doğrulaması (DESIGN.md §8.4). Kayıt yok; lobi açan/katılan oyuncu API'den imzalı bir token alır
-/// (sub = oyuncu, lobby = lobi kodu, seat = Mavi/Kırmızı, 2 saat). Gateway sadece kimliği doğrular: imza, süre,
+/// (sub = oyuncu, lobby = lobi kodu, seat = takım koltuğu A/B, 2 saat). Gateway sadece kimliği doğrular: imza, süre,
 /// yayıncı, hedef. Yetki (bu lobide mi, sıra onda mı) API ve domain'in işi; gateway lobinin durumunu bilmez.
 /// </summary>
 internal static class GuestAuthentication

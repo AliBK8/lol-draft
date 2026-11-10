@@ -8,8 +8,8 @@ namespace LolDraft.Domain;
 /// </summary>
 public sealed class DraftSession
 {
-    // Her pick'te o taraf için en az bir uygun şampiyon kalsın: 10 ban + 10 pick.
-    private const int MinimumAvailable = 20;
+    // Her pick'te en az bir uygun şampiyon kalsın: 10 ban + 10 pick.
+    internal const int MinimumAvailable = 20;
 
     private readonly HashSet<ChampionId> _pool;
     private readonly FearlessLocks _locks;
@@ -38,13 +38,10 @@ public sealed class DraftSession
 
         var poolSet = pool.ToHashSet();
 
-        // Kilitler düşüldükten sonra her tarafa en az 20 şampiyon kalmalı; yoksa bir pick'te
-        // seçilecek şampiyon kalmayabilir (ör. 40'lık havuzda full fearless bo5'in 5. maçı).
-        foreach (var side in Enum.GetValues<Side>())
-        {
-            if (poolSet.Count(c => !locks.For(side).Contains(c)) < MinimumAvailable)
-                return Result<DraftSession>.Fail(DraftErrors.PoolTooSmall);
-        }
+        // Kilitler düşüldükten sonra en az 20 şampiyon kalmalı; yoksa bir pick'te
+        // seçilecek şampiyon kalmayabilir (ör. 40'lık havuzda fearless bo5'in 4. maçı: 30 kilit).
+        if (poolSet.Count(c => !locks.Contains(c)) < MinimumAvailable)
+            return Result<DraftSession>.Fail(DraftErrors.PoolTooSmall);
 
         return Result<DraftSession>.Ok(new DraftSession(poolSet, locks, timings, now));
     }
@@ -103,7 +100,7 @@ public sealed class DraftSession
     }
 
     /// <summary>
-    /// Sunucu sayacı süre dolunca çağırır: ban adımında boş ban, pick adımında o taraf için uygun
+    /// Sunucu sayacı süre dolunca çağırır: ban adımında boş ban, pick adımında uygun
     /// şampiyonlardan rastgele biri, swap'ta o anki dizilimler kabul edilir.
     /// </summary>
     public Result Timeout(Instant now, IDraftRandom random)
@@ -129,7 +126,7 @@ public sealed class DraftSession
 
         // Sıralı liste: aynı zar aynı şampiyonu versin (HashSet sırası garanti değil).
         var available = _pool
-            .Where(c => !_taken.Contains(c) && !_locks.For(step.Side).Contains(c))
+            .Where(c => !_taken.Contains(c) && !_locks.Contains(c))
             .OrderBy(c => c.Value, StringComparer.Ordinal)
             .ToList();
 
@@ -155,12 +152,8 @@ public sealed class DraftSession
         if (_taken.Contains(champion))
             return Result.Fail(DraftErrors.ChampionUnavailable);
 
-        // Pick: seçen tarafa kilitliyse olmaz. Ban: iki tarafa da kilitliyse anlamsız (kimse seçemez), olmaz;
-        // soft fearless'ta sadece kendine kilitli şampiyonu ban'layabilir (rakip hâlâ seçebilir).
-        var locked = kind == DraftActionKind.Pick
-            ? _locks.For(side).Contains(champion)
-            : _locks.Blue.Contains(champion) && _locks.Red.Contains(champion);
-        if (locked)
+        // Kilitli şampiyon seçilemez; ban'lamak da anlamsız (zaten kimse seçemez), o da olmaz.
+        if (_locks.Contains(champion))
             return Result.Fail(DraftErrors.LockedByFearless);
 
         Apply(step, champion, byTimeout: false, now);

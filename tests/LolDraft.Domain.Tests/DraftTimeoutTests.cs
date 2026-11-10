@@ -50,7 +50,7 @@ public sealed class DraftTimeoutTests
     [Fact]
     public void Zaman_asimi_pick_fearless_kilidini_atlar()
     {
-        var session = Start(new FearlessLocks([Id("c07"), Id("c08")], []));
+        var session = Start(new FearlessLocks([Id("c07"), Id("c08")]));
         PlaySteps(session, 6);
 
         session.Timeout(Expired, new FixedRandom(0));

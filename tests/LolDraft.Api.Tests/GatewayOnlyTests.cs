@@ -8,9 +8,10 @@ namespace LolDraft.Api.Tests;
 public sealed class GatewayOnlyTests : IDisposable
 {
     private const string Secret = "test-gateway-secret-0123456789abcdef";
+    private const string SigningKey = "test-jwt-signing-key-0123456789abcdefghij";
 
     private readonly WebApplicationFactory<GatewayOnlyMiddleware> _factory = new WebApplicationFactory<GatewayOnlyMiddleware>()
-        .WithWebHostBuilder(host => host.UseSetting("GATEWAY_SECRET", Secret));
+        .WithWebHostBuilder(host => host.UseSetting("GATEWAY_SECRET", Secret).UseSetting("JWT_SIGNING_KEY", SigningKey));
 
     [Fact]
     public async Task Sirsiz_istek_404()
@@ -48,10 +49,23 @@ public sealed class GatewayOnlyTests : IDisposable
         foreach (var secret in new[] { "", "kisa-sir" })
         {
             using var factory = new WebApplicationFactory<GatewayOnlyMiddleware>()
-                .WithWebHostBuilder(host => host.UseSetting("GATEWAY_SECRET", secret));
+                .WithWebHostBuilder(host => host.UseSetting("GATEWAY_SECRET", secret).UseSetting("JWT_SIGNING_KEY", SigningKey));
 
             var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
             Assert.Contains("GATEWAY_SECRET", Messages(error));
+        }
+    }
+
+    [Fact]
+    public void Imza_anahtari_eksik_ya_da_kisaysa_api_acilmaz()
+    {
+        foreach (var key in new[] { "", "kisa-anahtar" })
+        {
+            using var factory = new WebApplicationFactory<GatewayOnlyMiddleware>()
+                .WithWebHostBuilder(host => host.UseSetting("GATEWAY_SECRET", Secret).UseSetting("JWT_SIGNING_KEY", key));
+
+            var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+            Assert.Contains("JWT_SIGNING_KEY", Messages(error));
         }
     }
 

@@ -1,11 +1,21 @@
 // Oyun API'si (DESIGN.md §8.1): sadece iç ağda; dışarıdan her istek gateway'den geçer.
 using LolDraft.Api;
+using LolDraft.Api.Lobbies;
 using LolDraft.Api.Middleware;
+using LolDraft.Application.Lobbies;
+using LolDraft.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Sırlar başlangıçta doğrulanır; eksikse uygulama açılmaz.
-builder.Services.AddSingleton(ApiSettings.From(builder.Configuration));
+var settings = ApiSettings.From(builder.Configuration);
+builder.Services.AddSingleton(settings);
+
+// Portların gerçekleri (lobi deposu, token, CSPRNG, şampiyon listesi) ve onları kullanan senaryolar.
+builder.Services.AddInfrastructure(settings.JwtSigningKey);
+builder.Services.AddSingleton<CreateLobby>();
+builder.Services.AddSingleton<JoinLobby>();
+builder.Services.AddSingleton<GetLobby>();
 
 builder.WebHost.ConfigureKestrel(kestrel =>
 {
@@ -31,5 +41,7 @@ app.Use((context, next) =>
 
 // Sağlık kontrolü: gateway → API hattının çalıştığını gösterir.
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapLobbyEndpoints();
 
 app.Run();

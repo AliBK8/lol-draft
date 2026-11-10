@@ -24,27 +24,24 @@ public sealed record DraftTimings
 }
 
 /// <summary>
-/// Seriden gelen fearless kilitleri: o taraf bu şampiyonları seçemez.
-/// Full fearless'ta iki taraf aynı listeyi, soft'ta her taraf kendi eski pick'lerini alır.
+/// Seriden gelen fearless kilitleri: serinin önceki maçlarında seçilen şampiyonlar.
+/// İki takım için de kilitlidir (full fearless; soft fearless yok, karar 2026-11-10).
 /// </summary>
 public sealed record FearlessLocks
 {
-    public FearlessLocks(IEnumerable<ChampionId> blue, IEnumerable<ChampionId> red)
+    public FearlessLocks(IEnumerable<ChampionId> champions)
     {
-        ArgumentNullException.ThrowIfNull(blue);
-        ArgumentNullException.ThrowIfNull(red);
+        ArgumentNullException.ThrowIfNull(champions);
 
         // Kopya: dışarıdaki liste sonradan değişse de draft etkilenmez.
-        Blue = blue.ToHashSet();
-        Red = red.ToHashSet();
+        Champions = champions.ToHashSet();
     }
 
-    public static FearlessLocks None { get; } = new([], []);
+    public static FearlessLocks None { get; } = new([]);
 
-    public IReadOnlySet<ChampionId> Blue { get; }
-    public IReadOnlySet<ChampionId> Red { get; }
+    public IReadOnlySet<ChampionId> Champions { get; }
 
-    public IReadOnlySet<ChampionId> For(Side side) => side == Side.Blue ? Blue : Red;
+    public bool Contains(ChampionId champion) => Champions.Contains(champion);
 }
 
 /// <summary>Zaman aşımındaki rastgele pick için. Gerçekte CSPRNG (Infrastructure), testte sabit.</summary>
