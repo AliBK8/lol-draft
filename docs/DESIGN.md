@@ -560,7 +560,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | Rate limit | `Gateway/RateLimiting/GatewayRateLimiting.cs` | §8.5 tablosu (global token bucket + rota politikaları), IP'ye göre. **Kimlik doğrulamadan önce**: sel saldırısı imza doğrulamasına CPU harcatmaz. 429 + `Retry-After`. `simulate-heavy` ağır uçlar gelince. |
 | JWT | `Gateway/Auth/GuestAuthentication.cs` | HS256 dışı algoritma reddedilir (`alg: none`), yayıncı `lol-draft`, hedef `lol-draft-game`, saat toleransı 30 sn (varsayılan 5 dk), `MapInboundClaims = false`. Hub yolunda token `access_token` sorgusundan, diğer yollarda sadece `Authorization` başlığından. `guest` politikası: imza + `lobby` + `seat` claim'i; yoksa 403. |
 | Token loglanmaz | `appsettings.json` | `Microsoft.AspNetCore.Hosting.Diagnostics` ve `Yarp` Warning: Information seviyesi istek URL'sini (sorgudaki `access_token` dahil) yazardı. |
-| İstemci IP'si | `Gateway/Program.cs` ForwardedHeaders | Varsayılan "localhost'a güven" de silinir; sadece `Gateway:TrustedProxies` listesi. Yoksa herkes `X-Forwarded-For`'a sahte IP yazıp rate limit'i atlatırdı. |
+| İstemci IP'si | `Gateway/Program.cs` ForwardedHeaders | Varsayılan "localhost'a güven" de silinir; sadece `Gateway:TrustedProxies` listesi. Yoksa herkes `X-Forwarded-For`'a sahte IP yazıp rate limit'i atlatırdı. **Düzeltme (2026-11-11):** liste boşken iletilmiş başlıklar hiç işlenmez (`ForwardedHeaders.None`). İlk hâlde açık vardı: `KnownProxies` ve `KnownIPNetworks` ikisi de boşsa ASP.NET Core adres kontrolünü kapatıp herkese güvenir. TestServer'da uzak adres null olduğu için testler görmüyordu; test hattına gerçekçi istemci adresi verilince yakalandı (`LobbyFlowTests`, §8.14). |
 | Başlıklar | `Gateway/Middleware/SecurityHeadersMiddleware.cs` | CSP (kendi origin + Google Fonts, `frame-ancestors 'none'`, `object-src 'none'`), nosniff, Referrer-Policy, X-Frame-Options, Permissions-Policy; `Server` silinir. OnStarting'de: proxy'lenen cevaba da girer, API ezemez. |
 | Gövde sınırı | `Gateway/Middleware/RequestSizeLimitMiddleware.cs` + Kestrel | 16 KB; Content-Length büyükse gövde okunmadan 413, chunked'da Kestrel sınırı. |
 | Correlation id | `Gateway/Middleware/CorrelationIdMiddleware.cs` | Gelen değer sadece `[A-Za-z0-9-]{1,64}` ise korunur (log enjeksiyonu), yoksa yeni GUID; API'ye iletilir, cevaba yazılır. |
@@ -634,7 +634,27 @@ Testler: Domain (hazır, renk çevirisi, tekrar), Api (gerçek SignalR istemcisi
 - Sayaçlar bağlantının `Items`'ında yaşar, bağlantıyla birlikte gider. Kilit yok: SignalR bir bağlantının çağrılarını sırayla işler.
 - Önce saniye, sonra dakika: saniyeye takılan mesaj dakika bütçesini harcamaz; reddedilen deneme pencereye yazılmaz (ısrar pencereyi uzatmaz).
 
-Kalan (4e-2c): bağlantı takibi + hükmen galibiyet (2 dk; iki oyuncu birden yoksa kimse kazanmaz, lobi 5 dk sonra kapanır, karar 2026-11-11), lobi temizliği (30 dk hareketsiz) ve IP başına 3 lobi sınırı (o zamana kadar bellekteki lobiler silinmez), rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` 4f'de.
+### 8.14 Uygulama: 4e-2c (bağlantı takibi, hükmen galibiyet, kapanış, IP sınırı)
+
+**Lobi saatinin kararları** (`Lobby.Advance`, sırayla; ilk tutan uygulanır):
+1. **Kapanış:** kimse bağlı değilse son çıkıştan 5 dk sonra (karar 2026-11-11), ya da 30 dk hiç hareket yoksa (bağlı oyuncu olsa da, §8.6). Lobi depodan kilidin içinde silinir, bağlı kalan `LobbyClosed` alır. Lobi açılıp hiç bağlanılmazsa da 5 dk kuralı işler: oturan ama bağlanmamış koltuk "yok" sayılır.
+2. **Hükmen galibiyet:** seri başladıktan sonra (ilk draft başladı) bir koltuk 2 dk kesintisiz yoksa ve rakibi bağlıysa `Series.Forfeit`: rakip seriyi alır, yarım draft atılır, `endReason: "forfeit"`. İkisi birden yoksa kimse kazanmaz, lobi 1. maddeyle kapanır.
+3. **Zaman aşımı:** draft adımının süresi dolduysa (§8.13).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Bağlantı sayımı | `Domain/Lobby.Connect/Disconnect` | Koltuk başına açık bağlantı sayısı: iki sekmeden biri kapanınca oyuncu "yok" sayılmaz. Sayı sıfıra düştüğü an `AbsentSince`. |
+| Hub olayları | `Api/Hubs/DraftHub.cs` | `OnConnectedAsync` → `Connect` (lobide değilse bağlantı kapanır), `OnDisconnectedAsync` → `Disconnect`; ikisi de yeni durumu herkese yayınlar (rakip "bağlandı/ayrıldı" görür). Sadece sayılan bağlantı düşülür. |
+| Gecikme | — | SignalR kopmayı sekme kapanınca hemen, ağ gidince en geç 30 sn'de fark eder (`ClientTimeoutInterval`): hükmen pratikte 2-2,5 dk. |
+| Durumda | `LobbyStateDto.seats`, `endReason` | Koltuk başına `connected` ve `absentSince`: arayüz hükmen sayacını gösterir (absentSince + 2 dk − serverNow). |
+| Hareket | `Lobby.LastActivity` | Her hamle (hatalı da), katılma, bağlanma, kopma. Zaman aşımı hareket sayılmaz. |
+| Silme yarışı | `InMemoryLobbyRepository.Execute` | Kilidi beklerken lobi silinmişse işlem yapılmaz (`lobby_not_found`): kapanmış lobide hamle oynanmaz. |
+| IP başına 3 lobi | `CreateLobby`, `ILobbyRepository.TryAdd` | Sayma ve ekleme tek kilit altında: aynı anda gelen 10 istekten tam 3'ü açar (test). Aşınca 429 `too_many_lobbies`. IP Domain'e girmez (kötüye kullanım kuralı, depo + Application). Lobi kapanınca sayaç düşer. |
+| İstemci IP'si | `Gateway/Proxy/GatewayTransforms.cs`, API `X-Client-Ip` | Gateway istemcinin yazdığı `X-Client-Ip`'yi siler, kendi gördüğü adresi yazar (sır başlığıyla aynı desen). `X-Forwarded-For`'a güvenilmez. YARP istemci başlıklarını dönüşümlerden sonra tembel kopyalar: `ProxyRequest.Headers`'a doğrudan yazmak istemcinin değerini silmez; `RequestTransform.RemoveHeader/AddHeader` kullanılır. |
+
+Bu adımda bulunan açık: gateway'in güvenilen proxy listesi boşken herkesin `X-Forwarded-For`'una güveniyordu (§8.10 "İstemci IP'si" satırı, düzeltildi; regresyon testi `Sahte_forwarded_for_ile_gateway_rate_limiti_atlatilamaz`).
+
+Kalan: rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` 4f'de.
 
 ---
 

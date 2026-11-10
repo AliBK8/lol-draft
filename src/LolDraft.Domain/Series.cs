@@ -56,12 +56,24 @@ public sealed class Series
     /// <summary>Seriyi almak için gereken galibiyet: bo1 → 1, bo3 → 2, bo5 → 3.</summary>
     public int WinsNeeded => (int)Format / 2 + 1;
 
-    /// <summary>Seriyi kazanan takım; seri sürüyorsa null.</summary>
+    /// <summary>Seriyi kazanan takım; seri sürüyorsa null. Hükmen bitmişse kaçanın rakibi.</summary>
     public TeamSlot? Winner =>
+        ForfeitedBy is { } loser ? loser.Opponent() :
         _wins[TeamSlot.A] >= WinsNeeded ? TeamSlot.A :
         _wins[TeamSlot.B] >= WinsNeeded ? TeamSlot.B : null;
 
     public bool IsFinished => Winner is not null;
+
+    /// <summary>Seri nasıl bitti; sürüyorsa null.</summary>
+    public SeriesEndReason? EndReason =>
+        ForfeitedBy is not null ? SeriesEndReason.Forfeit :
+        IsFinished ? SeriesEndReason.Played : null;
+
+    /// <summary>Hükmen kaybeden takım (bağlantısı kopup dönmeyen); yoksa null.</summary>
+    public TeamSlot? ForfeitedBy { get; private set; }
+
+    /// <summary>İlk draft başladı mı? Hükmen galibiyet ancak seri başladıktan sonra işler.</summary>
+    public bool HasStarted => _games.Count > 0 || CurrentDraft is not null;
 
     /// <summary>Oynanmakta olan maçın draft'ı; maç yokken null.</summary>
     public DraftSession? CurrentDraft { get; private set; }
@@ -95,6 +107,22 @@ public sealed class Series
         if (draft.IsSuccess)
             CurrentDraft = draft.Value;
         return draft;
+    }
+
+    /// <summary>
+    /// Seri hükmen biter: <paramref name="loser"/> kaybeder, rakibi seriyi alır. Yarım kalan draft atılır
+    /// (oynanmamış maç skora yazılmaz). Ne zaman uygulanacağına lobi karar verir (bağlantı takibi).
+    /// </summary>
+    public Result Forfeit(TeamSlot loser)
+    {
+        if (!Enum.IsDefined(loser))
+            throw new ArgumentOutOfRangeException(nameof(loser), loser, "Bilinmeyen takım.");
+        if (IsFinished)
+            return Result.Fail(SeriesErrors.SeriesFinished);
+
+        ForfeitedBy = loser;
+        CurrentDraft = null;
+        return Result.Ok();
     }
 
     /// <summary>

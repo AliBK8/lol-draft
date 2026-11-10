@@ -96,6 +96,56 @@ public sealed class LobbyFlowTests : IDisposable
         Assert.DoesNotContain(_pipeline.Probe.Requests, r => r.Path.StartsWith("/hubs"));
     }
 
+    // İstemci IP başlığını taklit ederek açık lobi sınırını atlatamaz: gateway onu siler, kendi gördüğünü yazar.
+    [Fact]
+    public async Task Sahte_istemci_ip_basligi_lobi_sinirini_atlatamaz()
+    {
+        var statuses = new List<HttpStatusCode>();
+        foreach (var fake in new[] { "1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/lobbies")
+            {
+                Content = JsonContent.Create(new { format = "bo1", fearless = false }),
+            };
+            request.Headers.Add("X-Client-Ip", fake);
+            request.Headers.Add("X-Forwarded-For", fake);
+            statuses.Add((await _client.SendAsync(request)).StatusCode);
+        }
+
+        // API her istekte tek değer gördü: gateway'in gördüğü bağlantı adresi, istemcinin yazdığı değil.
+        Assert.All(_pipeline.Probe.ClientIps, values => Assert.Equal([GatewayPipeline.ClientIp], values));
+        Assert.Equal([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.TooManyRequests], statuses);
+    }
+
+    // Regresyon (4c'den kalma açık): güvenilen proxy listesi boşken ForwardedHeaders herkese güveniyordu; istemci
+    // her istekte farklı X-Forwarded-For yazarak IP tabanlı rate limit'i (lobi açma dakikada 5) atlatabiliyordu.
+    [Fact]
+    public async Task Sahte_forwarded_for_ile_gateway_rate_limiti_atlatilamaz()
+    {
+        var statuses = new List<HttpStatusCode>();
+        for (var i = 1; i <= 6; i++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/lobbies");
+            request.Headers.Add("X-Forwarded-For", $"10.0.0.{i}");
+            statuses.Add((await _client.SendAsync(request)).StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, statuses[5]);
+    }
+
+    // Güvenilen bir proxy tanımlıysa (ör. bulut yük dengeleyicisi) onun X-Forwarded-For'u kullanılır.
+    [Fact]
+    public async Task Guvenilen_proxyden_gelen_forwarded_for_kullanilir()
+    {
+        using var pipeline = new GatewayPipeline(trustedProxy: GatewayPipeline.ClientIp);
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/health");
+        request.Headers.Add("X-Forwarded-For", "198.51.100.23");
+
+        await pipeline.CreateClient().SendAsync(request);
+
+        Assert.Equal(["198.51.100.23"], Assert.Single(pipeline.Probe.ClientIps));
+    }
+
     public void Dispose() => _pipeline.Dispose();
 
     private async Task<HubConnection> ConnectHub(

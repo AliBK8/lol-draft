@@ -25,7 +25,7 @@ public sealed class LobbyTests
         var lobby = Create(Player(1));
         var guest = Player(2);
 
-        var seat = lobby.Join(guest);
+        var seat = lobby.Join(guest, T0);
 
         Assert.Equal(TeamSlot.B, seat.Value);
         Assert.Equal(TeamSlot.B, lobby.SeatOf(guest));
@@ -37,9 +37,9 @@ public sealed class LobbyTests
     {
         var lobby = Create(Player(1));
         var guest = Player(2);
-        lobby.Join(guest);
+        lobby.Join(guest, T0);
 
-        var result = lobby.Join(Player(3));
+        var result = lobby.Join(Player(3), T0);
 
         Assert.Equal(LobbyErrors.Full, result.Error);
         Assert.Null(lobby.SeatOf(Player(3)));
@@ -52,7 +52,7 @@ public sealed class LobbyTests
         var host = Player(1);
         var lobby = Create(host);
 
-        Assert.Equal(LobbyErrors.AlreadyInLobby, lobby.Join(host).Error);
+        Assert.Equal(LobbyErrors.AlreadyInLobby, lobby.Join(host, T0).Error);
         Assert.False(lobby.IsFull);
     }
 
@@ -60,7 +60,7 @@ public sealed class LobbyTests
     public void Seri_ayarlari_lobi_acilirken_dogrulanir()
     {
         // 40'lık havuzda fearless bo5 sığmaz: lobi hiç oluşmaz.
-        var result = Lobby.Create(Code, Player(1), SeriesFormat.Bo5, fearless: true, Pool, TeamSlot.A);
+        var result = Lobby.Create(Code, Player(1), SeriesFormat.Bo5, fearless: true, Pool, TeamSlot.A, T0);
 
         Assert.Equal(DraftErrors.PoolTooSmall, result.Error);
     }
@@ -68,7 +68,7 @@ public sealed class LobbyTests
     [Fact]
     public void Seri_lobinin_ayarlariyla_baslar()
     {
-        var lobby = Lobby.Create(Code, Player(1), SeriesFormat.Bo3, fearless: true, Pool, TeamSlot.B).Value;
+        var lobby = Lobby.Create(Code, Player(1), SeriesFormat.Bo3, fearless: true, Pool, TeamSlot.B, T0).Value;
 
         Assert.Equal(SeriesFormat.Bo3, lobby.Series.Format);
         Assert.True(lobby.Series.Fearless);
@@ -208,7 +208,8 @@ public sealed class LobbyTests
     {
         var (lobby, _, _) = FullLobby();
 
-        Assert.False(lobby.Advance(T0 + TimeSpan.FromHours(1), new FixedRandom(0)));
+        // Kapanış eşiğinin (kimse yokken 5 dk) altında: draft yok, yapılacak bir şey yok.
+        Assert.Equal(LobbyTick.Unchanged, lobby.Advance(T0 + TimeSpan.FromMinutes(4), new FixedRandom(0)));
     }
 
     [Fact]
@@ -216,7 +217,7 @@ public sealed class LobbyTests
     {
         var (lobby, _, _) = StartedDraft();
 
-        Assert.False(lobby.Advance(T0 + TimeSpan.FromSeconds(29), new FixedRandom(0)));
+        Assert.Equal(LobbyTick.Unchanged, lobby.Advance(T0 + TimeSpan.FromSeconds(29), new FixedRandom(0)));
         Assert.Empty(lobby.Series.CurrentDraft!.Actions);
     }
 
@@ -226,7 +227,7 @@ public sealed class LobbyTests
         var (lobby, host, _) = StartedDraft();
         var expired = T0 + TimeSpan.FromSeconds(30);
 
-        Assert.True(lobby.Advance(expired, new FixedRandom(0)));
+        Assert.Equal(LobbyTick.Changed, lobby.Advance(expired, new FixedRandom(0)));
 
         var draft = lobby.Series.CurrentDraft!;
         var action = Assert.Single(draft.Actions);
@@ -243,8 +244,8 @@ public sealed class LobbyTests
     {
         var host = Player(1);
         var guest = Player(2);
-        var lobby = Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, firstBlue).Value;
-        lobby.Join(guest);
+        var lobby = Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, firstBlue, T0).Value;
+        lobby.Join(guest, T0);
         return (lobby, host, guest);
     }
 
@@ -259,7 +260,7 @@ public sealed class LobbyTests
     private static ActionId NewAction() => ActionId.Create(Guid.NewGuid()).Value;
 
     private static Lobby Create(PlayerId host) =>
-        Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, TeamSlot.A).Value;
+        Lobby.Create(Code, host, SeriesFormat.Bo3, fearless: false, Pool, TeamSlot.A, T0).Value;
 
     private static PlayerId Player(byte n) => PlayerId.FromBytes(Enumerable.Repeat(n, 16).ToArray());
 }

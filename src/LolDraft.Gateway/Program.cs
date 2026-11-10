@@ -20,15 +20,20 @@ builder.WebHost.ConfigureKestrel(kestrel =>
     kestrel.AddServerHeader = false;
 });
 
-// İstemci IP'si: sadece listedeki proxy'lerin X-Forwarded-For'una güvenilir. Liste boşsa hiçbirine (varsayılan
-// "localhost'a güven" de kaldırılır): aksi halde herkes başlığa sahte IP yazıp rate limit'i atlatabilirdi.
+// İstemci IP'si: sadece listedeki proxy'lerin X-Forwarded-For'una güvenilir. Liste boşsa hiçbirine.
+// DİKKAT: ForwardedHeaders, KnownProxies ve KnownIPNetworks ikisi de boşsa adres kontrolünü kapatır ve HERKESE
+// güvenir (ASP.NET Core davranışı). Bu yüzden liste boşken başlıklar hiç işlenmez (None); yoksa herkes başlığa
+// sahte IP yazıp IP tabanlı rate limit'leri atlatırdı (4e-2c'de testle bulundu, LobbyFlowTests).
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.KnownProxies.Clear();
     options.KnownIPNetworks.Clear();
     foreach (var proxy in settings.TrustedProxies)
         options.KnownProxies.Add(proxy);
+
+    options.ForwardedHeaders = settings.TrustedProxies.Count > 0
+        ? ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+        : ForwardedHeaders.None;
 });
 
 builder.Services.AddGatewayRateLimiting();

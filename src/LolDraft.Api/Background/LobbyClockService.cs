@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace LolDraft.Api.Background;
 
 /// <summary>
-/// Sunucu sayacı (DESIGN.md §8.6, §8.13): saniyede 4 kez lobileri ilerletir ve durumu değişenleri yayınlar.
+/// Sunucu sayacı (DESIGN.md §8.6, §8.13, §8.14): saniyede 4 kez lobileri ilerletir (zaman aşımı, hükmen galibiyet,
+/// kapanış), durumu değişenleri ve kapananları yayınlar.
 /// Karar Domain'de (<see cref="Domain.Lobby.Advance"/>); bu servis sadece zamanlar ve yayınlar.
 /// Bir adımın süresi dolduktan en geç ~250 ms sonra zaman aşımı uygulanır.
 /// </summary>
@@ -24,10 +25,19 @@ internal sealed class LobbyClockService(
         {
             try
             {
-                foreach (var view in await advanceLobbies.Handle(stoppingToken))
+                var report = await advanceLobbies.Handle(stoppingToken);
+
+                foreach (var view in report.Changed)
                 {
                     await hub.Clients.Group(DraftHub.Group(view.Code))
                         .SendAsync(DraftHub.LobbyUpdated, LobbyStateDto.Of(view), stoppingToken);
+                }
+
+                // Kapanan lobi: bağlı kalan varsa haber alır (arayüz "lobi kapandı" der, bağlantıyı kendisi kapatır).
+                foreach (var code in report.Closed)
+                {
+                    await hub.Clients.Group(DraftHub.Group(code))
+                        .SendAsync(DraftHub.LobbyClosed, stoppingToken);
                 }
             }
             catch (Exception error) when (error is not OperationCanceledException)

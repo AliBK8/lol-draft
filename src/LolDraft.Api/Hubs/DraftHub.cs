@@ -13,27 +13,48 @@ namespace LolDraft.Api.Hubs;
 /// yeni durum gruptaki herkese <see cref="LobbyUpdated"/> ile gider, hamleyi yapan ayrıca cevap alır.
 /// </summary>
 [Authorize(AuthenticationSchemes = GuestAuthenticationHandler.SchemeName)]
-internal sealed class DraftHub(LobbyCommands commands, GetLobby getLobby) : Hub
+internal sealed class DraftHub(LobbyCommands commands) : Hub
 {
     public const string Path = "/hubs/draft";
     public const string LobbyUpdated = nameof(LobbyUpdated);
+    public const string LobbyClosed = nameof(LobbyClosed);
 
     private static readonly Error InvalidRole = new("invalid_role", "Geçersiz yuva.");
 
-    /// <summary>Bağlanınca: oyuncu gerçekten lobide mi? Öyleyse lobinin grubuna girer ve güncel durumu alır.</summary>
+    // Bağlantı lobiye "bağlandı" diye sayıldıysa işaret: kopunca sadece sayılan bağlantı düşülür.
+    private static readonly object CountedKey = new();
+
+    /// <summary>
+    /// Bağlanınca: oyuncu gerçekten lobide mi? Öyleyse bağlantısı sayılır (hükmen sayacı durur), lobinin
+    /// grubuna girer ve yeni durum herkese gider (rakip "bağlandı" görür).
+    /// </summary>
     public override async Task OnConnectedAsync()
     {
         var who = Identity;
-        var state = await getLobby.Handle(who, Context.ConnectionAborted);
+        var state = await commands.Connect(who, Context.ConnectionAborted);
         if (state.IsFailure)
         {
-            // Token geçerli ama oyuncu o koltukta değil: bağlantı kapanır.
+            // Token geçerli ama oyuncu o koltukta değil ya da lobi kapandı: bağlantı kapanır.
             Context.Abort();
             return;
         }
 
+        Context.Items[CountedKey] = true;
         await Groups.AddToGroupAsync(Context.ConnectionId, Group(who.Lobby));
-        await Clients.Caller.SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value.Lobby));
+        await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value));
+    }
+
+    /// <summary>Kopunca: bağlantı düşülür; oyuncunun son bağlantısıysa "yok" sayacı başlar, rakip görür.</summary>
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        if (!Context.Items.ContainsKey(CountedKey))
+            return;
+
+        var who = Identity;
+        // Bağlantı zaten kapandı: ConnectionAborted iptal edilmiş olur, onu kullanma.
+        var state = await commands.Disconnect(who, CancellationToken.None);
+        if (state.IsSuccess)
+            await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value));
     }
 
     public Task<HubResultDto> Ready(Guid actionId) =>

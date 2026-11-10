@@ -17,7 +17,9 @@ internal sealed record LobbyStateDto(
     int WinsA,
     int WinsB,
     string? Winner,
+    string? EndReason,
     string[] Ready,
+    SeatDto[] Seats,
     DraftStateDto? Draft,
     DateTimeOffset ServerNow)
 {
@@ -31,7 +33,14 @@ internal sealed record LobbyStateDto(
         view.WinsA,
         view.WinsB,
         view.Winner?.ToString(),
+        view.EndReason switch
+        {
+            SeriesEndReason.Played => "played",
+            SeriesEndReason.Forfeit => "forfeit",
+            _ => null,
+        },
         [.. view.Ready.Select(s => s.ToString())],
+        [.. view.Seats.Select(s => new SeatDto(s.Seat.ToString(), s.Connected, s.AbsentSince?.Value))],
         view.Draft is { } draft ? DraftStateDto.Of(draft) : null,
         view.ServerNow.Value);
 }
@@ -64,6 +73,9 @@ internal sealed record DraftStateDto(
         view.RedLocked,
         [.. view.FearlessLocks.Select(c => c.Value)]);
 }
+
+/// <summary>Koltuk: bağlı mı, değilse ne zamandan beri yok (hükmen sayacı = absentSince + 2 dk).</summary>
+internal sealed record SeatDto(string Seat, bool Connected, DateTimeOffset? AbsentSince);
 
 internal sealed record DraftActionDto(int Step, string Side, string Kind, string? Champion, bool ByTimeout)
 {

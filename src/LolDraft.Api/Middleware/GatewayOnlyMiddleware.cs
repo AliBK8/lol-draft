@@ -12,6 +12,12 @@ internal sealed class GatewayOnlyMiddleware(RequestDelegate next, ApiSettings se
 {
     public const string HeaderName = "X-Gateway-Secret";
 
+    /// <summary>
+    /// İstemcinin IP'si, gateway'in gördüğü hâliyle. Gateway istemcinin gönderdiğini siler, kendi değerini yazar;
+    /// API'ye sadece gateway ulaştığı için (bu middleware) bu başlığa güvenilir.
+    /// </summary>
+    public const string ClientIpHeader = "X-Client-Ip";
+
     // Sırrın SHA-256 özeti bir kez hesaplanır; gelen değerin özetiyle karşılaştırılır.
     private readonly byte[] _expectedHash = SHA256.HashData(Encoding.UTF8.GetBytes(settings.GatewaySecret));
 

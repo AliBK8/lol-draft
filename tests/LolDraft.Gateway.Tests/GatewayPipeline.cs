@@ -26,7 +26,8 @@ internal sealed class GatewayPipeline : IDisposable
     private readonly WebApplicationFactory<GatewayOnlyMiddleware> _api;
     private readonly WebApplicationFactory<CorrelationIdMiddleware> _gateway;
 
-    public GatewayPipeline(string signingKey = SigningKey)
+    /// <param name="trustedProxy">Gateway'in X-Forwarded-For'una güveneceği proxy (Gateway:TrustedProxies); yoksa hiçbiri.</param>
+    public GatewayPipeline(string signingKey = SigningKey, string? trustedProxy = null)
     {
         _api = new WebApplicationFactory<GatewayOnlyMiddleware>().WithWebHostBuilder(host => host
             .UseSetting("GATEWAY_SECRET", Secret)
@@ -34,12 +35,22 @@ internal sealed class GatewayPipeline : IDisposable
             .ConfigureTestServices(services => services.AddSingleton<IStartupFilter>(new ProbeFilter(Probe))));
 
         var apiHandler = _api.Server.CreateHandler();
-        _gateway = new WebApplicationFactory<CorrelationIdMiddleware>().WithWebHostBuilder(host => host
-            .UseSetting("GATEWAY_SECRET", Secret)
-            .UseSetting("JWT_SIGNING_KEY", signingKey)
-            .ConfigureTestServices(services =>
-                services.AddSingleton<IForwarderHttpClientFactory>(new InMemoryForwarderClientFactory(apiHandler))));
+        _gateway = new WebApplicationFactory<CorrelationIdMiddleware>().WithWebHostBuilder(host =>
+        {
+            host.UseSetting("GATEWAY_SECRET", Secret)
+                .UseSetting("JWT_SIGNING_KEY", signingKey)
+                .ConfigureTestServices(services =>
+                {
+                    services.AddSingleton<IForwarderHttpClientFactory>(new InMemoryForwarderClientFactory(apiHandler));
+                    services.AddSingleton<IStartupFilter>(new ClientAddressFilter());
+                });
+            if (trustedProxy is not null)
+                host.UseSetting("Gateway:TrustedProxies:0", trustedProxy);
+        });
     }
+
+    /// <summary>Test istemcisinin IP'si (gerçek TCP bağlantısı gibi; bkz. <see cref="ClientAddressFilter"/>).</summary>
+    public const string ClientIp = "203.0.113.50";
 
     public ApiProbe Probe { get; } = new();
 
@@ -87,6 +98,9 @@ internal sealed class GatewayPipeline : IDisposable
     {
         public ConcurrentQueue<(string Path, string[] Secrets)> Requests { get; } = new();
 
+        /// <summary>API'ye ulaşan isteklerdeki istemci IP başlığının değerleri (istek başına).</summary>
+        public ConcurrentQueue<string[]> ClientIps { get; } = new();
+
         public bool Reached(string path) => Requests.Any(r => r.Path == path);
     }
 
@@ -99,6 +113,24 @@ internal sealed class GatewayPipeline : IDisposable
             {
                 probe.Requests.Enqueue((context.Request.Path + context.Request.QueryString,
                     [.. context.Request.Headers[GatewayOnlyMiddleware.HeaderName].Select(v => v ?? "")]));
+                probe.ClientIps.Enqueue([.. context.Request.Headers[GatewayOnlyMiddleware.ClientIpHeader].Select(v => v ?? "")]);
+                return nextMiddleware(context);
+            });
+            next(app);
+        };
+    }
+
+    // TestServer'da bağlantının uzak adresi null; gerçek TCP'de hiç null olmaz (ForwardedHeaders null adresi
+    // "kontrol edilemez, kabul" sayar). Gateway hattının en başında gerçekçi bir adres verilir: testler
+    // üretimdeki koşulu ölçsün. Bu filtre olmadan gateway'in "boş liste = herkese güven" açığı görünmüyordu.
+
+    private sealed class ClientAddressFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, nextMiddleware) =>
+            {
+                context.Connection.RemoteIpAddress ??= System.Net.IPAddress.Parse(ClientIp);
                 return nextMiddleware(context);
             });
             next(app);

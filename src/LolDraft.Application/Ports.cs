@@ -8,7 +8,14 @@ namespace LolDraft.Application;
 /// <summary>Aktif lobilerin deposu. Şu an bellekte; arkası değişse de kullanan kod değişmez.</summary>
 public interface ILobbyRepository
 {
-    Task Add(Lobby lobby, CancellationToken ct);
+    /// <summary>
+    /// Lobiyi ekler; <paramref name="owner"/>'ın (istemci IP'si) zaten <paramref name="maxPerOwner"/> açık lobisi
+    /// varsa eklemez ve false döner. Sayma ve ekleme tek adım: aynı anda gelen istekler sınırı birlikte aşamaz.
+    /// </summary>
+    Task<bool> TryAdd(Lobby lobby, string owner, int maxPerOwner, CancellationToken ct);
+
+    /// <summary>Lobiyi siler (sahibinin sayacı da düşer). <see cref="Execute{T}"/> içinden çağrılabilir.</summary>
+    void Remove(LobbyCode code);
 
     /// <summary>Şu an açık lobilerin kodları (anlık kopya; lobi saati bunları sırayla ilerletir).</summary>
     IReadOnlyCollection<LobbyCode> Codes();

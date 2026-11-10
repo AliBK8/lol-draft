@@ -22,7 +22,9 @@ public sealed record LobbyView(
     int WinsA,
     int WinsB,
     TeamSlot? Winner,
+    SeriesEndReason? EndReason,
     IReadOnlyList<TeamSlot> Ready,
+    IReadOnlyList<SeatView> Seats,
     DraftView? Draft,
     Instant ServerNow)
 {
@@ -40,7 +42,11 @@ public sealed record LobbyView(
             series.Wins(TeamSlot.A),
             series.Wins(TeamSlot.B),
             series.Winner,
+            series.EndReason,
             [.. lobby.ReadySeats.Order()],
+            [.. Enum.GetValues<TeamSlot>()
+                .Where(seat => lobby.PlayerAt(seat) is not null)
+                .Select(seat => new SeatView(seat, lobby.IsConnected(seat), lobby.AbsentSince(seat)))],
             series.CurrentDraft is { } draft ? DraftView.Of(draft, series.Locks) : null,
             now);
     }
@@ -74,6 +80,12 @@ public sealed record DraftView(
         draft.IsLineupLocked(Side.Red),
         [.. locks.Champions.OrderBy(c => c.Value, StringComparer.Ordinal)]);
 }
+
+/// <summary>
+/// Oturulmuş bir koltuk: oyuncu bağlı mı, değilse ne zamandan beri yok
+/// (arayüz hükmen sayacını gösterir: yok_olduğu_an + 2 dk − serverNow).
+/// </summary>
+public sealed record SeatView(TeamSlot Seat, bool Connected, Instant? AbsentSince);
 
 /// <summary>Lobi görüntüsü + isteyen oyuncunun koltuğu (REST'te; hub'da koltuk bağlantıya bağlı).</summary>
 public sealed record SeatedLobbyView(TeamSlot YourSeat, LobbyView Lobby);

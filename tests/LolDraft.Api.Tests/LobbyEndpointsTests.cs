@@ -90,6 +90,32 @@ public sealed class LobbyEndpointsTests : IDisposable
         Assert.Equal("invalid_format", await ErrorCode(response));
     }
 
+    // --- Açık lobi sınırı (IP başına 3) ---
+
+    [Fact]
+    public async Task Ayni_ipden_dorduncu_acik_lobi_429()
+    {
+        for (var i = 0; i < 3; i++)
+            Assert.Equal(HttpStatusCode.OK, (await PostCreateFrom("203.0.113.7")).StatusCode);
+
+        var rejected = await PostCreateFrom("203.0.113.7");
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
+        Assert.Equal("too_many_lobbies", await ErrorCode(rejected));
+        // Başka IP etkilenmez.
+        Assert.Equal(HttpStatusCode.OK, (await PostCreateFrom("198.51.100.1")).StatusCode);
+    }
+
+    // Aynı anda gelen 10 istekten tam 3'ü lobi açar: sayma ve ekleme tek adım.
+    [Fact]
+    public async Task Ayni_anda_gelen_isteklerle_sinir_asilmaz()
+    {
+        var responses = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => PostCreateFrom("203.0.113.9")));
+
+        Assert.Equal(3, responses.Count(r => r.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(7, responses.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests));
+    }
+
     // --- Katılma ---
 
     [Fact]
@@ -211,6 +237,17 @@ public sealed class LobbyEndpointsTests : IDisposable
 
     private Task<HttpResponseMessage> PostCreate(string? format, bool fearless) =>
         _client.PostAsJsonAsync("/api/lobbies", new { format, fearless });
+
+    // Gateway'in yazacağı istemci IP başlığıyla (API testleri gateway'den gelmiş gibi istek atar).
+    private Task<HttpResponseMessage> PostCreateFrom(string ip)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/lobbies")
+        {
+            Content = JsonContent.Create(new { format = "bo1", fearless = false }),
+        };
+        request.Headers.Add(GatewayOnlyMiddleware.ClientIpHeader, ip);
+        return _client.SendAsync(request);
+    }
 
     private Task<HttpResponseMessage> PostJoin(string code) => _client.PostAsync($"/api/lobbies/{code}/join", null);
 

@@ -11,14 +11,31 @@ namespace LolDraft.Infrastructure.Lobbies;
 internal sealed class InMemoryLobbyRepository : ILobbyRepository
 {
     private readonly ConcurrentDictionary<LobbyCode, Lobby> _lobbies = new();
+    // Lobi → açanın anahtarı (IP). Domain bunu bilmez: kötüye kullanım sınırı depo/Application işi.
+    private readonly ConcurrentDictionary<LobbyCode, string> _owners = new();
+    // Ekleme tek kapıdan: "kaç lobisi var?" sayımı ile ekleme arasına başka ekleme giremesin.
+    private readonly Lock _addLock = new();
 
-    public Task Add(Lobby lobby, CancellationToken ct)
+    public Task<bool> TryAdd(Lobby lobby, string owner, int maxPerOwner, CancellationToken ct)
     {
-        // 128 bit rastgele kodun çakışması pratikte imkânsız; olursa rastgelelik kaynağı bozuktur.
-        if (!_lobbies.TryAdd(lobby.Code, lobby))
-            throw new InvalidOperationException("Lobi kodu çakıştı.");
+        lock (_addLock)
+        {
+            if (_owners.Values.Count(o => o == owner) >= maxPerOwner)
+                return Task.FromResult(false);
 
-        return Task.CompletedTask;
+            // 128 bit rastgele kodun çakışması pratikte imkânsız; olursa rastgelelik kaynağı bozuktur.
+            if (!_lobbies.TryAdd(lobby.Code, lobby))
+                throw new InvalidOperationException("Lobi kodu çakıştı.");
+
+            _owners[lobby.Code] = owner;
+            return Task.FromResult(true);
+        }
+    }
+
+    public void Remove(LobbyCode code)
+    {
+        _lobbies.TryRemove(code, out _);
+        _owners.TryRemove(code, out _);
     }
 
     public IReadOnlyCollection<LobbyCode> Codes() => [.. _lobbies.Keys];
@@ -33,6 +50,10 @@ internal sealed class InMemoryLobbyRepository : ILobbyRepository
         // üzerine başka kimse kilit alamaz.
         lock (lobby)
         {
+            // Kilidi beklerken lobi silinmiş olabilir (saat kapattı): silinmiş lobide işlem yapılmaz.
+            if (!_lobbies.ContainsKey(code))
+                return Task.FromResult(Result<T>.Fail(LobbyErrors.NotFound));
+
             return Task.FromResult(action(lobby));
         }
     }

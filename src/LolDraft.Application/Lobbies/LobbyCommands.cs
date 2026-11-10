@@ -24,6 +24,14 @@ public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock)
     public Task<Result<LobbyView>> LockLineup(GuestIdentity who, ActionId action, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.LockLineup(who.Player, action, now), ct);
 
+    /// <summary>Oyuncunun bir bağlantısı açıldı (hub). Yeni durum: koltuk "bağlı" görünür.</summary>
+    public Task<Result<LobbyView>> Connect(GuestIdentity who, CancellationToken ct) =>
+        Run(who, (lobby, now) => lobby.Connect(who.Player, now), ct);
+
+    /// <summary>Oyuncunun bir bağlantısı kapandı. Son bağlantısıysa hükmen sayacı başlar.</summary>
+    public Task<Result<LobbyView>> Disconnect(GuestIdentity who, CancellationToken ct) =>
+        Run(who, (lobby, now) => lobby.Disconnect(who.Player, now), ct);
+
     private Task<Result<LobbyView>> Run(GuestIdentity who, Func<Lobby, Instant, Result> act, CancellationToken ct) =>
         lobbies.Execute(who.Lobby, lobby =>
         {

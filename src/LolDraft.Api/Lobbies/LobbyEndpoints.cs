@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using LolDraft.Api.Auth;
+using LolDraft.Api.Middleware;
 using LolDraft.Application.Lobbies;
 using LolDraft.Domain;
 
@@ -24,12 +25,13 @@ internal static class LobbyEndpoints
                 .RequireAuthenticatedUser());
     }
 
-    private static async Task<IResult> Create(CreateLobbyRequest request, CreateLobby createLobby, CancellationToken ct)
+    private static async Task<IResult> Create(
+        CreateLobbyRequest request, HttpRequest http, CreateLobby createLobby, CancellationToken ct)
     {
         if (Names.ParseFormat(request.Format) is not { } format)
             return Failure(InvalidFormat);
 
-        var ticket = await createLobby.Handle(format, request.Fearless, ct);
+        var ticket = await createLobby.Handle(format, request.Fearless, ClientKey(http), ct);
         return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
     }
 
@@ -56,6 +58,11 @@ internal static class LobbyEndpoints
         return view.IsSuccess ? Results.Ok(LobbyResponse.Of(view.Value)) : Failure(view.Error!);
     }
 
+    // Açık lobi sınırının anahtarı: gateway'in yazdığı istemci IP'si. Başlık yoksa (gateway hep yazar; olmaması
+    // yapılandırma hatası) hepsi tek kovaya düşer: sınır gevşemez, sıkılaşır.
+    private static string ClientKey(HttpRequest http) =>
+        http.Headers[GatewayOnlyMiddleware.ClientIpHeader] is [{ Length: > 0 } ip] ? ip : "unknown";
+
     // İş hatası → HTTP kodu. Gövde her zaman aynı biçimde: { error, message }.
     private static IResult Failure(Error error)
     {
@@ -64,6 +71,7 @@ internal static class LobbyEndpoints
             "not_in_lobby" => StatusCodes.Status403Forbidden,
             "lobby_not_found" => StatusCodes.Status404NotFound,
             "lobby_full" => StatusCodes.Status409Conflict,
+            "too_many_lobbies" => StatusCodes.Status429TooManyRequests,
             _ => StatusCodes.Status400BadRequest,
         };
 

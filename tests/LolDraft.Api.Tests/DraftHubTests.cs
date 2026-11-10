@@ -129,6 +129,25 @@ public sealed class DraftHubTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task Rakip_baglaninca_ve_kopunca_ev_sahibi_gorur()
+    {
+        var host = await CreateLobby();
+        var guestTicket = await JoinLobby(host.Code);
+        var hostPlayer = await Connect(host.Token);
+        await hostPlayer.Last();
+
+        var guest = await Connect(guestTicket.Token);
+        var connected = await hostPlayer.Last();
+        Assert.True(Seat(connected, "B").GetProperty("connected").GetBoolean());
+
+        await guest.Disconnect();
+        var left = await hostPlayer.Next();
+        var seat = Seat(left, "B");
+        Assert.False(seat.GetProperty("connected").GetBoolean());
+        Assert.Equal(JsonValueKind.String, seat.GetProperty("absentSince").ValueKind);
+    }
+
+    [Fact]
     public async Task Bozuk_tokenla_baglanti_kurulamaz()
     {
         var host = await CreateLobby();
@@ -152,8 +171,9 @@ public sealed class DraftHubTests : IAsyncDisposable
         var guestTicket = await JoinLobby(ticket.Code);
         var host = await Connect(ticket.Token);
         var guest = await Connect(guestTicket.Token);
-        await host.Next();
-        await guest.Next();
+        // Bağlanma herkese yayınlanır (rakip "bağlandı" görür): ev sahibi iki, misafir bir olay alır. Kuyruklar boşaltılır.
+        await host.Last();
+        await guest.Last();
         return (host, guest);
     }
 
@@ -208,6 +228,9 @@ public sealed class DraftHubTests : IAsyncDisposable
         return player;
     }
 
+    private static JsonElement Seat(JsonElement state, string seat) =>
+        state.GetProperty("seats").EnumerateArray().Single(s => s.GetProperty("seat").GetString() == seat);
+
     private static string[] Strings(JsonElement array) => [.. array.EnumerateArray().Select(e => e.GetString()!)];
 
     private sealed record Ticket(string Code, string Seat, string Token);
@@ -234,6 +257,8 @@ public sealed class DraftHubTests : IAsyncDisposable
         }
 
         public int Received => Volatile.Read(ref _received);
+
+        public Task Disconnect() => _connection.StopAsync();
 
         public Task<HubResult> Invoke(string method, string champion, Guid? actionId = null) =>
             _connection.InvokeAsync<HubResult>(method, champion, actionId ?? Guid.NewGuid());

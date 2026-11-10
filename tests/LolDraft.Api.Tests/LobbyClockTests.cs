@@ -79,6 +79,58 @@ public sealed class LobbyClockTests : IAsyncDisposable
         Assert.False(string.IsNullOrEmpty(pick.GetProperty("champion").GetString()));
     }
 
+    // --- Hükmen galibiyet ve kapanış ---
+
+    [Fact]
+    public async Task Kopan_oyuncu_2_dk_donmezse_rakip_hukmen_kazanir()
+    {
+        var updates = await StartDraft();
+        await _connections[1].StopAsync();   // misafir (B) kopar
+        await WaitFor(updates, s => !Seat(s, "B").GetProperty("connected").GetBoolean());
+
+        _clock.Advance(TimeSpan.FromMinutes(2));
+
+        var state = await WaitFor(updates, s => s.GetProperty("winner").GetString() is not null);
+        Assert.Equal("A", state.GetProperty("winner").GetString());
+        Assert.Equal("forfeit", state.GetProperty("endReason").GetString());
+        Assert.Equal(JsonValueKind.Null, state.GetProperty("draft").ValueKind);
+    }
+
+    [Fact]
+    public async Task Iki_oyuncu_da_cikarsa_lobi_5_dk_sonra_kapanir()
+    {
+        var (client, host) = await CreateLobby();
+        var connection = await Connect(host.Token, new());
+        await connection.StopAsync();
+
+        // Kopma sunucuda ayrıca işlenir (StopAsync bunu beklemez): "yok" görünene kadar bekle, sonra saati ilerlet.
+        await WaitUntil(async () =>
+        {
+            var lobby = await GetLobby(client, host);
+            return lobby.StatusCode == System.Net.HttpStatusCode.OK
+                   && !Seat((await lobby.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("lobby"), "A")
+                       .GetProperty("connected").GetBoolean();
+        });
+
+        _clock.Advance(TimeSpan.FromMinutes(5));
+
+        // Lobi silindi: token hâlâ geçerli ama lobi yok.
+        await WaitUntil(async () => (await GetLobby(client, host)).StatusCode == System.Net.HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Hareketsiz_lobi_30_dk_sonra_kapanir_ve_bagli_olana_haber_verilir()
+    {
+        var (_, host) = await CreateLobby();
+        var closed = new TaskCompletionSource();
+        var connection = await Connect(host.Token, new());
+        connection.On("LobbyClosed", () => closed.TrySetResult());
+
+        _clock.Advance(TimeSpan.FromMinutes(30));
+
+        await closed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
     public async ValueTask DisposeAsync()
     {
         foreach (var connection in _connections)
@@ -87,12 +139,19 @@ public sealed class LobbyClockTests : IAsyncDisposable
     }
 
     /// <summary>Lobi açar, ikinci oyuncu katılır, ikisi de hazır der; ev sahibinin gördüğü olayları döndürür.</summary>
-    private async Task<ConcurrentQueue<JsonElement>> StartDraft()
+    private async Task<(HttpClient Client, Ticket Host)> CreateLobby()
     {
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add(GatewayOnlyMiddleware.HeaderName, Secret);
         var host = (await (await client.PostAsJsonAsync("/api/lobbies", new { format = "bo1", fearless = false }))
             .Content.ReadFromJsonAsync<Ticket>())!;
+        return (client, host);
+    }
+
+    /// <summary>Bağlantılar: [0] ev sahibi (A), [1] misafir (B).</summary>
+    private async Task<ConcurrentQueue<JsonElement>> StartDraft()
+    {
+        var (client, host) = await CreateLobby();
         var guest = (await (await client.PostAsync($"/api/lobbies/{host.Code}/join", null))
             .Content.ReadFromJsonAsync<Ticket>())!;
 
@@ -122,6 +181,26 @@ public sealed class LobbyClockTests : IAsyncDisposable
         await connection.StartAsync();
         return connection;
     }
+
+    private static Task<HttpResponseMessage> GetLobby(HttpClient client, Ticket ticket)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/api/lobbies/{ticket.Code}");
+        request.Headers.Authorization = new("Bearer", ticket.Token);
+        return client.SendAsync(request);
+    }
+
+    private static async Task WaitUntil(Func<Task<bool>> condition)
+    {
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (!await condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "Beklenen durum 5 sn içinde oluşmadı.");
+            await Task.Delay(20);
+        }
+    }
+
+    private static JsonElement Seat(JsonElement state, string seat) =>
+        state.GetProperty("seats").EnumerateArray().Single(s => s.GetProperty("seat").GetString() == seat);
 
     private static JsonElement Actions(JsonElement state) =>
         state.GetProperty("draft") is { ValueKind: JsonValueKind.Object } draft

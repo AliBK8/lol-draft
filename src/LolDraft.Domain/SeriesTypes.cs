@@ -23,5 +23,14 @@ public enum SeriesFormat
     Bo5 = 5,
 }
 
+public enum SeriesEndReason
+{
+    /// <summary>Bir takım gereken galibiyet sayısına ulaştı.</summary>
+    Played,
+
+    /// <summary>Bir oyuncu seri sürerken uzun süre bağlı olmadı, rakibi hükmen kazandı.</summary>
+    Forfeit,
+}
+
 /// <summary>Serinin bitmiş bir maçı: kim maviydi, kim kazandı, draft neydi.</summary>
 public sealed record SeriesGame(int Number, TeamSlot Blue, TeamSlot Winner, DraftResult Draft);
