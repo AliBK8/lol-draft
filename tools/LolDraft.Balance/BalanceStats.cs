@@ -71,6 +71,15 @@ internal sealed class BalanceStats(IdentityClassifier identities)
     public SortedDictionary<Identity, (int Games, int Wins)> Identities { get; } = [];
     public SortedDictionary<(Identity A, Identity B), (int Games, int AWins)> IdentityMatchups { get; } = [];
 
+    // Rol dışı kumar (DESIGN.md §16.8): maç sonunda rol rakibine göre altın; ±1.000 "tuttu" / "tutmadı".
+    // Kendi rolündekiler aynı ölçüyle: kumarın oynaklığı ikisinin karşılaştırmasında görünür.
+    public const int GambleGold = 1000;
+    public (int Picks, int Wins, int Ahead, int Behind) OffRole { get; private set; }
+    public (int Picks, int Wins, int Ahead, int Behind) InRole { get; private set; }
+
+    // Ceza (yüzde) → (pick, takımı kazandı).
+    public SortedDictionary<int, (int Picks, int Wins)> OffRoleByPenalty { get; } = [];
+
     // (dakika, fark dilimi) → (o dakikaya ulaşan maç, o dakikada altında önde olanın kazandığı).
     public SortedDictionary<(int Minute, int Bucket), (int Games, int LeaderWins)> ByGoldLead { get; } = [];
 
@@ -200,6 +209,8 @@ internal sealed class BalanceStats(IdentityClassifier identities)
             }
         }
 
+        AddRoles(result);
+
         // Split (DESIGN.md §16.8 K12): sıklık, cevap, kule (split'ten 10 sn sonra), split yapan objektifi/maçı alıyor mu.
         foreach (var split in result.Events.OfType<SplitEvent>())
         {
@@ -237,6 +248,32 @@ internal sealed class BalanceStats(IdentityClassifier identities)
             }
 
             Rules[group.Key] = (matches, decided, wins, impact);
+        }
+    }
+
+    // Son kare maçın bittiği an: her şampiyonun aynı yuvadaki rakibine göre altını. Kare sırası Mavi 5, Kırmızı 5.
+    private void AddRoles(MatchResult result)
+    {
+        var offRoles = result.Report.OffRoles.ToDictionary(o => o.ChampionId);
+        var final = result.GoldFrames[^1].Champions;
+        for (var i = 0; i < final.Count; i++)
+        {
+            var champion = final[i];
+            var diff = champion.Gold - final[(i + 5) % 10].Gold;
+            var won = result.End.Winner == champion.Side;
+            var tally = (Picks: 1, Wins: won ? 1 : 0, Ahead: diff >= GambleGold ? 1 : 0, Behind: diff <= -GambleGold ? 1 : 0);
+
+            if (offRoles.TryGetValue(champion.ChampionId, out var off))
+            {
+                OffRole = (OffRole.Picks + 1, OffRole.Wins + tally.Wins, OffRole.Ahead + tally.Ahead, OffRole.Behind + tally.Behind);
+                var key = (int)Math.Round(off.Penalty * 100);
+                var (picks, wins) = OffRoleByPenalty.GetValueOrDefault(key);
+                OffRoleByPenalty[key] = (picks + 1, wins + tally.Wins);
+            }
+            else
+            {
+                InRole = (InRole.Picks + 1, InRole.Wins + tally.Wins, InRole.Ahead + tally.Ahead, InRole.Behind + tally.Behind);
+            }
         }
     }
 

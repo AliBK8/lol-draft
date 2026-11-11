@@ -131,7 +131,8 @@ public sealed class Series
     /// Simülasyon bitince maçın kazananını yazar. Motor rengi bilir, seri takımı:
     /// kazanan renk o maçta o renkte oynayan takıma çevrilir, sonra renkler değişir.
     /// </summary>
-    internal Result RecordGame(Side winner)
+    /// <param name="match">Oynanan maçın kimliği (simülasyon kaydı; seri sadece saklar).</param>
+    internal Result RecordGame(Side winner, MatchId match)
     {
         if (!Enum.IsDefined(winner))
             throw new ArgumentOutOfRangeException(nameof(winner), winner, "Bilinmeyen taraf.");
@@ -144,7 +145,7 @@ public sealed class Series
         // Sıra önemli: maç listeye eklenince BlueTeam bir sonraki maça göre döner,
         // o yüzden kazanan takım eklemeden önce hesaplanır.
         var winningTeam = TeamOn(winner);
-        _games.Add(new SeriesGame(GameNumber, BlueTeam, winningTeam, outcome));
+        _games.Add(new SeriesGame(GameNumber, BlueTeam, winningTeam, outcome, match));
         _wins[winningTeam]++;
         CurrentDraft = null;
         return Result.Ok();

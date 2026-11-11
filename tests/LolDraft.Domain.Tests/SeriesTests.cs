@@ -61,7 +61,7 @@ public sealed class SeriesTests
 
         Assert.Equal(TeamSlot.A, series.Winner);
         Assert.Equal(SeriesErrors.SeriesFinished, series.StartDraft(DraftTimings.Default, T0).Error);
-        Assert.Equal(SeriesErrors.SeriesFinished, series.RecordGame(Side.Blue).Error);
+        Assert.Equal(SeriesErrors.SeriesFinished, series.RecordGame(Side.Blue, NewMatch()).Error);
         Assert.Equal(3, series.Games.Count);
     }
 
@@ -157,12 +157,12 @@ public sealed class SeriesTests
         var series = Start(SeriesFormat.Bo3);
 
         // Draft hiç başlamadı.
-        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue).Error);
+        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue, NewMatch()).Error);
 
         // Draft başladı ama swap'ta, henüz kilitlenmedi.
         var draft = series.StartDraft(DraftTimings.Default, T0).Value;
         PlaySteps(draft, 20);
-        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue).Error);
+        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue, NewMatch()).Error);
 
         Assert.Equal((0, 0), Score(series));
         Assert.Empty(series.Games);
@@ -174,7 +174,7 @@ public sealed class SeriesTests
         var series = Start(SeriesFormat.Bo5);
         PlayGame(series, Side.Blue);
 
-        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue).Error);
+        Assert.Equal(SeriesErrors.DraftNotCompleted, series.RecordGame(Side.Blue, NewMatch()).Error);
         Assert.Equal((1, 0), Score(series));
     }
 
@@ -205,7 +205,7 @@ public sealed class SeriesTests
         Assert.True(draft.LockLineup(Side.Red, T0).IsSuccess);
 
         var outcome = draft.Outcome!;
-        Assert.True(series.RecordGame(winner).IsSuccess);
+        Assert.True(series.RecordGame(winner, NewMatch()).IsSuccess);
         return outcome;
     }
 }

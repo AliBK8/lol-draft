@@ -55,6 +55,17 @@ public sealed class GatewayTests : IDisposable
         Assert.Empty(_pipeline.Probe.Requests);
     }
 
+    // Tekrar izleme linki token istemez (paylaşılır): gateway iletir, cevabı API verir (404 gövdesi API'nin).
+    [Fact]
+    public async Task Tekrar_izleme_tokensiz_apiye_ulasir()
+    {
+        var response = await _client.GetAsync("/api/matches/AAAAAAAAAAAAAAAAAAAAAA");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.True(_pipeline.Probe.Reached("/api/matches/AAAAAAAAAAAAAAAAAAAAAA"));
+        Assert.Contains("match_not_found", await response.Content.ReadAsStringAsync());
+    }
+
     // --- Güvenlik başlıkları ---
 
     [Fact]

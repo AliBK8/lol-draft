@@ -16,7 +16,7 @@ if (options.Check)
     return;
 }
 
-var drafter = new RandomDrafter(pool, options.Seed);
+var drafter = new RandomDrafter(pool, options.Seed, options.OffRoleRate);
 var simulator = MatchEngine.CreateSimulator();
 var stats = new BalanceStats(new IdentityClassifier(pool));
 

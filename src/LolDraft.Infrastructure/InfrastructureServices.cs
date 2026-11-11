@@ -4,6 +4,7 @@ using LolDraft.Domain;
 using LolDraft.Infrastructure.Auth;
 using LolDraft.Infrastructure.Champions;
 using LolDraft.Infrastructure.Lobbies;
+using LolDraft.Infrastructure.Matches;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LolDraft.Infrastructure;
@@ -20,6 +21,7 @@ public static class InfrastructureServices
         services.AddSingleton<IDraftRandom, CryptoDraftRandom>();
         services.AddSingleton<IChampionCatalog, EmbeddedChampionCatalog>();
         services.AddSingleton<ILobbyRepository, InMemoryLobbyRepository>();
+        services.AddSingleton<IMatchRepository, InMemoryMatchRepository>();
         services.AddSingleton<IGuestTokenService>(provider =>
             new GuestTokenService(jwtSigningKey, provider.GetRequiredService<IClock>()));
         return services;

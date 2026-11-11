@@ -63,21 +63,7 @@ internal static class LobbyEndpoints
     private static string ClientKey(HttpRequest http) =>
         http.Headers[GatewayOnlyMiddleware.ClientIpHeader] is [{ Length: > 0 } ip] ? ip : "unknown";
 
-    // İş hatası → HTTP kodu; tabloda olmayan her iş hatası 400. Kodlar hata nesnelerinden okunur (düz metin yazım
-    // hatası sessizce 400'e düşerdi).
-    private static readonly Dictionary<string, int> StatusByCode = new()
-    {
-        [LobbyErrors.NotInLobby.Code] = StatusCodes.Status403Forbidden,
-        [LobbyErrors.NotFound.Code] = StatusCodes.Status404NotFound,
-        [LobbyErrors.Full.Code] = StatusCodes.Status409Conflict,
-        [CreateLobby.TooManyLobbies.Code] = StatusCodes.Status429TooManyRequests,
-        [CreateLobby.ServerBusy.Code] = StatusCodes.Status503ServiceUnavailable,
-    };
-
-    // Gövde her zaman aynı biçimde: { error, message }.
-    private static IResult Failure(Error error) =>
-        Results.Json(new ErrorResponse(error.Code, error.Message),
-            statusCode: StatusByCode.GetValueOrDefault(error.Code, StatusCodes.Status400BadRequest));
+    private static IResult Failure(Error error) => ApiErrors.Failure(error);
 
     internal sealed record CreateLobbyRequest(string? Format, bool Fearless);
 
@@ -92,6 +78,4 @@ internal static class LobbyEndpoints
     {
         public static LobbyResponse Of(SeatedLobbyView view) => new(view.YourSeat.ToString(), LobbyStateDto.Of(view.Lobby));
     }
-
-    internal sealed record ErrorResponse(string Error, string Message);
 }

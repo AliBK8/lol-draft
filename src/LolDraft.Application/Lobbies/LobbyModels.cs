@@ -28,6 +28,7 @@ public sealed record LobbyView(
     IReadOnlyList<TeamSlot> Ready,
     IReadOnlyList<SeatView> Seats,
     DraftView? Draft,
+    IReadOnlyList<SeriesGame> Games,
     Instant ServerNow)
 {
     /// <param name="now">Sunucu saati: istemci geri sayımı kendi saatiyle aradaki farkı düzelterek çizer.</param>
@@ -51,6 +52,7 @@ public sealed record LobbyView(
                 .Where(seat => lobby.PlayerAt(seat) is not null)
                 .Select(seat => new SeatView(seat, lobby.IsConnected(seat), lobby.AbsentSince(seat)))],
             series.CurrentDraft is { } draft ? DraftView.Of(draft, series.Locks) : null,
+            [.. series.Games],
             now);
     }
 }
@@ -89,6 +91,9 @@ public sealed record DraftView(
 /// (arayüz hükmen sayacını gösterir: yok_olduğu_an + 2 dk − serverNow).
 /// </summary>
 public sealed record SeatView(TeamSlot Seat, bool Connected, Instant? AbsentSince);
+
+/// <summary>Bir hamlenin sonucu: yeni durum ve hamle draft'ı bitirdiyse oynanan maç (yayınlanır: MatchReady).</summary>
+public sealed record LobbyUpdate(LobbyView View, Matches.MatchRecord? Match);
 
 /// <summary>Lobi görüntüsü + isteyen oyuncunun koltuğu (REST'te; hub'da koltuk bağlantıya bağlı).</summary>
 public sealed record SeatedLobbyView(TeamSlot YourSeat, LobbyView Lobby);

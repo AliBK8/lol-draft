@@ -25,6 +25,7 @@ internal sealed record LobbyStateDto(
     string[] Ready,
     SeatDto[] Seats,
     DraftStateDto? Draft,
+    GameDto[] Games,
     DateTimeOffset ServerNow)
 {
     public static LobbyStateDto Of(LobbyView view) => new(
@@ -47,6 +48,7 @@ internal sealed record LobbyStateDto(
         [.. view.Ready.Select(s => s.ToString())],
         [.. view.Seats.Select(s => new SeatDto(s.Seat.ToString(), s.Connected, s.AbsentSince?.Value))],
         view.Draft is { } draft ? DraftStateDto.Of(draft) : null,
+        [.. view.Games.Select(g => new GameDto(g.Number, g.Blue.ToString(), g.Winner.ToString(), g.Match.Value))],
         view.ServerNow.Value);
 }
 
@@ -78,6 +80,12 @@ internal sealed record DraftStateDto(
         view.RedLocked,
         [.. view.FearlessLocks.Select(c => c.Value)]);
 }
+
+/// <summary>
+/// Oynanmış maç: kim maviydi, kim kazandı, tekrar izleme kimliği (GET /api/matches/{match}).
+/// Sunucu sonucu hemen yazar; istemci maçı oynatırken bitene (ya da "sona atla"ya) kadar göstermez (karar 2026-11-12).
+/// </summary>
+internal sealed record GameDto(int Number, string Blue, string Winner, string Match);
 
 /// <summary>Koltuk: bağlı mı, değilse ne zamandan beri yok (hükmen sayacı = absentSince + 2 dk).</summary>
 internal sealed record SeatDto(string Seat, bool Connected, DateTimeOffset? AbsentSince);

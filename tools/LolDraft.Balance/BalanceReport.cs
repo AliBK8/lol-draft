@@ -85,6 +85,22 @@ internal static class BalanceReport
         w.WriteLine("  hedef: üstün kimlik %55-60");
         w.WriteLine();
 
+        if (o.OffRoleRate > 0)
+        {
+            w.WriteLine($"## Rol dışı kumar (--off-role {o.OffRoleRate.ToString(CultureInfo.InvariantCulture)}; maç sonu, rol rakibine göre altın)");
+            w.WriteLine($"  {"",-24}{"pick",8}  {"takımı kazanıyor",-22}{"≥ +1.000 önde",-16}{"≤ −1.000 geride",-16}");
+            foreach (var (label, (picks, wins, ahead, behind)) in new[] { ("Kendi rolünde", s.InRole), ("Rol dışı", s.OffRole) })
+            {
+                w.WriteLine($"  {label,-24}{picks,8}  {Pct(wins, picks) + Margin(wins, picks),-22}" +
+                            $"{Pct(ahead, picks),-16}{Pct(behind, picks),-16}");
+            }
+            foreach (var (penalty, (picks, wins)) in s.OffRoleByPenalty)
+                Row(w, $"  ceza %{penalty}", $"{Pct(wins, picks)}{Margin(wins, picks)}  ({picks} pick)", "");
+            // Hedef henüz kararlaştırılmadı (faz D): ortalamada geride olmalı, "önde" oranı kumarın ne sıklıkla tuttuğu.
+            w.WriteLine("  beklenen: rol dışı ortalamada geride (kazanma < %50); 'önde' oranı kumarın ne sıklıkla tuttuğu (faz D)");
+            w.WriteLine();
+        }
+
         w.WriteLine($"## Belirgin erken comp (Σ(erken − geç) farkı ≥ {o.EarlyCompThreshold})");
         Row(w, "Maç", $"{s.EarlyCompMatches}", "");
         Row(w, "Erken comp kazanıyor", Pct(s.EarlyCompWins, s.EarlyCompMatches) + Margin(s.EarlyCompWins, s.EarlyCompMatches), "");

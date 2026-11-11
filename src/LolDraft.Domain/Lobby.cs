@@ -179,6 +179,22 @@ public sealed class Lobby
         OnDraft(player, action, now, (draft, side) => draft.LockLineup(side, now));
 
     /// <summary>
+    /// Draft'ı biten maçın sonucunu seriye yazar (DESIGN.md §8.3: dışarıdan tek kapı). Simülasyonu dışarısı yapar
+    /// (Domain motoru bilmez): draft bitince Application maçı oynatır, kazanan rengi ve maçın kimliğini buraya verir.
+    /// Seri skoru takıma çevirir, renkleri değiştirir, fearless kilitlerini günceller; sonraki maç için yeniden "hazır" denir.
+    /// </summary>
+    public Result RecordGame(Side winner, MatchId match, Instant now)
+    {
+        var result = Series.RecordGame(winner, match);
+        if (result.IsFailure)
+            return result;
+
+        LastActivity = now;
+        Revision++;
+        return result;
+    }
+
+    /// <summary>
     /// Lobi saatinin tiki (sunucunun arka plan döngüsü çağırır): zamana bağlı ne varsa yürütür, sırayla:
     /// <list type="number">
     /// <item>Kapanış: kimse bağlı değilse son çıkıştan 5 dk sonra; ya da 30 dk hiç hareket yoksa.</item>

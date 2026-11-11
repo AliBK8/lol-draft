@@ -4,8 +4,11 @@ using LolDraft.Api.Auth;
 using LolDraft.Api.Background;
 using LolDraft.Api.Hubs;
 using LolDraft.Api.Lobbies;
+using LolDraft.Api.Matches;
 using LolDraft.Api.Middleware;
 using LolDraft.Application.Lobbies;
+using LolDraft.Application.Matches;
+using LolDraft.Engine;
 using LolDraft.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.SignalR;
@@ -24,6 +27,11 @@ builder.Services.AddSingleton<JoinLobby>();
 builder.Services.AddSingleton<GetLobby>();
 builder.Services.AddSingleton<LobbyCommands>();
 builder.Services.AddSingleton<AdvanceLobbies>();
+
+// Simülasyon (4f): motor durumsuz, tek örnek paylaşılır. Draft bitince maçı oynatan senaryo ve replay okuma.
+builder.Services.AddSingleton(MatchEngine.CreateSimulator());
+builder.Services.AddSingleton<PlayMatch>();
+builder.Services.AddSingleton<GetMatch>();
 
 // Lobi saati: draft adımlarının süresini sunucu tutar (istemcinin saati kullanılmaz).
 builder.Services.AddHostedService<LobbyClockService>();
@@ -75,6 +83,7 @@ app.UseAuthorization();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapLobbyEndpoints();
+app.MapMatchEndpoints();
 app.MapHub<DraftHub>(DraftHub.Path);
 
 app.Run();

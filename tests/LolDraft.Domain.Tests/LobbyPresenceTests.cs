@@ -180,7 +180,7 @@ public sealed class LobbyPresenceTests
         Assert.Equal(TeamSlot.B, series.Winner);
         Assert.Equal(SeriesErrors.SeriesFinished, series.Forfeit(TeamSlot.B).Error);
         Assert.Equal(SeriesErrors.SeriesFinished, series.StartDraft(DraftTimings.Default, T0).Error);
-        Assert.Equal(SeriesErrors.SeriesFinished, series.RecordGame(Side.Blue).Error);
+        Assert.Equal(SeriesErrors.SeriesFinished, series.RecordGame(Side.Blue, NewMatch()).Error);
     }
 
     private Lobby FullLobby()

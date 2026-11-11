@@ -6,8 +6,10 @@ namespace LolDraft.Balance;
 /// <summary>
 /// Rastgele draft üretir: her rolde iki takıma farklı şampiyon; çok rollü bir şampiyon maçta tek kez seçilir.
 /// Araç motor değildir; burada System.Random kullanmak serbest, ama aynı --seed aynı draft dizisini versin diye seed'li.
+/// offRoleRate: yuva bu ihtimalle o rolü oynamayan bir şampiyonla dolar (rol dışı kumar, DESIGN.md §16.8).
+/// 0 ise zar hiç atılmaz: rol dışısız raporlar eskisiyle bayt bayt aynı.
 /// </summary>
-internal sealed class RandomDrafter(ChampionPool pool, int seed)
+internal sealed class RandomDrafter(ChampionPool pool, int seed, double offRoleRate = 0)
 {
     private readonly Random _random = new(seed);
 
@@ -30,7 +32,10 @@ internal sealed class RandomDrafter(ChampionPool pool, int seed)
 
     private ChampionProfile Pick(Role role, HashSet<string> used)
     {
-        var available = pool.For(role).Where(c => !used.Contains(c.Id)).ToList();
+        var offRole = offRoleRate > 0 && _random.NextDouble() < offRoleRate;
+        var available = offRole
+            ? pool.All.Where(c => !used.Contains(c.Id) && !pool.RolesOf(c).Contains(role)).ToList()
+            : pool.For(role).Where(c => !used.Contains(c.Id)).ToList();
         if (available.Count == 0)
             throw new InvalidOperationException($"{role} rolünde seçilecek şampiyon kalmadı; havuzu genişlet.");
 

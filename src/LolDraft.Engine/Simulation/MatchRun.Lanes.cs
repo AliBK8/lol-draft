@@ -49,7 +49,7 @@ internal sealed partial class MatchRun
             var rules = LaneRules.Effects(lane, blue, red, minute);
             var rawDelta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
                            + rules.Sum(e => e.Signed)
-                           + _rng.NextNormal() * LaneNoiseSigma;
+                           + _rng.NextNormal() * LaneNoiseSigma * Volatility(minute, [.. blue, .. red]);
             var (factor, damping) = LaneRules.Damping(lane, blue, red, minute);
             var delta = rawDelta * factor;
             ReportLaneRules(lane, rules, rawDelta, factor, damping);

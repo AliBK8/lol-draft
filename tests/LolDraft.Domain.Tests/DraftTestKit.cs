@@ -12,6 +12,9 @@ internal static class DraftTestKit
 
     public static ChampionId Id(string value) => ChampionId.Create(value).Value;
 
+    /// <summary>Rastgele maç kimliği (RecordGame için; testler simülasyon yapmaz).</summary>
+    public static MatchId NewMatch() => MatchId.FromBytes(Guid.NewGuid().ToByteArray());
+
     public static DraftSession Start(FearlessLocks? locks = null, IEnumerable<ChampionId>? pool = null) =>
         DraftSession.Start(pool ?? Pool, locks ?? FearlessLocks.None, DraftTimings.Default, T0).Value;
 

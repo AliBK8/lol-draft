@@ -5,15 +5,25 @@ namespace LolDraft.Engine;
 /// altının nereden geldiği. "Draft yönü belirler, oyun o yönün gerçekleşip gerçekleşmediğini" zincirinin açıklaması.
 /// </summary>
 public sealed record DraftReport(
-    IReadOnlyList<RuleImpact> Rules, IReadOnlyList<CarryReport> Carries, TeamGoldReport Blue, TeamGoldReport Red)
+    IReadOnlyList<RuleImpact> Rules, IReadOnlyList<CarryReport> Carries, TeamGoldReport Blue, TeamGoldReport Red,
+    IReadOnlyList<OffRoleReport> OffRoles)
 {
     // Record eşitliği listeyi referansla karşılaştırır; aynı içerikli iki karne eşit sayılsın diye içerikle karşılaştır.
     public bool Equals(DraftReport? other) =>
         other is not null && Rules.SequenceEqual(other.Rules) && Carries.SequenceEqual(other.Carries)
-        && Blue == other.Blue && Red == other.Red;
+        && Blue == other.Blue && Red == other.Red && OffRoles.SequenceEqual(other.OffRoles);
 
-    public override int GetHashCode() => HashCode.Combine(Rules.Count, Carries.Count, Blue, Red);
+    public override int GetHashCode() => HashCode.Combine(Rules.Count, Carries.Count, Blue, Red, OffRoles.Count);
 }
+
+/// <summary>
+/// Rol dışı oynayan şampiyon ve kumarın sonucu (DESIGN.md §16.8): maç sonunda rol rakibine göre altın farkı.
+/// </summary>
+/// <param name="Penalty">Güç cezası (0,2 = −%20).</param>
+/// <param name="GoldDiff">Maç sonunda aynı yuvadaki rakibe göre altın farkı (pozitif = önde).</param>
+/// <param name="Text">"Rol dışı kumar tuttu: Syndra top'ta, rakibinin 2.400 altın önünde bitirdi (−%20)".</param>
+public sealed record OffRoleReport(
+    string ChampionId, TeamSide Side, ChampionRole Role, double Penalty, int GoldDiff, string Text);
 
 /// <summary>Kuralın etkili olduğu yer.</summary>
 public enum RuleContext

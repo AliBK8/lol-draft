@@ -49,9 +49,10 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
    - ~~4e-2a: hub, hamleler (Ready/Ban/Pick/SwapRoles/LockLineup) lobi kilidi altında, `actionId` tekrar koruması, `LobbyUpdated` DTO'su, API'de `GuestAuthenticationHandler`~~ (bitti, DESIGN.md §8.12).
    - ~~4e-2b: lobi saati (`LobbyClockService` → `Lobby.Advance` → `DraftSession.Timeout`), `RateLimitHubFilter` (sn'de 5, dk'da 60; dk'da 10 ihtar → bağlantı kapanır)~~ (bitti, DESIGN.md §8.13).
    - ~~4e-2c: bağlantı takibi + hükmen galibiyet (2 dk), ikisi birden yoksa lobi 5 dk sonra kapanır, 30 dk hareketsiz lobi kapanır (`LobbyClosed`), IP başına 3 lobi (gateway `X-Client-Ip`, depoda atomik `TryAdd`)~~ (bitti, DESIGN.md §8.14). Bu adımda 4c'den kalma bir açık bulundu ve düzeltildi: güvenilen proxy listesi boşken gateway herkesin `X-Forwarded-For`'una güveniyordu (§8.10).
-9. **← KALDIĞIMIZ YER (2026-11-11).** 4f: Simülasyon bağlantısı: `DraftResult` → `TeamDraft` (katalogdan profil, rol dışı cezası), seed, motor, `RecordGame`, `MatchReady`.
-   - Rol dışı cezası −%25 (DESIGN.md §16.8 sonu; `ChampionProfile.Roles`, karne satırı, denge aracına rol dışı oranı).
-   - `Lobby.RecordGame` (Series'in değiştiren metotları artık internal, tek kapı Lobby; DESIGN.md §8.3).
-   - Biten maçın olay listesi (`MatchResult`) SQLite'a yazılır, replay onu oynatır; seed + motor sürümü sadece teşhis için saklanır. Seed'le yeniden simüle etmek her denge ayarında ve platformlar arası `Math.Log/Cos` farkında eski linkleri bozar (analiz 2026-11-11).
-10. 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). 6: Docker + CI.
+9. ~~4f-1: Simülasyon bağlantısı: draft biter (son kilit ya da swap zaman aşımı) → kilit altında katalogdan profiller, CSPRNG seed, motor, `Lobby.RecordGame` → maç kaydı (bellekte) → `MatchReady` + `GET /api/matches/{id}`~~ (bitti 2026-11-12, DESIGN.md §8.15). Kararlar:
+   - (2026-11-12) Skor hemen yazılır ve yayınlanır; istemci oynatma bitene (ya da "sona atla") kadar göstermez.
+   - (2026-11-12) Rol dışı: mesafe tablosu (%20/%25/%30/%35) + lane fazında oynaklık + karne satırı (DESIGN.md §16.8). Ölçüm: rol dışı takım %43 kazanıyor; oynaklık maç sonunu neredeyse etkilemiyor, kumarın kaldıracı faz D'de (öneri: rol dışı koridorda sürpriz sıklığı).
+   - Biten maçın olay listesi saklanır, replay onu oynatır; seed + motor sürümü (MVID) sadece teşhis.
+   **← KALDIĞIMIZ YER.** 4f-2: `IMatchRepository` → EF Core + SQLite (kalıcı replay), migration, volume. Rejoin hâlâ ertelendi.
+10. 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). İstemci kuralları: küçük/eşit `revision`'lı `LobbyUpdated`'ı at (§8.12); skoru oynatma bitene kadar gizle (§8.15); swap'ta rol dışı yuvayı ceza ve "oynak" etiketiyle göster (§16.8). 6: Docker + CI.
 11. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

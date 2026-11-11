@@ -33,6 +33,7 @@ internal sealed partial class MatchRun
         _blue = input.Blue;
         _red = input.Red;
         _rng = rng;
+        AssignRoles();
     }
 
     public MatchResult Play()

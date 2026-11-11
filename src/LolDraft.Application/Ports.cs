@@ -1,5 +1,7 @@
 using LolDraft.Application.Lobbies;
+using LolDraft.Application.Matches;
 using LolDraft.Domain;
+using LolDraft.Engine;
 
 namespace LolDraft.Application;
 
@@ -61,8 +63,22 @@ public interface IClock
     Instant Now { get; }
 }
 
-/// <summary>Oyunun şampiyon listesi. Şimdilik sadece kimlikler; profil verisi simülasyon adımında eklenecek.</summary>
+/// <summary>Oyunun şampiyon listesi: draft havuzu (kimlikler) ve motorun profilleri (data/champions.json).</summary>
 public interface IChampionCatalog
 {
     IReadOnlyCollection<ChampionId> All { get; }
+
+    /// <summary>Şampiyonun motor profili (doğal rolleri dahil). Havuzda olmayan kimlik programcı hatasıdır.</summary>
+    ChampionProfile Profile(ChampionId champion);
+}
+
+/// <summary>
+/// Oynanmış maçlar (tekrar izleme, DESIGN.md §8.7). 4f-1: bellekte, sınırlı; 4f-2: SQLite (kalıcı).
+/// Kayıt olay listesinin kendisidir: replay seed'le yeniden simüle etmez (denge ayarı eski maçı değiştirirdi).
+/// </summary>
+public interface IMatchRepository
+{
+    Task Save(MatchRecord match, CancellationToken ct);
+
+    Task<MatchRecord?> Get(MatchId id, CancellationToken ct);
 }

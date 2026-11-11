@@ -1,5 +1,6 @@
 using LolDraft.Api.Auth;
 using LolDraft.Api.Lobbies;
+using LolDraft.Api.Matches;
 using LolDraft.Application.Lobbies;
 using LolDraft.Domain;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,9 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
     public const string Path = "/hubs/draft";
     public const string LobbyUpdated = nameof(LobbyUpdated);
     public const string LobbyClosed = nameof(LobbyClosed);
+
+    /// <summary>Draft bitti, maç oynandı: olay listesi gruba gider (sonra skoru taşıyan LobbyUpdated).</summary>
+    public const string MatchReady = nameof(MatchReady);
 
     // Bağlantı lobiye "bağlandı" diye sayıldıysa işaret: kopunca sadece sayılan bağlantı düşülür.
     private static readonly object CountedKey = new();
@@ -39,7 +43,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
         Context.Items[CountedKey] = true;
         await Groups.AddToGroupAsync(Context.ConnectionId, Group(who.Lobby));
-        await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value));
+        await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value.View));
     }
 
     /// <summary>Kopunca: bağlantı düşülür; oyuncunun son bağlantısıysa "yok" sayacı başlar, rakip görür.</summary>
@@ -52,7 +56,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
         // Bağlantı zaten kapandı: ConnectionAborted iptal edilmiş olur, onu kullanma.
         var state = await commands.Disconnect(who, CancellationToken.None);
         if (state.IsSuccess)
-            await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value));
+            await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(state.Value.View));
     }
 
     public Task<HubResultDto> Ready(Guid actionId) =>
@@ -82,7 +86,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
     private Task<HubResultDto> WithChampion(
         string champion, Guid actionId,
-        Func<GuestIdentity, ActionId, ChampionId, CancellationToken, Task<Result<LobbyView>>> command)
+        Func<GuestIdentity, ActionId, ChampionId, CancellationToken, Task<Result<LobbyUpdate>>> command)
     {
         var id = ChampionId.Create(champion);
         if (id.IsFailure)
@@ -93,7 +97,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
     // Ortak akış: kimlik → hamle → cevap; başarılıysa yeni durum lobideki herkese.
     private async Task<HubResultDto> Run(
-        Guid actionId, Func<GuestIdentity, ActionId, CancellationToken, Task<Result<LobbyView>>> command)
+        Guid actionId, Func<GuestIdentity, ActionId, CancellationToken, Task<Result<LobbyUpdate>>> command)
     {
         var action = ActionId.Create(actionId);
         if (action.IsFailure)
@@ -104,7 +108,19 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
         if (result.IsFailure)
             return HubResultDto.Failure(result.Error!);
 
-        await Clients.Group(Group(who.Lobby)).SendAsync(LobbyUpdated, LobbyStateDto.Of(result.Value));
+        await Publish(Clients.Group(Group(who.Lobby)), result.Value, Context.ConnectionAborted);
         return HubResultDto.Success;
+    }
+
+    /// <summary>
+    /// Yeni durumu (ve hamle draft'ı bitirdiyse oynanan maçı) gruba yayınlar. Sıra: önce MatchReady, sonra skoru taşıyan
+    /// LobbyUpdated; istemci oynatma moduna skoru görmeden girer (skor oynatma bitince açılır, karar 2026-11-12).
+    /// Lobi saati de aynı sırayla yayınlar.
+    /// </summary>
+    public static async Task Publish(IClientProxy group, LobbyUpdate update, CancellationToken ct)
+    {
+        if (update.Match is { } match)
+            await group.SendAsync(MatchReady, MatchDto.Of(match), ct);
+        await group.SendAsync(LobbyUpdated, LobbyStateDto.Of(update.View), ct);
     }
 }

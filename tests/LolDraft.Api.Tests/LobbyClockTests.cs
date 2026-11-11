@@ -79,6 +79,31 @@ public sealed class LobbyClockTests : IAsyncDisposable
         Assert.False(string.IsNullOrEmpty(pick.GetProperty("champion").GetString()));
     }
 
+    // Kimse hamle yapmazsa bile maç oynanır: 20 adım ve swap zaman aşımıyla geçer, swap bitince maçı saat oynatır.
+    [Fact]
+    public async Task Swap_suresi_dolunca_maci_saat_oynatir_ve_yayinlar()
+    {
+        var updates = await StartDraft();
+        var matches = new ConcurrentQueue<JsonElement>();
+        _connections[0].On<JsonElement>("MatchReady", matches.Enqueue);
+
+        for (var step = 1; step <= 20; step++)
+        {
+            _clock.Advance(TimeSpan.FromSeconds(31));
+            var count = step;
+            await WaitFor(updates, s => Actions(s).GetArrayLength() == count);
+        }
+
+        _clock.Advance(TimeSpan.FromSeconds(31));   // swap süresi
+        var state = await WaitFor(updates, s => s.GetProperty("games").GetArrayLength() == 1);
+
+        // bo1: tek maç seriyi bitirir.
+        Assert.Equal("played", state.GetProperty("endReason").GetString());
+        await WaitUntil(() => Task.FromResult(!matches.IsEmpty));
+        Assert.True(matches.TryDequeue(out var match));
+        Assert.Equal(state.GetProperty("games")[0].GetProperty("match").GetString(), match.GetProperty("id").GetString());
+    }
+
     // --- Hükmen galibiyet ve kapanış ---
 
     [Fact]

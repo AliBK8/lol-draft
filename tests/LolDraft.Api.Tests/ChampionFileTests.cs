@@ -22,6 +22,8 @@ public sealed class ChampionFileTests
         Assert.Equal(3, entry.Profile.Tags.Engage);
         Assert.Equal(0, entry.Profile.Tags.Poke);
         Assert.Equal(new[] { Role.Support, Role.Top }, entry.Roles);
+        // Motor da doğal rolleri bilir (rol dışı cezası); yuva sırasıyla.
+        Assert.Equal(new[] { ChampionRole.Top, ChampionRole.Support }, entry.Profile.Roles);
     }
 
     [Theory]

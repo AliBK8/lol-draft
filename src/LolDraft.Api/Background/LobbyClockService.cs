@@ -1,5 +1,6 @@
 using LolDraft.Api.Hubs;
 using LolDraft.Api.Lobbies;
+using LolDraft.Api.Matches;
 using LolDraft.Application.Lobbies;
 using Microsoft.AspNetCore.SignalR;
 
@@ -26,6 +27,13 @@ internal sealed class LobbyClockService(
             try
             {
                 var report = await advanceLobbies.Handle(stoppingToken);
+
+                // Swap süresi dolup biten draft'ların maçları: skoru taşıyan LobbyUpdated'dan önce (DraftHub.Publish sırası).
+                foreach (var match in report.Played)
+                {
+                    await hub.Clients.Group(DraftHub.Group(match.Lobby))
+                        .SendAsync(DraftHub.MatchReady, MatchDto.Of(match), stoppingToken);
+                }
 
                 foreach (var view in report.Changed)
                 {

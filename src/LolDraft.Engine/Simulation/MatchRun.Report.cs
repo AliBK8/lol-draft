@@ -123,15 +123,61 @@ internal sealed partial class MatchRun
                 carries.Add(Carry(carry, side, minute, t));
         }
 
-        return new DraftReport(rules, carries, TeamGoldReport(TeamSide.Blue, t), TeamGoldReport(TeamSide.Red, t));
+        return new DraftReport(rules, carries, TeamGoldReport(TeamSide.Blue, t), TeamGoldReport(TeamSide.Red, t),
+            OffRoles(t));
     }
+
+    // Kumarın sonucu: rol rakibine göre maç sonu altını. ±1.000'den büyük fark "tuttu" ya da "tutmadı".
+    private const int OffRoleVerdictGold = 1000;
+
+    // Binlik ayırıcı nokta, kültürden bağımsız (sunucunun dil ayarı metni değiştirmesin): 2400 → "2.400".
+    private static readonly System.Globalization.NumberFormatInfo GoldFormat = new() { NumberGroupSeparator = "." };
+
+    private List<OffRoleReport> OffRoles(double t)
+    {
+        var reports = new List<OffRoleReport>();
+        foreach (var side in (TeamSide[])[TeamSide.Blue, TeamSide.Red])
+        {
+            var champions = Team(side).Champions;
+            for (var i = 0; i < champions.Count; i++)
+            {
+                var champion = champions[i];
+                var penalty = RolePenalty(champion);
+                if (penalty == 0)
+                    continue;
+
+                var role = (ChampionRole)i;
+                var diff = (int)Math.Round(_gold.GoldAt(champion, t) - _gold.GoldAt(Counterpart(champion), t));
+                var where = $"{champion.Name} {RoleLocative(role)}";
+                var cost = $"(−%{Math.Round(penalty * 100)})";
+                var text = diff >= OffRoleVerdictGold
+                    ? $"Rol dışı kumar tuttu: {where}, rakibinin {diff.ToString("#,0", GoldFormat)} altın önünde bitirdi {cost}"
+                    : diff <= -OffRoleVerdictGold
+                        ? $"Rol dışı kumar tutmadı: {where}, rakibinin {(-diff).ToString("#,0", GoldFormat)} altın gerisinde bitirdi {cost}"
+                        : $"Rol dışı: {where}, rakibiyle başa baş bitirdi {cost}";
+                reports.Add(new OffRoleReport(champion.Id, side, role, penalty, diff, text));
+            }
+        }
+
+        return reports;
+    }
+
+    private static string RoleLocative(ChampionRole role) => role switch
+    {
+        ChampionRole.Top => "top'ta",
+        ChampionRole.Jungle => "ormanda",
+        ChampionRole.Mid => "mid'de",
+        ChampionRole.Bot => "bot'ta",
+        ChampionRole.Support => "support'ta",
+        _ => throw new ArgumentOutOfRangeException(nameof(role)),
+    };
 
     // Hiper taşıyıcı: G_eff / geç gücü. Örnek Kayle 31. dk, rakibinden %25 az altın (r 0,857, econ 3 → ×0,71):
     // 10 × 0,71 / 10 → %71, "scale edemedi".
     private CarryReport Carry(ChampionProfile carry, TeamSide side, int minute, double t)
     {
         var factor = GoldFactor(_gold.GoldAt(carry, t), _gold.GoldAt(Counterpart(carry), t), carry.Economy);
-        var share = carry.PowerAt(minute) * factor / carry.Late;
+        var share = carry.PowerAt(minute) * (1 - RolePenalty(carry)) * factor / carry.Late;
         var percent = (int)Math.Round(share * 100);
         var text = factor < CarryStarvedFactor
             ? $"{carry.Name} scale edemedi (altını rakibinin gerisinde): {minute}. dk'da gücü geç potansiyelinin %{percent} kadarı"

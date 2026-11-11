@@ -37,6 +37,7 @@ public static class ChampionFile
                 throw new InvalidDataException($"{c.Id}: en az bir rol olmalı.");
 
             var t = c.Tags ?? new TagsEntry();
+            Role[] roles = [.. c.Roles.Select(ParseRole).Distinct()];
             ChampionProfile profile;
             try
             {
@@ -44,7 +45,8 @@ public static class ChampionFile
                     c.Id!, c.Name!, ParseRange(c.Range), ParseClass(c.Classes[0]),
                     c.Classes.Count == 2 ? ParseClass(c.Classes[1]) : null,
                     c.E, c.M, c.L, c.Econ, c.Ap,
-                    new ChampionTags(t.Fl, t.En, t.Dis, t.Peel, t.Poke, t.Pick, t.Dive, t.Split, t.Mob));
+                    new ChampionTags(t.Fl, t.En, t.Dis, t.Peel, t.Poke, t.Pick, t.Dive, t.Split, t.Mob),
+                    roles.Select(ToEngine));
             }
             catch (ArgumentException error)
             {
@@ -52,11 +54,22 @@ public static class ChampionFile
                 throw new InvalidDataException($"{c.Id}: {error.Message}", error);
             }
 
-            entries.Add(new ChampionEntry(id.Value, profile, [.. c.Roles.Select(ParseRole).Distinct()]));
+            entries.Add(new ChampionEntry(id.Value, profile, roles));
         }
 
         return entries;
     }
+
+    /// <summary>Domain'in yuvası → motorun yuvası (aynı sıra; Domain Engine'i bilmez, çeviri dış katmanda).</summary>
+    public static ChampionRole ToEngine(Role role) => role switch
+    {
+        Role.Top => ChampionRole.Top,
+        Role.Jungle => ChampionRole.Jungle,
+        Role.Mid => ChampionRole.Mid,
+        Role.Bot => ChampionRole.Bot,
+        Role.Support => ChampionRole.Support,
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null),
+    };
 
     private static Role ParseRole(string role) => role switch
     {

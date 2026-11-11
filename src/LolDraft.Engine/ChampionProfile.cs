@@ -5,9 +5,15 @@ namespace LolDraft.Engine;
 /// </summary>
 public sealed record ChampionProfile
 {
+    // Doğal roller bit olarak (bit i = ChampionRole i). Liste değil: record eşitliği değerle karşılaştırsın.
+    // 0 = rol bilgisi yok, her rolde oynar (test ve örnek profilleri).
+    private readonly int _roleMask;
+
+    /// <param name="roles">Doğal roller (data/champions.json'daki roles). Boş ya da null: her rolde oynar, ceza yok.</param>
     public ChampionProfile(
         string id, string name, AttackRange range, ChampionClass primaryClass, ChampionClass? secondaryClass,
-        int early, int mid, int late, int economy, double apShare, ChampionTags tags)
+        int early, int mid, int late, int economy, double apShare, ChampionTags tags,
+        IEnumerable<ChampionRole>? roles = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -34,6 +40,13 @@ public sealed record ChampionProfile
             throw new ArgumentOutOfRangeException(nameof(apShare), apShare, "AP payı 0 ile 1 arasında olmalı.");
         ApShare = apShare;
         Tags = tags;
+
+        foreach (var role in roles ?? [])
+        {
+            if (!Enum.IsDefined(role))
+                throw new ArgumentOutOfRangeException(nameof(roles), role, "Bilinmeyen rol.");
+            _roleMask |= 1 << (int)role;
+        }
     }
 
     public string Id { get; }
@@ -56,6 +69,10 @@ public sealed record ChampionProfile
 
     public double ApShare { get; }
     public ChampionTags Tags { get; }
+
+    /// <summary>Doğal roller, yuva sırasıyla. Boşsa rol bilgisi yok: her rolde oynar.</summary>
+    public IReadOnlyList<ChampionRole> Roles =>
+        [.. Enum.GetValues<ChampionRole>().Where(role => (_roleMask & (1 << (int)role)) != 0)];
 
     public bool HasClass(ChampionClass championClass) =>
         PrimaryClass == championClass || SecondaryClass == championClass;

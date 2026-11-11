@@ -2,9 +2,12 @@ using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using LolDraft.Api.Middleware;
+using LolDraft.Application;
+using LolDraft.Domain;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace LolDraft.Api.Tests;
 
@@ -168,6 +171,77 @@ public sealed class DraftHubTests : IAsyncDisposable
 
     // --- Yardımcılar ---
 
+    // --- Maç (4f-1) ---
+
+    [Fact]
+    public async Task Draft_bitince_mac_oynanir_ikisine_de_yayinlanir_ve_tekrar_izlenebilir()
+    {
+        var (host, guest, blue, red) = await StartedDraft();
+
+        await PlayDraft(blue, red);
+        Assert.True((await blue.Invoke("LockLineup")).Ok);
+        await Task.Delay(220);
+        Assert.True((await red.Invoke("LockLineup")).Ok);
+
+        // İkinci kilit draft'ı bitirir, maç aynı istekte oynanır; ikisine de aynı maç gider.
+        var match = await host.NextMatch();
+        var seenByGuest = await guest.NextMatch();
+        var id = match.GetProperty("id").GetString()!;
+        Assert.Equal(id, seenByGuest.GetProperty("id").GetString());
+        Assert.Equal(1, match.GetProperty("gameNumber").GetInt32());
+
+        var events = match.GetProperty("events").EnumerateArray().ToList();
+        Assert.Equal("nexus", events[^1].GetProperty("type").GetString());
+        Assert.Contains(events, e => e.GetProperty("type").GetString() == "kill");
+        Assert.Equal(10, match.GetProperty("goldFrames")[0].GetProperty("champions").GetArrayLength());
+        var winner = match.GetProperty("end").GetProperty("winner").GetString();
+        Assert.Contains(winner, new[] { "blue", "red" });
+        // Seed istemciye hiç gitmez (DESIGN.md §8.6).
+        Assert.False(match.TryGetProperty("seed", out _));
+
+        // Skor ve oynanan maç lobi durumunda: kazanan renk o maçın mavisine göre koltuğa çevrilir.
+        var state = await host.Last();
+        var game = Assert.Single(state.GetProperty("games").EnumerateArray().ToList());
+        Assert.Equal(id, game.GetProperty("match").GetString());
+        var blueSeat = match.GetProperty("blueTeam").GetString();
+        var winnerSeat = winner == "blue" ? blueSeat : (blueSeat == "A" ? "B" : "A");
+        Assert.Equal(winnerSeat, game.GetProperty("winner").GetString());
+        Assert.Equal(1, state.GetProperty("winsA").GetInt32() + state.GetProperty("winsB").GetInt32());
+        Assert.Equal(JsonValueKind.Null, state.GetProperty("draft").ValueKind);
+
+        // Tekrar izleme: aynı maç, aynı olaylar.
+        var replay = await Client().GetFromJsonAsync<JsonElement>($"/api/matches/{id}");
+        Assert.Equal(events.Count, replay.GetProperty("events").GetArrayLength());
+        Assert.Equal(match.GetProperty("end").GetRawText(), replay.GetProperty("end").GetRawText());
+    }
+
+    [Theory]
+    [InlineData("yok")]                         // biçimi bozuk
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAA")]      // biçimi doğru ama böyle bir maç yok
+    public async Task Olmayan_mac_404(string id)
+    {
+        var response = await Client().GetAsync($"/api/matches/{id}");
+
+        Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("match_not_found", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetString());
+    }
+
+    // 20 adım: sıradaki taraf havuzdaki ilk kullanılmamış şampiyonu ban/pick eder. Hub limiti bağlantı başına
+    // saniyede 5 mesaj: hamleler arası 220 ms.
+    private async Task PlayDraft(Player blue, Player red)
+    {
+        var pool = _factory.Services.GetRequiredService<IChampionCatalog>().All.Select(c => c.Value).ToList();
+        var used = new HashSet<string>();
+        foreach (var step in DraftOrder.Steps)
+        {
+            var player = step.Side == Side.Blue ? blue : red;
+            var champion = pool.First(used.Add);
+            var result = await player.Invoke(step.Kind == DraftActionKind.Ban ? "Ban" : "Pick", champion);
+            Assert.True(result.Ok, result.Error);
+            await Task.Delay(220);
+        }
+    }
+
     private async Task<(Player Host, Player Guest)> TwoPlayers()
     {
         var ticket = await CreateLobby();
@@ -240,13 +314,14 @@ public sealed class DraftHubTests : IAsyncDisposable
 
     internal sealed record HubResult(bool Ok, string? Error, string? Message);
 
-    /// <summary>Bir oyuncunun bağlantısı: gelen LobbyUpdated olaylarını sırayla biriktirir.</summary>
+    /// <summary>Bir oyuncunun bağlantısı: gelen LobbyUpdated ve MatchReady olaylarını sırayla biriktirir.</summary>
     private sealed class Player
     {
         private static readonly TimeSpan Wait = TimeSpan.FromSeconds(5);
 
         private readonly HubConnection _connection;
         private readonly BlockingCollection<JsonElement> _updates = [];
+        private readonly BlockingCollection<JsonElement> _matches = [];
         private int _received;
 
         public Player(HubConnection connection)
@@ -257,7 +332,12 @@ public sealed class DraftHubTests : IAsyncDisposable
                 Interlocked.Increment(ref _received);
                 _updates.Add(state);
             });
+            connection.On<JsonElement>("MatchReady", match => _matches.Add(match));
         }
+
+        /// <summary>Sıradaki oynanan maç (en fazla 5 sn beklenir).</summary>
+        public Task<JsonElement> NextMatch() => Task.Run(() =>
+            _matches.TryTake(out var match, Wait) ? match : throw new TimeoutException("MatchReady gelmedi."));
 
         public int Received => Volatile.Read(ref _received);
 

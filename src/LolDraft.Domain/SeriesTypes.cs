@@ -32,5 +32,5 @@ public enum SeriesEndReason
     Forfeit,
 }
 
-/// <summary>Serinin bitmiş bir maçı: kim maviydi, kim kazandı, draft neydi.</summary>
-public sealed record SeriesGame(int Number, TeamSlot Blue, TeamSlot Winner, DraftResult Draft);
+/// <summary>Serinin bitmiş bir maçı: kim maviydi, kim kazandı, draft neydi, oynanan maçın kimliği (tekrar izleme).</summary>
+public sealed record SeriesGame(int Number, TeamSlot Blue, TeamSlot Winner, DraftResult Draft, MatchId Match);

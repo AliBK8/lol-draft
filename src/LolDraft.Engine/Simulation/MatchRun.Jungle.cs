@@ -34,7 +34,9 @@ internal sealed partial class MatchRun
         var powerDiff = EffectivePower(_blue.Jungle, minute, t0) - EffectivePower(_red.Jungle, minute, t0);
 
         // orman += 0.05 × (G_eff_jg_Mavi − G_eff_jg_Kırmızı) + N(0, 0.3)
-        _jungleDelta = JunglePowerFactor * powerDiff + _rng.NextNormal() * JungleNoiseSigma;
+        // Rol dışı ormancı varsa lane fazında gürültü × 1,5 (OffRole).
+        _jungleDelta = JunglePowerFactor * powerDiff
+                       + _rng.NextNormal() * JungleNoiseSigma * Volatility(minute, _blue.Jungle, _red.Jungle);
         _scores.Add(ScoreCategory.Jungle, _jungleDelta);
 
         if (GankMinutes.Contains(minute))

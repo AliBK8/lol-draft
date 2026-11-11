@@ -30,7 +30,7 @@ Temel ilkeler:
 | Stack | ASP.NET Core + SignalR (tek API uygulaması) önünde YARP gateway, React + TypeScript, SQLite ile başla. Veri hattı Python. | Gateway; tek giriş noktası, rate limiting, TLS ve auth için sonradan eklendi. Mikroservis, Redis, Hangfire MVP için gereksiz. Node/TS alternatifi değerlendirildi; motor paylaşımına gerek olmadığı ve Monte Carlo ağır olduğu için .NET. |
 | Güvenlik | Sunucu otoriter, kayıtsız misafir JWT, iki katmanlı rate limiting (gateway + hub), katmanlı mimari ve sıkı kapsülleme. | §8 |
 | Seri: taraf ve fearless | Takım kimliği sabit koltuk (`TeamSlot` A/B), renk maçlık: ilk mavi rastgele, sonra renkler her maç değişir. Fearless tek tür: seçilen şampiyon iki takıma da kilitlenir. Fearless + bo5 havuz yetene kadar kapalı (40'lık havuza sığmıyor). (2026-11-10) | Reddedildi: "kaybeden taraf seçer" (ek bir seçim ekranı, otomatik değişim daha basit). Reddedildi: Host/Guest koltuk adı (2v2 ve turnuva modunda anlamsız). Reddedildi: soft fearless. |
-| Rol dışı oynama | Serbest ama cezalı: rolü dışındaki yuvada şampiyonun gücü −%25 (ölçülüp ayarlanacak), karnede görünür (§16.8). (2026-11-10) | Reddedildi: swap'ta yasak (fearless 3. maçta uygun şampiyon kalmayabilir). Reddedildi: cezasız bırakmak (motor rolü bilmiyor, istismar açılır). |
+| Rol dışı oynama | Serbest ama cezalı ve kumarlı: rol mesafesine göre güç −%20…−%35, lane fazında oynak koridor, karnede "kumar tuttu / tutmadı" (§16.8). (2026-11-10, güncellendi 2026-11-12) | Reddedildi: swap'ta yasak (fearless 3. maçta uygun şampiyon kalmayabilir). Reddedildi: cezasız bırakmak (motor rolü bilmiyor, istismar açılır). |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
 ---
@@ -527,8 +527,27 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
 | POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
 | GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
-| GET | `/api/matches/{id}` | JWT ya da paylaşım linki | Olay listesi (tekrar izleme) |
-| WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow`; saniyelik `TimerTick` yok, karar 2026-11-10), ileride `MatchReady`, `RateLimited` |
+| GET | `/api/matches/{id}` | yok (paylaşım linki; kimlik 128 bit) | Oynanmış maç: olaylar, dakika kareleri, karne (§8.15) |
+| WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow` + `revision` + `games`; saniyelik `TimerTick` yok, karar 2026-11-10), `MatchReady` (draft bitince oynanan maç, §8.15), `LobbyClosed` |
+
+### 8.15 Uygulama: 4f-1 (simülasyon bağlantısı)
+
+**Bir maçın yolu:** ikinci `LockLineup` (ya da swap süresinin dolması, lobi saati) draft'ı bitirir → aynı lobi kilidinin içinde `PlayMatch.PlayIfDrafted`: swap sonrası dizilim → katalogdan profiller (`TeamDraft`, yuva sırası) → seed (CSPRNG) → `IMatchSimulator` → `Lobby.RecordGame(kazanan renk, MatchId)` → kilit bırakılır → `IMatchRepository.Save` → gruba önce `MatchReady` (maç), sonra `LobbyUpdated` (skor, `games`).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Kilit altında simülasyon | `Application/Matches/PlayMatch.cs` | "Draft bitti" ile "sonuç yazıldı" arasına hamle ya da tik giremez. Simülasyon ~1 ms, kilidi uzatmaz. Hamle yolu (`LobbyCommands`) ve saat yolu (`AdvanceLobbies`) aynı servisi çağırır. |
+| Yazma ve yayın sırası | `LobbyCommands`, `AdvanceLobbies`, `DraftHub.Publish`, `LobbyClockService` | Kayıt kilidin dışında (depo async) ama yayından önce: link yayınlandığında maç okunabilir. Önce `MatchReady`, sonra skoru taşıyan `LobbyUpdated`. |
+| Skorun açıklanması | istemci | Sunucu sonucu hemen yazar ve yayınlar; istemci maçı oynatırken skoru, `games`'teki son kazananı ve seri sonucunu oynatma bitene (ya da "sona atla"ya) kadar göstermez (karar 2026-11-12). Sonucu erken görmek avantaj sağlamaz (maç oynanmış). |
+| Maç kimliği | `Domain/MatchId` | 128 bit rastgele (lobi kodu gibi): tekrar izleme linki token istemez, tahmin edilemezliği gizliliğidir. `SeriesGame.Match` ile seride saklanır. |
+| Seed | `PlayMatch` | `ISecureRandom`'dan 32 bit; istemciye hiç gitmez (§8.6). Kayıtta teşhis için durur, replay onu kullanmaz. |
+| Motor sürümü | `MatchRecord.EngineVersion` | Motor derlemesinin MVID'si: deterministik derlemede kod değişmeden değişmez. Teşhis içindir (hangi denge ayarıyla oynandı). |
+| Kayıt | `IMatchRepository` → `Infrastructure/Matches/InMemoryMatchRepository` | 4f-1: bellekte, en fazla 2.000 maç (en eskisi atılır; maç ~50 KB). Sunucu yeniden başlarsa replay'ler düşer. 4f-2'de SQLite (port aynı). |
+| JSON sözleşmesi | `Api/Matches/MatchDtos.cs` | Motor tipleri doğrudan serileştirilmez; olaylar §4.9 adlarıyla (`kill`, `tower`, …, `split`, `dragonSoul`) elle çevrilir. Bilinmeyen olay tipi hata fırlatır (sessizce kaybolmasın). Seed ve `ScoreBreakdown` dışarı çıkmaz. `blueTeam` koltuğu verir: istemci rengi koltuğa çevirir. |
+| Tekrar izleme ucu | `Api/Matches/MatchEndpoints.cs` | `GET /api/matches/{id}`: token yok, gateway'de `replay` limiti (IP başına dk'da 60). Bozuk ya da olmayan kimlik ikisi de 404 `match_not_found`. |
+| Hata → HTTP | `Api/ApiErrors.cs` | Bütün uç noktaların ortak tablosu (lobi + maç). |
+
+Testler: Domain (`Lobby.RecordGame`: skor, renk değişimi, sürüm, draft bitmeden reddedilir), Api (gerçek SignalR: iki oyuncu 20 adımı oynar ve kilitler → ikisine de aynı `MatchReady`, `games`'te kimlik ve doğru koltuk, seed yok, `GET` aynı maçı döner; saat yolu: kimse oynamazsa 21 zaman aşımı sonra maçı saat oynatır, bo1 seri biter; olmayan maç 404), Gateway (replay rotası token'sız API'ye ulaşır).
 
 ### 8.8 Dağıtım
 
@@ -1002,7 +1021,12 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 - Savaşta olmayanlar ne güçleriyle ne etiketleriyle d'ye girer, savaş kill'lerinde ölmez. `SplitEvent` (splitter, cevap veren) log'a: "Kayle üst koridorda split yapıyor, Renekton cevap verdi". Split kulesi 10. sn'de (savaş sonrası itiş 12'de, karışmasın).
 - Örnek: Fiora (split 3), 18. dk ejder, takımı geride (5v5 %38). %60 ihtimalle split'e gider. Renekton cevap verirse ejder 4v4 (~%45), Fiora düelloyu kazanırsa kill + kule; cevap vermezse ejder 4v5 (~%25) ama kule kesin.
 
-**Rol dışı cezası (karar 2026-11-10, henüz uygulanmadı; simülasyon Application'a bağlanırken):**
+**Rol dışı: ceza + kumar (karar 2026-11-10, yeniden düşünüldü ve uygulandı 2026-11-12; `Engine/Simulation/OffRole.cs`):**
+- Düz −%25 yerine **rol mesafesi tablosu** (simetrik): top↔mid, mid↔bot %20 · orman %25 · mid↔sup, bot↔sup %30 · support ↔ top/orman, bot ↔ top/orman %35. Çok rollü şampiyon en yakın rolünü sayar. Bilinen flex'ler (Jayce top) `roles`'ta: cezasız. Ceza G_pot'a çarpan: `G_eff = G_pot × (1 − ceza) × altın çarpanı`.
+- Eşleşme avantajı ayrı (kurallardan): ranged büyücü top'ta melee'ye karşı K1 (+0,3/dk) alır, ceza onun bedelidir. Örnek: Syndra (7-8-7) top'ta %20 cezayla Darius'a (8-7-5) karşı koridorda hâlâ hafif önde (5. dk Δ +0,06/dk), geç oyunda güçlü. Ortalama bonus bilerek yok (olsaydı rol dışı counterpick optimal olurdu).
+- **Kumar (oynaklık):** lane fazında (dk < 14) rol dışı oyuncunun koridorunda (ve ormanda) gürültü × 1,5. Amaç "ya ezer ya ezilir" hikâyesi. Karnede satır (`OffRoleReport`): "Rol dışı kumar tuttu / tutmadı / başa baş" (maç sonu rol rakibine göre ±1.000 altın).
+- **Ölçüm (2026-11-12, 10.000 draft, her yuva %10 rol dışı, `--off-role 0.1`):** rol dışı oynayan takım %43,2 kazanıyor (kendi rolünde %50,8). Maç sonu rol rakibinin 1.000+ önünde: rol dışı %18,9, kendi rolünde %29,7; 1.000+ gerisinde: %38,9 / %27,4. **Açık sorun:** oynaklık neredeyse etkisiz; ×2 yapınca "önde" %19,0 (lane gürültüsü sadece CS'yi oynatıyor, maç sonu altınını kill/objektif/savaş belirliyor). Cezayı 5 puan indirmek kazanmayı %44,6'ya çıkarıyor, "önde"yi %20,1'e. Kumarın gerçekten tutabilmesi için daha güçlü bir kaldıraç gerekiyor (faz D; öneri: rol dışı koridorda sürpriz sıklığı, ortalama-nötr kill'ler).
+- Eski not (2026-11-10):
 - Sorun: motor yuvayı rol sayar, şampiyonun `roles`'unu bilmez (`ChampionProfile`'da yok). `e/m/l` şampiyonun kendi rolündeki gücü; rol dışında da aynen kullanılınca istismar açılır (ör. erken gücü yüksek Leona top'ta tam farm alır, cezası yok).
 - Karar: yasak değil ceza. Swap'ta yerleştirme serbest, arayüz rol dışı yuvayı uyarır. Yasak olsa fearless bo3'ün 3. maçında (kalan 20 şampiyon) bir rol için uygun şampiyon kalmayabilir, draft kilitlenirdi.
 - Uygulama: `ChampionProfile`'a `Roles` eklenir (Application kataloktan taşır). Rolü dışındaki yuvada oynayan şampiyonun gücü **−%25** (ayar düğmesi; kullanıcı %20-30 arası düşünüyor, denge aracıyla ölçülecek). Karnede görünür: "Rol dışı: Leona top'ta (−%25)".
