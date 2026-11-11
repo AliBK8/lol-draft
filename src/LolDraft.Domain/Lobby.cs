@@ -63,6 +63,14 @@ public sealed class Lobby
     /// <summary>Son hamle, katılma, bağlanma ya da kopma anı (hareketsizlik kapanışı buna bakar).</summary>
     public Instant LastActivity { get; private set; }
 
+    /// <summary>
+    /// Görünür durumun sürümü: her değişimde (oturma, bağlanma, kopma, başarılı yeni hamle, saatin değiştirdiği tik)
+    /// bir artar. Görüntü kilit altında bu sayıyla üretilir ama yayın kilidin dışında gider; iki yayın ağda yer
+    /// değiştirirse istemci elindekinden küçük ya da eşit sürümü atar (DESIGN.md §8.12).
+    /// Örnek: "A hazır" (7) ve "draft başladı" (8) ters gelirse istemci 8'i gösterir, 7'yi atar.
+    /// </summary>
+    public long Revision { get; private set; }
+
     public PlayerId? PlayerAt(TeamSlot seat) => _seats.TryGetValue(seat, out var player) ? player : null;
 
     /// <summary>Sıradaki draft için hazır olan koltuklar.</summary>
@@ -113,6 +121,7 @@ public sealed class Lobby
         _connections[seat] = _connections.GetValueOrDefault(seat) + 1;
         _absentSince.Remove(seat);
         LastActivity = now;
+        Revision++;
         return Result.Ok();
     }
 
@@ -127,6 +136,7 @@ public sealed class Lobby
         if (remaining == 0)
             _absentSince[seat] = now;
         LastActivity = now;
+        Revision++;
         return Result.Ok();
     }
 
@@ -186,13 +196,14 @@ public sealed class Lobby
         if (ShouldClose(now))
             return LobbyTick.Closed;
 
-        if (TryForfeit(now))
-            return LobbyTick.Changed;
+        var changed = TryForfeit(now)
+                      || (Series.CurrentDraft is { Deadline: { } deadline } draft && now >= deadline
+                          && draft.Timeout(now, random).IsSuccess);
+        if (!changed)
+            return LobbyTick.Unchanged;
 
-        if (Series.CurrentDraft is { Deadline: { } deadline } draft && now >= deadline)
-            return draft.Timeout(now, random).IsSuccess ? LobbyTick.Changed : LobbyTick.Unchanged;
-
-        return LobbyTick.Unchanged;
+        Revision++;
+        return LobbyTick.Changed;
     }
 
     private bool ShouldClose(Instant now)
@@ -226,6 +237,7 @@ public sealed class Lobby
         _connections[seat] = 0;
         // Oturan oyuncu henüz bağlanmadı: bağlanana kadar "yok" (lobiyi açıp hiç gelmeyen için kapanış sayacı).
         _absentSince[seat] = now;
+        Revision++;
     }
 
     // Koltuk → bu maçtaki renk. Token renk taşımaz; renk her maç seriden okunur.
@@ -251,6 +263,9 @@ public sealed class Lobby
             return previous;
 
         var result = act(seat);
+        // Başarısız hamle durumu değiştirmez; tekrar gelen kimlik buraya hiç ulaşmaz (yukarıda döndü).
+        if (result.IsSuccess)
+            Revision++;
 
         _recentActions[key] = result;
         _recentOrder.Enqueue(key);

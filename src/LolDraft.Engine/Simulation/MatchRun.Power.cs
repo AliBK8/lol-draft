@@ -39,10 +39,20 @@ internal sealed partial class MatchRun
     }
 
     // Aynı roldeki rakip: takım sırası (top, jungle, mid, bot, support) iki takımda aynı.
+    // Motor şampiyonları hep takım listelerinden alır; önce referansla eşlenir (record ==, her çağrıda bütün alanları ve
+    // etiketleri karşılaştırırdı, en sık çağrılan yol). Bulunamazsa değerle (dışarıdan gelen kopya için).
     private ChampionProfile Counterpart(ChampionProfile champion)
     {
         var blue = _blue.Champions;
         var red = _red.Champions;
+        for (var i = 0; i < blue.Count; i++)
+        {
+            if (ReferenceEquals(blue[i], champion))
+                return red[i];
+            if (ReferenceEquals(red[i], champion))
+                return blue[i];
+        }
+
         for (var i = 0; i < blue.Count; i++)
         {
             if (blue[i] == champion)

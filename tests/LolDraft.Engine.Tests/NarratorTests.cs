@@ -81,17 +81,43 @@ public sealed class NarratorTests
         Assert.True(soloKills > 0);
     }
 
+    // Sürpriz kendi ödülünü icat etmez: her biri aynı anda, aynı koridorda sürprizi yapan tarafın kill'idir.
     [Fact]
-    public void Surpriz_3_ile_5_puan_arasi_ve_puan_dokumune_yazilir()
+    public void Surpriz_koridorda_kill_olur_ve_puan_dokumune_yazilir()
     {
+        var total = 0;
         for (uint seed = 0; seed < MatchCount; seed++)
         {
             var result = _simulator.Simulate(TestTeams.Match(seed));
             var surprises = result.Events.OfType<SurpriseEvent>().ToList();
+            total += surprises.Count;
 
-            Assert.All(surprises, s => Assert.InRange(s.Value, 3, 5));
-            Assert.All(surprises, s => Assert.StartsWith("Sürpriz: ", s.Text));
+            foreach (var surprise in surprises)
+            {
+                Assert.Equal("", surprise.Text);
+                Assert.InRange(surprise.Value, 3, 5);
+                var kill = Assert.Single(result.Events.OfType<KillEvent>(), k => k.T == surprise.T && k.Text.Contains("Sürpriz: "));
+                Assert.Equal(surprise.Side, kill.Side);
+                Assert.Equal(surprise.Lane, kill.Lane);
+            }
+
             Assert.Equal(surprises.Sum(s => s.Side.Sign() * s.Value), result.Breakdown[ScoreCategory.Surprise], 9);
+        }
+
+        Assert.True(total > 0);
+    }
+
+    // Kahraman ya da kurban o an koridorda değilse (ölü, savaşta) sürpriz olmaz.
+    [Fact]
+    public void Surprizde_kahraman_ve_kurban_koridordadir()
+    {
+        foreach (var events in Matches())
+        {
+            foreach (var kill in events.OfType<KillEvent>().Where(k => k.Text.Contains("Sürpriz: ")))
+            {
+                Assert.False(TestEvents.IsAbsent(events, kill.KillerId, kill.T - 0.001));
+                Assert.False(TestEvents.IsAbsent(events, kill.VictimId, kill.T - 0.001));
+            }
         }
     }
 

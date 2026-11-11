@@ -12,8 +12,10 @@ public sealed record LobbyTicket(GuestIdentity Identity, string Token);
 /// Lobinin o anki görüntüsü: iki oyuncuya da aynısı gider (kimin hangi koltukta olduğu token'da).
 /// Lobinin kilidi altında üretilen kopya; canlı lobi dışarı çıkmaz.
 /// </summary>
+/// <param name="Revision">Durumun sürümü (<see cref="Lobby.Revision"/>): istemci eski sürümü atar.</param>
 public sealed record LobbyView(
     LobbyCode Code,
+    long Revision,
     SeriesFormat Format,
     bool Fearless,
     bool IsFull,
@@ -34,6 +36,7 @@ public sealed record LobbyView(
         var series = lobby.Series;
         return new LobbyView(
             lobby.Code,
+            lobby.Revision,
             series.Format,
             series.Fearless,
             lobby.IsFull,

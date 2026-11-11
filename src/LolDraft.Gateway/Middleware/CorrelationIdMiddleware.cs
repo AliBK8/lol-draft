@@ -28,6 +28,7 @@ internal sealed partial class CorrelationIdMiddleware(RequestDelegate next)
         return next(context);
     }
 
-    [GeneratedRegex("^[A-Za-z0-9-]{1,64}$")]
+    // \z: dizinin tam sonu. $ sondaki \n'nin önünde de eşleşirdi: log zehirlemeye karşı kontrol bunu kaçırmamalı.
+    [GeneratedRegex(@"^[A-Za-z0-9-]{1,64}\z")]
     private static partial Regex ValidId();
 }

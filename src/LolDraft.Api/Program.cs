@@ -18,6 +18,7 @@ builder.Services.AddSingleton(settings);
 
 // Portların gerçekleri (lobi deposu, token, CSPRNG, şampiyon listesi) ve onları kullanan senaryolar.
 builder.Services.AddInfrastructure(settings.JwtSigningKey);
+builder.Services.AddSingleton(LobbyCapacity.Default);
 builder.Services.AddSingleton<CreateLobby>();
 builder.Services.AddSingleton<JoinLobby>();
 builder.Services.AddSingleton<GetLobby>();

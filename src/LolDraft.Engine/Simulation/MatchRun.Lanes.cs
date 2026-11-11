@@ -13,6 +13,10 @@ internal sealed partial class MatchRun
     // Sürpriz: her koridorda her dakika %2 ihtimalle rastgele bir taraf 3-5 puan kazanır.
     private const double SurpriseChance = 0.02;
 
+    // Sürpriz bir kill'dir; ilk dakikalarda koridor yok (minyonlar ~1:05'te varır, ilk gank 3. dk). Zar her dakika
+    // atılır (zar sırası kaymasın), 3. dakikadan önce uygulanmaz.
+    private const int SurpriseMinMinute = 3;
+
     // Anlatıcı eşikleri ve bütçeden düşülen bedeller (DESIGN.md §4.8). Kule kuralı MatchRun.Towers.cs'te.
     private const double SoloKillCost = 8;
     private const double PlateCost = 5;
@@ -55,7 +59,7 @@ internal sealed partial class MatchRun
             _laneBudget[(int)lane] += delta;
             _laneDelta[(int)lane] = delta;
 
-            if (_rng.NextDouble() < SurpriseChance)
+            if (_rng.NextDouble() < SurpriseChance && minute >= SurpriseMinMinute)
             {
                 var surpriseT = t0 + 5 + _rng.NextDouble() * 20;
                 At(surpriseT, () => PlaySurprise(lane, surpriseT));
@@ -66,25 +70,34 @@ internal sealed partial class MatchRun
         }
     }
 
-    // Sürpriz gerçek puandır (Surprise kategorisi); bütçeye girmez, kendi olayını kendisi üretir.
-    // Zar sırası: taraf, değer, metin.
+    // Sürpriz (DESIGN.md §4.5): koridorda beklenmedik bir an, kill'e döner. Kendi ödülünü icat etmez; altın, ödül,
+    // respawn ve kaçan farm kill kurallarından gelir. Önde olanı indiren onun ödülünü toplar: geri dönüş anı.
+    // İki tür, eşit ihtimal; ikisinde de kill sürprizi yapan tarafın:
+    //   outplay: kahraman rakibini indirir · dive: rakip kahramanın üstüne atlar, geri püskürtülür ve düşer.
+    // Kahraman (koridorun yüzü, yoksa bot'taki diğeri) ya da rakiplerin hepsi koridorda değilse (ölü, savaşta, gank'ta)
+    // sürpriz olmaz: anlatıcı kill'lerindeki kuralın aynısı.
+    // Örnek: 12. dk Zed, LeBlanc'tan 1.200 önde; LeBlanc'ın sürprizi → 300 + ~430 ödül, fark kapanır.
+    // Puan (Surprise kategorisi) sadece dökümde (karara girmez). Zar sırası: taraf, değer, tür, kurban.
     private void PlaySurprise(Lane lane, double t)
     {
         var side = _rng.NextDouble() < 0.5 ? TeamSide.Blue : TeamSide.Red;
+        var hero = LaneChampions(side, lane).FirstOrDefault(c => IsInLane(c, t));
+        var rivals = LaneChampions(side.Opponent(), lane).Where(c => IsInLane(c, t)).ToList();
+        if (hero is null || rivals.Count == 0)
+            return;
+
         var value = 3 + _rng.NextDouble() * 2;
-        var hero = LaneChampions(side, lane)[0];
-        var rival = LaneChampions(side.Opponent(), lane)[0];
+        var outplay = _rng.NextDouble() < 0.5;
+        var victim = rivals[_rng.NextIndex(rivals.Count)];
         _scores.Add(ScoreCategory.Surprise, side.Sign() * value);
 
-        string[] texts =
-        [
-            $"{hero.Name} beklenmedik bir outplay yaptı",
-            $"{rival.Name} riskli bir dive denedi ve geri püskürtüldü",
-            $"{hero.Name} rakibin ışınlanmasını boşa çıkardı",
-        ];
-        var text = texts[_rng.NextIndex(texts.Length)];
+        var text = outplay
+            ? $"Sürpriz: {hero.Name} beklenmedik bir outplay yaptı, {victim.Name} düştü"
+            : $"Sürpriz: {victim.Name} riskli bir dive denedi, {hero.Name} onu indirdi";
 
-        _events.Add(new SurpriseEvent(t, $"Sürpriz: {text}", side, lane, value));
+        // Metinsiz işaret (haritada "Sürpriz" rozeti); log satırı kill olayının kendisi.
+        _events.Add(new SurpriseEvent(t, "", side, lane, value));
+        Kill(side, hero, victim, t, text, lane);
     }
 
     // Anlatıcı (DESIGN.md §4.8): bütçenin işaretine göre önde olan taraf için en fazla bir olay.

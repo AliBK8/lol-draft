@@ -127,7 +127,7 @@ Her dakika iki aşamada oynanır:
 ```
 - `matchup` prototipte sabit: top +0.1, mid +0.05, bot 0 (ileride veriden).
 - Δ hem `kategori[koridor]` hem koridor puanı hem anlatıcı bütçesine eklenir.
-- **Sürpriz:** her koridorda her dakika %2 ihtimalle rastgele bir takım lehine 3-5 puan (`surpriz` kategorisi).
+- **Sürpriz:** her koridorda her dakika %2 ihtimalle (3. dk'dan itibaren) rastgele bir takım koridorda kill alır: outplay (kahraman rakibini indirir) ya da geri püskürtülen dive (rakip atlar, düşer), eşit ihtimal. Kahraman ya da rakipler koridorda değilse olmaz. Kendi ödülü yok; altın, shutdown ödülü, respawn ve kaçan farm kill kurallarından gelir: geride olanın önde olanı indirip ödülü topladığı geri dönüş anı. (2026-11-12; ekonomi v2'den önce sadece puan veriyordu ve v2'de hiçbir şeyi değiştirmiyordu. Ölçüm, 4.000 maç: kill 23,4 → 25,0, shutdown 7,3 → 7,8, kule 5,5 → 6,0; 15. dk 5.000+ önde %80,2 → %78,8, gerisi gürültü içinde.) `surprise` puanı sadece dökümde.
 
 **Orman:**
 - Her dakika: `0.05 × (G_jg_Mavi − G_jg_Kırmızı) + N(0, 0.3)` → `orman`.
@@ -211,7 +211,7 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 | `tower` | side, lane, k (0 dış, 1 iç, 2 inhib) | |
 | `objective` | obj, side, pct | pct = kazananın ihtimali |
 | `skirmish` | side, pct, loc | |
-| `surprise` | side, lane, val | |
+| `surprise` | side, lane, val | Metinsiz işaret (haritada rozet); log satırı aynı saniyedeki `kill` ("Sürpriz: …") |
 | `gankfail`, `throw` | side, lane? | |
 | `move` | parts[], lane? / loc?, lead, tail | Görünmez; hareket kısıtı |
 | `siege` | side, lead, tail | Görünmez; kuşatma toplanması |
@@ -361,7 +361,7 @@ tests/
   LolDraft.Gateway.Tests/   gateway → API hattı uçtan uca (bellekte), rate limit, JWT, başlıklar
 ```
 
-Diğer klasörler: `web/` (React + TypeScript), `data-pipeline/` (Python), `prototype/mac-motoru.html` (referans JS motoru; `LolDraft.Engine` aynı kuralları uygular, aynı seed'le birebir aynı sonucu vermesi gerekmez).
+Diğer klasörler: `web/` (React + TypeScript), `data/` (oyun verisi: `champions.json`; API derlemeye gömer, denge aracı okur), `data-pipeline/` (Python), `prototype/mac-motoru.html` (referans JS motoru; `LolDraft.Engine` aynı kuralları uygular, aynı seed'le birebir aynı sonucu vermesi gerekmez).
 
 **Bağımlılık kuralı:** Oklar içe doğru. `Api → Application → Domain / Engine`. `Infrastructure`, `Application`'daki arayüzleri uygular. `Domain` ve `Engine` ASP.NET, EF Core ya da dosya sistemi bilmez.
 
@@ -406,6 +406,8 @@ public sealed class DraftSession
 }
 ```
 Dışarıdan `Phase` ya da `Turn` set edilemez; geçersiz hamle `Result.Fail` döner ve durum değişmez.
+
+**Aggregate kökü `Lobby` (2026-11-11):** `DraftSession` (Start, Ban, Pick, SwapRoles, LockLineup, Timeout) ve `Series` (Start, StartDraft, Forfeit, RecordGame) değiştiren metotları `internal`; Domain dışından sadece okunur. Hamle, zaman aşımı, hükmen ve maç sonucu `Lobby` üzerinden geçer: koltuk → renk çevirisi, `actionId` tekrar koruması ve `LastActivity` atlanamaz. 4f'de `RecordGame` için `Lobby.RecordGame` eklenir.
 
 **Uygulama (4d, `LolDraft.Domain`):**
 - Durum = sabit adım tablosu (`DraftOrder`, 20 adım) + adım sayacı; faz ve sıra tablodan okunur, ayrı değişken yok.
@@ -472,6 +474,8 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 
 - Aşımda `429 Too Many Requests` + `Retry-After` döner. Hub'da istemciye `RateLimited` olayı gider.
 - IP, gateway önünde başka bir proxy varsa `ForwardedHeaders` ile ve **sadece güvenilen proxy listesinden** okunur; aksi halde `X-Forwarded-For` taklit edilip limit atlatılabilir.
+- **"IP" = istemci anahtarı** (`Gateway/ClientKey.cs`, 2026-11-11): IPv4 adresin kendisi, IPv6'da **/64 öneki** (`2001:db8:1:2::/64`). Operatör IPv6'da müşteriye bütün bir /64 verir; tam adrese göre sayılsa tek kişi her istekte adres değiştirip bütün sınırları atlardı. IPv4'ün IPv6 kılığı (`::ffff:a.b.c.d`) IPv4 sayılır. Aynı anahtar API'ye `X-Client-Ip` başlığıyla gider: "IP başına 3 lobi" de aynı kovayı sayar.
+- Bilinçli ödünleşim: aynı NAT arkasındaki bir grup (internet kafe, yurt, LAN turnuvası) tek istemci sayılır (en fazla 3 açık lobi, 5 hub bağlantısı). Sorun olursa sınırlar yükseltilir; IP'den başka güvenilir ayırıcı yok (kayıt yok).
 - Limitler bellekte tutulur (tek instance). Birden fazla gateway instance'ına geçilirse dağıtık limit (Redis) gerekir.
 
 ### 8.6 Güvenlik önlemleri
@@ -491,13 +495,15 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 
 **Taşıma ve başlıklar (gateway)**
 - Sadece HTTPS/WSS; HTTP → HTTPS yönlendirme, HSTS.
+- `AllowedHosts` (Host başlığı beyaz listesi): geliştirmede `*`, production'da gerçek alan adı (ortam değişkeni `AllowedHosts=draft.example.com`). Production'da `*` ya da boş kalırsa gateway açılmaz (2026-11-11); başka alan adına gelen istek 400.
 - `Content-Security-Policy` (sadece kendi origin'i ve gerekiyorsa Google Fonts), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `frame-ancestors 'none'`.
 - CORS sadece web origin'ine açık (web aynı origin'den sunulursa CORS kapalı kalabilir).
 
 **DoS ve kaynak sınırları**
 - İstek gövdesi sınırı: 16 KB (gateway ve Kestrel).
 - SignalR: `MaximumReceiveMessageSize` 4 KB, `KeepAliveInterval` 15 sn, `ClientTimeoutInterval` 30 sn.
-- Lobi yaşam süresi: 30 dk hareketsiz lobi silinir. IP başına en fazla 3 açık lobi.
+- Lobi yaşam süresi: 30 dk hareketsiz lobi silinir. IP başına (§8.5 istemci anahtarı) en fazla 3 açık lobi.
+- Toplam açık lobi tavanı 2.000 (`LobbyCapacity`, 2026-11-11): kişi başı sınır tek kaynaktan gelen seli durdurur, tavan çok kaynaktan geleni. Dolunca yeni lobi `503 server_busy`; açık oyunlar etkilenmez. Sayma ve ekleme aynı kilit altında.
 - Ağır simülasyon işleri sınırlı eşzamanlılıkla kuyrukta çalışır (§8.5 `simulate-heavy`).
 
 **Ağ ve dağıtım**
@@ -596,7 +602,7 @@ Rastgele değer: `openssl rand -base64 48`. JWT anahtarı iki uygulamada aynı: 
 | Token | `Infrastructure/Auth/GuestTokenService.cs` | Üretir ve doğrular. Doğrulama gateway'le aynı kurallar (sadece HS256, yayıncı, hedef, süre, 30 sn tolerans). Claim'ler değer nesnelerinden geçer; `seat` sadece tam "A"/"B". |
 | API de doğrular | `Api/Lobbies/LobbyEndpoints.cs` | Gateway imzayı doğrulayıp geçirir; API claim'leri imzasız okumaz, kendisi de doğrular. Sonra yetki: token'daki lobi = yoldaki lobi ve oyuncu o koltukta oturuyor mu (`not_in_lobby`, 403). |
 | Hata → HTTP | aynı | `unauthorized` 401, `not_in_lobby` 403, `lobby_not_found` 404 (biçimi bozuk kod da), `lobby_full` 409, diğerleri (`pool_too_small`, `invalid_format`) 400. Gövde: `{error, message}`. |
-| Şampiyon listesi | `Infrastructure/Champions/EmbeddedChampionCatalog.cs` | `tools/LolDraft.Balance/champions.json` derlemeye gömülür (tek kaynak); şimdilik sadece kimlikler. |
+| Şampiyon listesi | `Infrastructure/Champions/EmbeddedChampionCatalog.cs` | `data/champions.json` derlemeye gömülür (tek kaynak); şimdilik sadece kimlikler. Okuyucu `Infrastructure/Champions/ChampionFile.cs` (denge aracıyla ortak, 2026-11-11): bilinmeyen sınıf/rol, aralık dışı değer, geçersiz ya da tekrar eden kimlikte uygulama açılmaz. |
 | Kayıt | `Infrastructure/InfrastructureServices.cs` | `AddInfrastructure(jwtSigningKey)` tek public kapı; gerçekler `internal sealed`. API açılışta `JWT_SIGNING_KEY` ister (≥ 32 bayt), yoksa açılmaz. |
 
 ### 8.12 Uygulama: 4e-2a (canlı draft hub'ı)
@@ -610,6 +616,7 @@ Rastgele değer: `openssl rand -base64 48`. JWT anahtarı iki uygulamada aynı: 
 | Tekrar koruması | `Domain/Lobby.Once`, `ActionId` | Aynı oyuncu + aynı `actionId` → ilk sonuç (başarılı ya da hatalı) aynen döner, hamle tekrarlanmaz. Lobi başına son 64 kimlik. Lobide olmayanın kimliği saklanmaz. Boş Guid `invalid_action_id`. |
 | Kimlik doğrulama | `Api/Auth/GuestAuthenticationHandler.cs` | Doğrulamanın tek gerçeği `IGuestTokenService`; handler sadece token'ı bulur. REST GET de aynı handler'ı kullanır (`RequireAuthorization`). Hub `[Authorize]`: token yoksa negotiate 401. Token geçerli ama oyuncu lobide değilse `OnConnectedAsync` bağlantıyı kapatır. |
 | Yayın | `Api/Hubs/DraftHub.cs` | Her lobi bir SignalR grubu (`lobby:{kod}`). Bağlanan önce güncel durumu alır. Başarısız hamle yayınlanmaz, sadece yapana hata döner. |
+| Yayın sırası (`revision`) | `Domain/Lobby.Revision`, `LobbyStateDto.revision` | Görüntü kilit altında üretilir ama yayın kilidin dışında gider: aynı anda iki istek gelirse (iki `Ready`, hamle + saat tiki) yayınlar ağda yer değiştirebilir ve istemci eski durumda kalırdı (ör. draft başladı ama ekranda "hazır bekleniyor", oyuncu sırasını kaçırır). Lobi her görünür değişimde (oturma, bağlanma, kopma, başarılı yeni hamle, saatin değiştirdiği tik) sürümü bir artırır; başarısız ya da tekrar gelen hamle artırmaz. **İstemci kuralı:** elindekinden küçük ya da eşit `revision`'lı `LobbyUpdated`'ı yok sayar (2026-11-11). |
 | Geri sayım | `LobbyStateDto.serverNow` + `draft.deadline` | Saniyelik mesaj yok: kalan = deadline − serverNow, istemci kendi saatiyle çizer (saat farkını serverNow'dan düzeltir). Süre dolunca karar sunucunun (4e-2b sayaç servisi). |
 | JSON sözleşmesi | `Api/Lobbies/LobbyDtos.cs` | Domain tipleri doğrudan serileştirilmez; adlar elle çevrilir: faz `ban1…completed`, taraf `blue/red`, adım `ban/pick`, koltuk `A/B`, yuvalar `top, jungle, mid, bot, support`. |
 | SignalR sınırları | `Api/Program.cs` | Mesaj ≤ 4 KB, canlılık 15 sn, istemci zaman aşımı 30 sn (§8.6). |
@@ -688,7 +695,7 @@ Kalan: rejoin (ertelendi). Draft bitince simülasyon + `RecordGame` 4f'de.
 ```
 dotnet run --project tools/LolDraft.Balance -c Release -- --drafts 10000 --seed 1 [--champions havuz.json]
 ```
-- Havuz §16.2 biçiminde JSON (`roles`: top, jg, mid, adc, sup); varsayılan `champions.json`: oyunun 40 şampiyonu (faz C). Eski `sample-champions.json` (prototipin 10'u + 10 arketip) faz C'de kaldırıldı; faz B ölçümleri onunla.
+- Havuz §16.2 biçiminde JSON (`roles`: top, jg, mid, adc, sup); varsayılan `data/champions.json`: oyunun 40 şampiyonu (faz C), oyunla aynı okuyucu (`ChampionFile`). Eski `sample-champions.json` (prototipin 10'u + 10 arketip) faz C'de kaldırıldı; faz B ölçümleri onunla.
 - Rastgele draft (her rolde iki takıma farklı şampiyon). Her draft **ayna** oynanır: A Mavi/B Kırmızı, sonra yer değiştirip aynı seed. Draft etkisi iki tarafa eşit dağılır; Mavi'nin %50'den sapması saf taraf etkisidir.
 - Rapor: genel ölçümler (§9 ve §16.12 hedefleriyle yan yana), **ekonomi** (14. dk CS, 15. dk takım altın farkı, shutdown ve yakalanma sayısı/ödülü), **altın farkı → kazanma tablosu** (10/15/20. dk × fark dilimi 0-1.499 / 1.500-2.999 / 3.000-4.999 / 5.000+; o dakikaya ulaşan maçlar), güç ve sinerji farkına göre kazanma, belirgin erken comp (ve 14. dk 3.000+ geride kalan scale comp'un kurtarma oranı), bitiş dakikası dağılımı, şampiyon kazanma oranları (%95 hata payıyla). Eski "maç sonu puanda önde olan kaybetti" kalktı (puan artık karar vermiyor). Motoru sadece public sözleşmeden (`MatchEngine`) kullanır; aynı `--seed` aynı raporu verir. 10.000 draft (20.000 maç) ~8 sn.
 
@@ -731,7 +738,7 @@ dotnet run --project tools/LolDraft.Balance -c Release -- --drafts 10000 --seed 
 | Draft kalitesi ve "ne olurdu?" | Maç sonu aynı draft 1000 kez; alternatif pick'lerle karşılaştırma ("Kayle yerine Jax %57"). |
 | Koç kimlikleri | Seri başında pasif yetenekli koç (rakip direktifini görme, gerideyken fazla shutdown vb.). |
 | Maç içi karar anları | Baron/bitirme anında iki oyuncuya eşzamanlı gizli seçim. Şu anki "tam simülasyon" yönünde açık soru. |
-| Paylaşım kartı + tekrar linki | Üç kritik an + skor; link aynı seed'le maçı oynatır. |
+| Paylaşım kartı + tekrar linki | Üç kritik an + skor; link kayıtlı olay listesini oynatır (seed'le yeniden simüle etmez: denge ayarı ve platform farkı eski maçı değiştirirdi; karar 2026-11-11). |
 | Turnuva modu | 4/8 kişilik bracket, fearless bo3. |
 | Arkadaşın hayaleti | Arkadaşın geçmiş draft'larından öğrenen bota karşı oynama. |
 | Lore sinerjileri | Lore ilişkili şampiyonlara küçük bonus ve özel metin. |
@@ -1076,7 +1083,7 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
    - Faz D'ye: (1) K6 objektif cezasının eşiği havuz ortalamasına göre (ör. beklenen `en` × 1,4 ≈ 8) ya da kaldırılmalı; Poke kimliğinin tek kazancı kuşatma, objektifte hep ceza yiyor. (2) Engage biraz güçlü: K5 + K10 tank'ı iki kez ödüllüyor (9b'deki not). (3) K7'nin etkisi büyük ama sonuca yansımıyor: pick'in değeri belki yakalanma/gank sıklığında olmalı. (4) Örnek havuz arketip; ayar gerçek 40 şampiyonla yapılacak, şimdi değil.
 
 **Faz C — Veri**
-12. ~~40 şampiyon etiketleme~~ (bitti: `tools/LolDraft.Balance/champions.json`; taslağı Claude çıkardı, kullanıcı onayladı. Her koridordan 8, her koridorda farklı tipler; 6 hiper taşıyıcı: Kayle, Karthus, Kassadin, Viktor, Jinx, Vayne. Bilinçli seçimler: Ashe'nin oku `en` değil `pick` 3 (engage tank/destek işi, adc'ye `en` K5'i bozar); Gnar ve Jayce koridorda ranged. K13 kombo tablosu yeni listeye göre: Kayle/Jinx/Vayne + Lulu, Leona + Draven, Yasuo + Malphite/Alistar, Orianna + Amumu.) + ~~tutarlılık kontrol aracı~~ (bitti: `dotnet run --project tools/LolDraft.Balance -- --check [--champions havuz.json]`, `PoolCheck.cs`). Yazdıkları: rol başına sayı (öneri ≥ 6), sınıf dağılımı, etiket ortalamaları, hiper taşıyıcılar ve uyarılar: hiper taşıyıcıya benzeyip econ < 3 · econ 3 ama geç < 8 · tank ama fl < 2 ya da econ ≥ 2 · enchanter ama peel + dis < 2 · suikastçı ama mob < 2 (K3 çalışmaz) · melee nişancı (§16.2 koridor menzili) · split ≥ 2 ama top/mid değil (K12) · adc ama en ≥ 2 · güç toplamı 14-22 dışı · hiç etiket yok. Uyarı hata değildir (Kayle bilinçli istisna). Örnek havuzda: tek uyarı Kayle; dis ortalaması 0,35, peel 0,55 (koruma kıt: Poke/Engage sonuçlarını etkiliyor olabilir, 40'lık listede dengeli olsun).
+12. ~~40 şampiyon etiketleme~~ (bitti: `data/champions.json`, eskiden `tools/LolDraft.Balance/` altında; taslağı Claude çıkardı, kullanıcı onayladı. Her koridordan 8, her koridorda farklı tipler; 6 hiper taşıyıcı: Kayle, Karthus, Kassadin, Viktor, Jinx, Vayne. Bilinçli seçimler: Ashe'nin oku `en` değil `pick` 3 (engage tank/destek işi, adc'ye `en` K5'i bozar); Gnar ve Jayce koridorda ranged. K13 kombo tablosu yeni listeye göre: Kayle/Jinx/Vayne + Lulu, Leona + Draven, Yasuo + Malphite/Alistar, Orianna + Amumu.) + ~~tutarlılık kontrol aracı~~ (bitti: `dotnet run --project tools/LolDraft.Balance -- --check [--champions havuz.json]`, `PoolCheck.cs`). Yazdıkları: rol başına sayı (öneri ≥ 6), sınıf dağılımı, etiket ortalamaları, hiper taşıyıcılar ve uyarılar: hiper taşıyıcıya benzeyip econ < 3 · econ 3 ama geç < 8 · tank ama fl < 2 ya da econ ≥ 2 · enchanter ama peel + dis < 2 · suikastçı ama mob < 2 (K3 çalışmaz) · melee nişancı (§16.2 koridor menzili) · split ≥ 2 ama top/mid değil (K12) · adc ama en ≥ 2 · güç toplamı 14-22 dışı · hiç etiket yok. Uyarı hata değildir (Kayle bilinçli istisna). Örnek havuzda: tek uyarı Kayle; dis ortalaması 0,35, peel 0,55 (koruma kıt: Poke/Engage sonuçlarını etkiliyor olabilir, 40'lık listede dengeli olsun).
 
 **Faz D — Dengeleme**
 13. Veri hattından gerçek altın eğrisi ("X. dk Y altın önde → kazanma oranı"), altın duyarlılığı ve kural ağırlıkları 16.12 hedeflerine oturtulur.

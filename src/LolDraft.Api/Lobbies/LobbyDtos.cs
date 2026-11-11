@@ -6,9 +6,13 @@ namespace LolDraft.Api.Lobbies;
 // İstemciyle JSON sözleşmesi. Domain tipleri doğrudan serileştirilmez: değer nesneleri {"value": ...} olur,
 // enum adı değişince sözleşme sessizce bozulur. Çeviri burada, elle ve tek yerde.
 
-/// <summary>Lobinin durumu: REST GET'te ve hub'ın LobbyUpdated olayında aynı biçim.</summary>
+/// <summary>
+/// Lobinin durumu: REST GET'te ve hub'ın LobbyUpdated olayında aynı biçim. <c>revision</c> her değişimde artar;
+/// istemci elindekinden küçük ya da eşit sürümlü durumu yok sayar (yayınlar ağda yer değiştirebilir).
+/// </summary>
 internal sealed record LobbyStateDto(
     string Code,
+    long Revision,
     string Format,
     bool Fearless,
     bool IsFull,
@@ -25,6 +29,7 @@ internal sealed record LobbyStateDto(
 {
     public static LobbyStateDto Of(LobbyView view) => new(
         view.Code.Value,
+        view.Revision,
         Names.Format(view.Format),
         view.Fearless,
         view.IsFull,

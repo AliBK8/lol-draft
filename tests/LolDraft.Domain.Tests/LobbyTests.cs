@@ -83,9 +83,19 @@ public sealed class LobbyTests
     [InlineData("AAAAAAAAAAAAAAAAAAAAAAA")]    // 23 karakter
     [InlineData("AAAAAAAAAAAAAAAAAAAA/A")]     // URL-güvenli olmayan karakter
     [InlineData("AAAAAAAAAAAAAAAAAAAA A")]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAA\n")]   // 22 karakter + sonda \n ($ bunu kabul ederdi)
     public void Bicimi_bozuk_lobi_kodu_olusmaz(string? value)
     {
         Assert.Equal(LobbyErrors.InvalidLobbyCode, LobbyCode.Create(value).Error);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("kisa")]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAA\n")]
+    public void Bicimi_bozuk_oyuncu_kimligi_olusmaz(string? value)
+    {
+        Assert.Equal(LobbyErrors.InvalidPlayerId, PlayerId.Create(value).Error);
     }
 
     [Fact]

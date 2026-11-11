@@ -19,8 +19,6 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
     public const string LobbyUpdated = nameof(LobbyUpdated);
     public const string LobbyClosed = nameof(LobbyClosed);
 
-    private static readonly Error InvalidRole = new("invalid_role", "Geçersiz yuva.");
-
     // Bağlantı lobiye "bağlandı" diye sayıldıysa işaret: kopunca sadece sayılan bağlantı düşülür.
     private static readonly object CountedKey = new();
 
@@ -70,7 +68,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
     public Task<HubResultDto> SwapRoles(string a, string b, Guid actionId)
     {
         if (Names.ParseRole(a) is not { } roleA || Names.ParseRole(b) is not { } roleB)
-            return Task.FromResult(HubResultDto.Failure(InvalidRole));
+            return Task.FromResult(HubResultDto.Failure(DraftErrors.InvalidRole));
 
         return Run(actionId, (who, action, ct) => commands.SwapRoles(who, action, roleA, roleB, ct));
     }

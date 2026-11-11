@@ -32,6 +32,7 @@ public readonly partial record struct LobbyCode
 
     public override string ToString() => Value;
 
-    [GeneratedRegex("^[A-Za-z0-9_-]{22}$")]
+    // \z: dizinin tam sonu ($ sondaki \n'yi kabul ederdi; ChampionId'deki not).
+    [GeneratedRegex(@"^[A-Za-z0-9_-]{22}\z")]
     private static partial Regex Format();
 }

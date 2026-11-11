@@ -9,11 +9,12 @@ internal static class TestEvents
         events.OfType<KillEvent>().Any(k => k.VictimId == id && k.T <= t && t < k.Until);
 
     // Meşgul: son 25 sn içinde bir savaşa (çatışma, objektif, kuşatma) katılmış ya da son 20 sn içinde gank'a gitmiş.
-    // Objektif ve kuşatmaya o an yaşayan herkes katılır.
+    // Objektif ve kuşatmaya o an yaşayan herkes katılır; o an ölü olan katılmaz (dirilince koridoruna döner).
     public static bool IsAway(IReadOnlyList<MatchEvent> events, string id, double t) =>
         events.OfType<MoveEvent>().Any(m =>
             m.ParticipantIds.Contains(id) && m.T <= t && t < m.T + (m.River is null ? 20 : 25))
-        || events.Any(e => (e is ObjectiveEvent || (e is SiegeEvent && e.T % 60 == 45)) && e.T <= t && t < e.T + 25);
+        || events.Any(e => (e is ObjectiveEvent || (e is SiegeEvent && e.T % 60 == 45)) && e.T <= t && t < e.T + 25
+                           && !IsDead(events, id, e.T));
 
     public static bool IsAbsent(IReadOnlyList<MatchEvent> events, string id, double t) =>
         IsDead(events, id, t) || IsAway(events, id, t);

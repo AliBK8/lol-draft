@@ -12,6 +12,7 @@ internal sealed record GatewaySettings
     public const string GatewaySecretKey = "GATEWAY_SECRET";
     public const string JwtSigningKeyKey = "JWT_SIGNING_KEY";
     public const string TrustedProxiesKey = "Gateway:TrustedProxies";
+    public const string AllowedHostsKey = "AllowedHosts";
 
     // Misafir JWT'sinin yayıncısı ve hedefi (§8.4): token başka bir uygulama için üretilmişse kabul edilmez.
     public const string JwtIssuer = "lol-draft";
@@ -37,8 +38,16 @@ internal sealed record GatewaySettings
     /// <summary>X-Forwarded-For'una güvenilen önceki proxy'ler (ör. bulut yük dengeleyicisi). Boşsa hiçbirine.</summary>
     public IReadOnlyList<IPAddress> TrustedProxies { get; }
 
-    public static GatewaySettings From(IConfiguration configuration)
+    public static GatewaySettings From(IConfiguration configuration, IHostEnvironment environment)
     {
+        // Host başlığı beyaz listesi: geliştirmede "*" (localhost, test sunucusu), production'da gerçek alan adı
+        // (ör. AllowedHosts=draft.example.com, birden fazlaysa ';' ile). "*" kalırsa uygulama başka alan adlarına
+        // gelen istekleri de kabul eder: alan adı gizlenmiş bir proxy'nin arkasından ya da Host başlığı zehirlemeyle
+        // üretilen linklerde bizim sunucu cevap verir. Unutulmasın diye açılış durur.
+        var allowedHosts = configuration[AllowedHostsKey];
+        if (!environment.IsDevelopment() && (string.IsNullOrWhiteSpace(allowedHosts) || allowedHosts.Trim() == "*"))
+            throw Missing(AllowedHostsKey, "\"*\" (production'da gerçek alan adı olmalı)");
+
         var secret = configuration[GatewaySecretKey];
         if (string.IsNullOrWhiteSpace(secret) || secret.Length < MinSecretLength)
             throw Missing(GatewaySecretKey, $"{MinSecretLength} karakterden kısa");

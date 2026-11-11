@@ -16,19 +16,24 @@ internal sealed class InMemoryLobbyRepository : ILobbyRepository
     // Ekleme tek kapıdan: "kaç lobisi var?" sayımı ile ekleme arasına başka ekleme giremesin.
     private readonly Lock _addLock = new();
 
-    public Task<bool> TryAdd(Lobby lobby, string owner, int maxPerOwner, CancellationToken ct)
+    public Task<LobbyAddResult> TryAdd(Lobby lobby, string owner, int maxPerOwner, int maxTotal, CancellationToken ct)
     {
         lock (_addLock)
         {
+            // Önce toplam: sunucu doluysa kimse açamaz. Silme bu kilidi almaz; sayı en fazla eksik okunur
+            // (bir lobi tam o an kapanıyorsa), hiçbir zaman fazla: sınır aşılmaz.
+            if (_lobbies.Count >= maxTotal)
+                return Task.FromResult(LobbyAddResult.ServerFull);
+
             if (_owners.Values.Count(o => o == owner) >= maxPerOwner)
-                return Task.FromResult(false);
+                return Task.FromResult(LobbyAddResult.OwnerLimitReached);
 
             // 128 bit rastgele kodun çakışması pratikte imkânsız; olursa rastgelelik kaynağı bozuktur.
             if (!_lobbies.TryAdd(lobby.Code, lobby))
                 throw new InvalidOperationException("Lobi kodu çakıştı.");
 
             _owners[lobby.Code] = owner;
-            return Task.FromResult(true);
+            return Task.FromResult(LobbyAddResult.Added);
         }
     }
 

@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 var builder = WebApplication.CreateBuilder(args);
 
 // Sırlar başlangıçta doğrulanır; eksikse uygulama açılmaz.
-var settings = GatewaySettings.From(builder.Configuration);
+var settings = GatewaySettings.From(builder.Configuration, builder.Environment);
 
 builder.WebHost.ConfigureKestrel(kestrel =>
 {

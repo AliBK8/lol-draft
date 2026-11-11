@@ -45,8 +45,11 @@ public sealed class DraftHubTests : IAsyncDisposable
         Assert.Equal(["A"], Strings(afterHostReady.GetProperty("ready")));
 
         Assert.True((await guest.Invoke("Ready")).Ok);
-        await host.Next();   // host'un kendi hazırı
+        var hostReady = await host.Next();   // host'un kendi hazırı
         var started = await host.Next();
+
+        // Her yayın sürüm taşır ve sonraki durum daha büyük sürümle gelir (istemci eskiyi buna bakarak atar).
+        Assert.True(started.GetProperty("revision").GetInt64() > hostReady.GetProperty("revision").GetInt64());
 
         var draft = started.GetProperty("draft");
         Assert.Equal("ban1", draft.GetProperty("phase").GetString());

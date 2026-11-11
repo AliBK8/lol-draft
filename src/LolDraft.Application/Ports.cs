@@ -9,10 +9,11 @@ namespace LolDraft.Application;
 public interface ILobbyRepository
 {
     /// <summary>
-    /// Lobiyi ekler; <paramref name="owner"/>'ın (istemci IP'si) zaten <paramref name="maxPerOwner"/> açık lobisi
-    /// varsa eklemez ve false döner. Sayma ve ekleme tek adım: aynı anda gelen istekler sınırı birlikte aşamaz.
+    /// Lobiyi ekler. Eklemez: toplam açık lobi <paramref name="maxTotal"/>'a ulaştıysa (sunucu dolu) ya da
+    /// <paramref name="owner"/>'ın (istemci anahtarı: IPv4 ya da IPv6 /64) zaten <paramref name="maxPerOwner"/> açık
+    /// lobisi varsa. Sayma ve ekleme tek adım: aynı anda gelen istekler sınırı birlikte aşamaz.
     /// </summary>
-    Task<bool> TryAdd(Lobby lobby, string owner, int maxPerOwner, CancellationToken ct);
+    Task<LobbyAddResult> TryAdd(Lobby lobby, string owner, int maxPerOwner, int maxTotal, CancellationToken ct);
 
     /// <summary>Lobiyi siler (sahibinin sayacı da düşer). <see cref="Execute{T}"/> içinden çağrılabilir.</summary>
     void Remove(LobbyCode code);
@@ -26,6 +27,18 @@ public interface ILobbyRepository
     /// Canlı <see cref="Lobby"/> dışarı verilmez; işlem ihtiyacı olanı sonuç olarak döndürür.
     /// </summary>
     Task<Result<T>> Execute<T>(LobbyCode code, Func<Lobby, Result<T>> action, CancellationToken ct);
+}
+
+/// <summary><see cref="ILobbyRepository.TryAdd"/> sonucu: eklendi mi, eklenmediyse hangi sınır yüzünden.</summary>
+public enum LobbyAddResult
+{
+    Added,
+
+    /// <summary>Bu istemcinin açık lobi sınırı dolu.</summary>
+    OwnerLimitReached,
+
+    /// <summary>Sunucunun toplam lobi sınırı dolu.</summary>
+    ServerFull,
 }
 
 /// <summary>Misafir JWT'si (DESIGN.md §8.4): üretir ve doğrular.</summary>

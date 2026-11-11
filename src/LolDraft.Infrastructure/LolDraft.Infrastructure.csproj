@@ -11,7 +11,7 @@
 
   <ItemGroup>
     <!-- Oyunun şampiyon listesi tek dosyada (denge aracıyla ortak); derlemeye gömülür, sunucuda dosya yolu aranmaz. -->
-    <EmbeddedResource Include="../../tools/LolDraft.Balance/champions.json" LogicalName="champions.json" />
+    <EmbeddedResource Include="../../data/champions.json" LogicalName="champions.json" />
   </ItemGroup>
 
 </Project>

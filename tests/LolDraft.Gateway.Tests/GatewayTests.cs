@@ -191,6 +191,30 @@ public sealed class GatewayTests : IDisposable
         Assert.Contains("GATEWAY_SECRET", StartupError("GATEWAY_SECRET", ""));
     }
 
+    [Fact]
+    public void Productionda_AllowedHosts_yildiz_kalirsa_gateway_acilmaz()
+    {
+        Assert.Contains("AllowedHosts", StartupError("AllowedHosts", "*", environment: "Production"));
+    }
+
+    [Fact]
+    public async Task Productionda_baska_alan_adina_gelen_istek_reddedilir()
+    {
+        using var factory = new WebApplicationFactory<CorrelationIdMiddleware>().WithWebHostBuilder(host => host
+            .UseEnvironment("Production")
+            .UseSetting("GATEWAY_SECRET", GatewayPipeline.Secret)
+            .UseSetting("JWT_SIGNING_KEY", GatewayPipeline.SigningKey)
+            .UseSetting("AllowedHosts", "draft.example.com"));
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var foreign = new HttpRequestMessage(HttpMethod.Get, "/api/health") { Headers = { Host = "evil.example" } };
+        var own = new HttpRequestMessage(HttpMethod.Get, "/api/health") { Headers = { Host = "draft.example.com" } };
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(foreign)).StatusCode);
+        // Kendi alan adı geçer (production'da önce HTTPS'e yönlendirilir).
+        Assert.NotEqual(HttpStatusCode.BadRequest, (await client.SendAsync(own)).StatusCode);
+    }
+
     public void Dispose()
     {
         _client.Dispose();
@@ -222,9 +246,10 @@ public sealed class GatewayTests : IDisposable
                Part($$"""{"sub":"p","lobby":"l","seat":"Blue","iss":"lol-draft","aud":"lol-draft-game","exp":{{exp}}}""") + ".";
     }
 
-    private static string StartupError(string key, string value)
+    private static string StartupError(string key, string value, string environment = "Development")
     {
         using var factory = new WebApplicationFactory<CorrelationIdMiddleware>().WithWebHostBuilder(host => host
+            .UseEnvironment(environment)
             .UseSetting("GATEWAY_SECRET", GatewayPipeline.Secret)
             .UseSetting("JWT_SIGNING_KEY", GatewayPipeline.SigningKey)
             .UseSetting(key, value));

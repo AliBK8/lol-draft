@@ -17,10 +17,10 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 
 ## Temel kurallar
 - Simülasyon sunucuda koşar; istemci sadece olay listesini oynatır.
-- Maçı her zaman bir savaşı (kuşatma ya da 35. dk son savaş) kazanan bitirir. Puan sadece ihtimali etkiler.
+- Maçı her zaman bir savaşı (kuşatma ya da 35. dk son savaş) kazanan bitirir. Draft ve altın (gerçek güç, DESIGN.md §16.5) sadece ihtimali etkiler.
 - Olay ihtimalleri %10-%90 arasında sınırlı.
 - Eğlence gerçekçilikten önce: geride olan takımın her zaman gerçek şansı olur; gerçek veri yön verir, hedefi belirlemez (DESIGN.md §1).
-- Ekrandaki her olay (kill, kule, objektif) motorun puan değişiminin karşılığıdır (anlatıcı bütçesi, DESIGN.md §4.8).
+- Ekrandaki her olayın motorda bir karşılığı vardır: altın, güç ya da buff değiştirir (koridor kill'i ve plakası anlatıcı bütçesinden, DESIGN.md §4.8). Hiçbir şeyi değiştirmeyen olay gösterilmez. (`ScoreSheet` puanı v2'den beri karara girmiyor, sadece dökümde.)
 - Riot API anahtarı `RIOT_API_KEY` ortam değişkeninde, sadece veri hattında; oyun sunucusu tutmaz.
 - Dışarıdan erişim sadece gateway üzerinden; API iç ağda (DESIGN.md §8.1).
 - Rate limiting iki katmanda: HTTP gateway'de, SignalR mesajları `IHubFilter` ile API'de (§8.5).
@@ -38,7 +38,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 1. ~~Veri hattı 01-04, `zones.json`, `transitions.json`, `kill_heatmap.json`~~ (bitti)
 2. ~~4a: Çözüm iskeleti (§8.2): `LolDraft.slnx`, 6 src + 3 test projesi, mimari testleri~~ (bitti)
 3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti; §14 bilinen sorunlar çözüldü (zaman çizelgesi, gank sınırı, kule = fırsat); nehir çatışması aralıklı/eşitsiz ve ejder ruhu/Elder eklendi (§4.5). Denge aracı bitti (§9).
-4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): ~~A ekonomi~~ (bitti) → B şampiyon modeli v2 + kurallar (bitti: model v2, K1-K13, karne, kural/kimlik raporu) → ~~C 40 şampiyon~~ (bitti: `tools/LolDraft.Balance/champions.json`) → D dengeleme (tur 1: K5, K6, kuşatma eşiği; tur 2: 15. dk 5.000+ önde %77 (savunma avantajı, yakalanma, s −%10); açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+; DESIGN.md §16.13 adım 13)
+4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): ~~A ekonomi~~ (bitti) → B şampiyon modeli v2 + kurallar (bitti: model v2, K1-K13, karne, kural/kimlik raporu) → ~~C 40 şampiyon~~ (bitti: `data/champions.json`) → D dengeleme (tur 1: K5, K6, kuşatma eşiği; tur 2: 15. dk 5.000+ önde %77 (savunma avantajı, yakalanma, s −%10); açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+; DESIGN.md §16.13 adım 13)
 5. ~~4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`~~ (bitti, DESIGN.md §8.10)
 6. ~~4d: Draft durum makinesi (`LolDraft.Domain`): `DraftSession` (sıra tablosu, doğrulama, zaman aşımı, swap) + `Series` (bo1/3/5, skor, renk değişimi, fearless kilitleri)~~ (bitti, DESIGN.md §8.3 "Uygulama (4d)" ve "Seri", 52 test). Kararlar:
    - (2026-11-04) Sadece açık draft; gizli/eşzamanlı seçim modu yok.
@@ -51,5 +51,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
    - ~~4e-2c: bağlantı takibi + hükmen galibiyet (2 dk), ikisi birden yoksa lobi 5 dk sonra kapanır, 30 dk hareketsiz lobi kapanır (`LobbyClosed`), IP başına 3 lobi (gateway `X-Client-Ip`, depoda atomik `TryAdd`)~~ (bitti, DESIGN.md §8.14). Bu adımda 4c'den kalma bir açık bulundu ve düzeltildi: güvenilen proxy listesi boşken gateway herkesin `X-Forwarded-For`'una güveniyordu (§8.10).
 9. **← KALDIĞIMIZ YER (2026-11-11).** 4f: Simülasyon bağlantısı: `DraftResult` → `TeamDraft` (katalogdan profil, rol dışı cezası), seed, motor, `RecordGame`, `MatchReady`.
    - Rol dışı cezası −%25 (DESIGN.md §16.8 sonu; `ChampionProfile.Roles`, karne satırı, denge aracına rol dışı oranı).
+   - `Lobby.RecordGame` (Series'in değiştiren metotları artık internal, tek kapı Lobby; DESIGN.md §8.3).
+   - Biten maçın olay listesi (`MatchResult`) SQLite'a yazılır, replay onu oynatır; seed + motor sürümü sadece teşhis için saklanır. Seed'le yeniden simüle etmek her denge ayarında ve platformlar arası `Math.Log/Cos` farkında eski linkleri bozar (analiz 2026-11-11).
 10. 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). 6: Docker + CI.
 11. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket

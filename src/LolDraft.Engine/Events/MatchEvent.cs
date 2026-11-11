@@ -31,7 +31,11 @@ public sealed record PlateEvent(double T, string Text, TeamSide Side, Lane Lane)
 
 public sealed record CsEvent(double T, string Text, TeamSide Side, Lane Lane) : MatchEvent(T, Text);
 
-/// <param name="Value">Sürprizin kazandırdığı puan (3-5).</param>
+/// <summary>
+/// Sürpriz işareti (metinsiz, haritada rozet). Etkisi aynı saniyedeki <see cref="KillEvent"/>: sürprizi yapan taraf
+/// koridorda kill alır (outplay ya da geri püskürtülen dive); log satırı o kill'dir.
+/// </summary>
+/// <param name="Value">Döküm puanı (3-5); karara girmez.</param>
 public sealed record SurpriseEvent(double T, string Text, TeamSide Side, Lane Lane, double Value) : MatchEvent(T, Text);
 
 /// <param name="Side">Gank'ı atan takım.</param>

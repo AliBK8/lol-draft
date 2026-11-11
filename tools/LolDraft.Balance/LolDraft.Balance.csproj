@@ -6,11 +6,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/LolDraft.Engine/LolDraft.Engine.csproj" />
+    <!-- Şampiyon dosyasının okuyucusu (ChampionFile) Infrastructure'da: oyunla aynı ayrıştırıcı. Engine de buradan gelir. -->
+    <ProjectReference Include="../../src/LolDraft.Infrastructure/LolDraft.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="champions.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../data/champions.json" Link="champions.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

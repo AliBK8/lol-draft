@@ -110,6 +110,7 @@ public sealed class DraftSessionTests
     [InlineData("Ahri")]
     [InlineData("lee sin")]
     [InlineData("<script>")]
+    [InlineData("ahri\n")]     // .NET'te $ sondaki \n'yi kabul ederdi; regex \z ile biter
     [InlineData(null)]
     public void Gecersiz_sampiyon_kimligi_olusmaz(string? value)
     {

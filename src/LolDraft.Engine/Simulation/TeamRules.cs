@@ -63,7 +63,7 @@ internal static class TeamRules
     private const double MaxApShare = 0.8;
     private const double OneDamageTypePenalty = 2;
 
-    // K13 Kombo (takım savaşı): iki şampiyon aynı takımdaysa d +2. Havuz: tools/LolDraft.Balance/champions.json.
+    // K13 Kombo (takım savaşı): iki şampiyon aynı takımdaysa d +2. Havuz: data/champions.json.
     private const double ComboBonus = 2;
 
     private static readonly (string A, string B)[] Combos =

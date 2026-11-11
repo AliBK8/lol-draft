@@ -19,6 +19,7 @@ public readonly partial record struct ChampionId
 
     public override string ToString() => Value;
 
-    [GeneratedRegex("^[a-z0-9]{1,32}$")]
+    // \z: dizinin tam sonu. $ kullanılmaz: .NET'te $ sondaki tek bir \n'nin önünde de eşleşir ("zed\n" geçerdi).
+    [GeneratedRegex(@"^[a-z0-9]{1,32}\z")]
     private static partial Regex Format();
 }

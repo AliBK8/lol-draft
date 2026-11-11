@@ -5,6 +5,8 @@ namespace LolDraft.Domain;
 /// fearless kilitlerini belirler, maçın draft'ını başlatır.
 /// Akış: <see cref="StartDraft"/> → draft oynanır → simülasyon → <see cref="RecordGame"/> → tekrar.
 /// Saf: zar (ilk mavi kim) ve saat dışarıdan gelir.
+/// Değiştiren metotlar internal: dışarıdan tek kapı <see cref="Lobby"/> (aggregate kökü). Böylece koltuk, sıra ve
+/// tekrar kontrolü atlanamaz; dışarısı seriyi sadece okur.
 /// </summary>
 public sealed class Series
 {
@@ -22,7 +24,7 @@ public sealed class Series
     }
 
     /// <param name="firstBlue">İlk maçta mavi olan takım; sunucu rastgele belirler.</param>
-    public static Result<Series> Start(SeriesFormat format, bool fearless, IEnumerable<ChampionId> pool, TeamSlot firstBlue)
+    internal static Result<Series> Start(SeriesFormat format, bool fearless, IEnumerable<ChampionId> pool, TeamSlot firstBlue)
     {
         ArgumentNullException.ThrowIfNull(pool);
         if (!Enum.IsDefined(format))
@@ -96,7 +98,7 @@ public sealed class Series
         : FearlessLocks.None;
 
     /// <summary>Sıradaki maçın draft'ını o anki kilitlerle başlatır.</summary>
-    public Result<DraftSession> StartDraft(DraftTimings timings, Instant now)
+    internal Result<DraftSession> StartDraft(DraftTimings timings, Instant now)
     {
         if (IsFinished)
             return Result<DraftSession>.Fail(SeriesErrors.SeriesFinished);
@@ -113,7 +115,7 @@ public sealed class Series
     /// Seri hükmen biter: <paramref name="loser"/> kaybeder, rakibi seriyi alır. Yarım kalan draft atılır
     /// (oynanmamış maç skora yazılmaz). Ne zaman uygulanacağına lobi karar verir (bağlantı takibi).
     /// </summary>
-    public Result Forfeit(TeamSlot loser)
+    internal Result Forfeit(TeamSlot loser)
     {
         if (!Enum.IsDefined(loser))
             throw new ArgumentOutOfRangeException(nameof(loser), loser, "Bilinmeyen takım.");
@@ -129,7 +131,7 @@ public sealed class Series
     /// Simülasyon bitince maçın kazananını yazar. Motor rengi bilir, seri takımı:
     /// kazanan renk o maçta o renkte oynayan takıma çevrilir, sonra renkler değişir.
     /// </summary>
-    public Result RecordGame(Side winner)
+    internal Result RecordGame(Side winner)
     {
         if (!Enum.IsDefined(winner))
             throw new ArgumentOutOfRangeException(nameof(winner), winner, "Bilinmeyen taraf.");

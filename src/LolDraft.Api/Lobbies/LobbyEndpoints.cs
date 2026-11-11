@@ -63,20 +63,21 @@ internal static class LobbyEndpoints
     private static string ClientKey(HttpRequest http) =>
         http.Headers[GatewayOnlyMiddleware.ClientIpHeader] is [{ Length: > 0 } ip] ? ip : "unknown";
 
-    // İş hatası → HTTP kodu. Gövde her zaman aynı biçimde: { error, message }.
-    private static IResult Failure(Error error)
+    // İş hatası → HTTP kodu; tabloda olmayan her iş hatası 400. Kodlar hata nesnelerinden okunur (düz metin yazım
+    // hatası sessizce 400'e düşerdi).
+    private static readonly Dictionary<string, int> StatusByCode = new()
     {
-        var status = error.Code switch
-        {
-            "not_in_lobby" => StatusCodes.Status403Forbidden,
-            "lobby_not_found" => StatusCodes.Status404NotFound,
-            "lobby_full" => StatusCodes.Status409Conflict,
-            "too_many_lobbies" => StatusCodes.Status429TooManyRequests,
-            _ => StatusCodes.Status400BadRequest,
-        };
+        [LobbyErrors.NotInLobby.Code] = StatusCodes.Status403Forbidden,
+        [LobbyErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [LobbyErrors.Full.Code] = StatusCodes.Status409Conflict,
+        [CreateLobby.TooManyLobbies.Code] = StatusCodes.Status429TooManyRequests,
+        [CreateLobby.ServerBusy.Code] = StatusCodes.Status503ServiceUnavailable,
+    };
 
-        return Results.Json(new ErrorResponse(error.Code, error.Message), statusCode: status);
-    }
+    // Gövde her zaman aynı biçimde: { error, message }.
+    private static IResult Failure(Error error) =>
+        Results.Json(new ErrorResponse(error.Code, error.Message),
+            statusCode: StatusByCode.GetValueOrDefault(error.Code, StatusCodes.Status400BadRequest));
 
     internal sealed record CreateLobbyRequest(string? Format, bool Fearless);
 

@@ -38,7 +38,8 @@ internal sealed partial class MatchRun
     public MatchResult Play()
     {
         // Döküm için draft'ın tek sayısı: son savaştaki takım kuralları farkı (potansiyel güçle). Hiçbir karara girmez;
-        // kurallar her savaşta kendi türüne göre ayrıca hesaplanır (DESIGN.md §16.8). Karne (adım 10) gelince değişecek.
+        // kurallar her savaşta kendi türüne göre ayrıca hesaplanır (DESIGN.md §16.8), etkileri karnede (§16.11).
+        // ScoreBreakdown'ın tamamı gibi sadece çıktıda duruyor; kaldırılması ayrı temizlik (§16.11).
         var draftRules = TeamRules.Effects(FightKind.Final, _blue.Champions, _red.Champions, FinalMinute, c => c.PowerAt(FinalMinute));
         _scores.Add(ScoreCategory.Synergy, draftRules.Sum(e => e.Signed));
         RecordGoldFrame(0, 0);

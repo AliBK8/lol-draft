@@ -63,8 +63,8 @@ internal static class GatewayRateLimiting
             QueueLimit = 0,
         });
 
-    // İstemci IP'si. Önümüzde güvenilen bir proxy varsa ForwardedHeaders onun X-Forwarded-For'undan buraya yazar;
-    // yoksa bağlantının kendi adresi. İstemcinin gönderdiği X-Forwarded-For'a doğrudan bakılmaz (taklit edilebilir).
-    private static string ClientIp(HttpContext context) =>
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    // İstemcinin anahtarı (IPv4 adresi ya da IPv6 /64 öneki, bkz. ClientKey). Önümüzde güvenilen bir proxy varsa
+    // ForwardedHeaders onun X-Forwarded-For'undan adresi yazar; yoksa bağlantının kendi adresi. İstemcinin gönderdiği
+    // X-Forwarded-For'a doğrudan bakılmaz (taklit edilebilir).
+    private static string ClientIp(HttpContext context) => ClientKey.Of(context);
 }

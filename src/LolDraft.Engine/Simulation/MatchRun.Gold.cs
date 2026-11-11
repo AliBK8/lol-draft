@@ -3,8 +3,8 @@ using LolDraft.Engine.Events;
 namespace LolDraft.Engine.Simulation;
 
 /// <summary>
-/// Altın kaynakları ve dakika kareleri (DESIGN.md §16.4). Şimdilik yan kayıt: altın henüz güce ve ihtimallere
-/// bağlı değil, zar atmaz; maçın akışını değiştirmez.
+/// Altın kaynakları ve dakika kareleri (DESIGN.md §16.4). Bu dosya zar atmaz; altını defterden okuyan
+/// gerçek güç (<c>MatchRun.Power.cs</c>, §16.5) üzerinden savaş ve koridor ihtimallerine girer.
 /// </summary>
 internal sealed partial class MatchRun
 {

@@ -5,6 +5,7 @@ namespace LolDraft.Domain;
 /// Her hamle önce tamamen doğrulanır, durum en sonda tek seferde değişir;
 /// geçersiz hamle <see cref="Result.Fail"/> döner ve hiçbir şey değişmez.
 /// Saat ve rastgelelik dışarıdan gelir; sınıf ağ, DB ya da zamanlayıcı bilmez.
+/// Hamle metotları internal: dışarıdan hamle sadece <see cref="Lobby"/> üzerinden (koltuk → renk, tekrar koruması).
 /// </summary>
 public sealed class DraftSession
 {
@@ -29,7 +30,7 @@ public sealed class DraftSession
         Deadline = now + timings.Turn;
     }
 
-    public static Result<DraftSession> Start(
+    internal static Result<DraftSession> Start(
         IEnumerable<ChampionId> pool, FearlessLocks locks, DraftTimings timings, Instant now)
     {
         ArgumentNullException.ThrowIfNull(pool);
@@ -67,12 +68,12 @@ public sealed class DraftSession
 
     public bool IsLineupLocked(Side side) => _lockedLineups.Contains(side);
 
-    public Result Ban(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Ban, champion, now);
+    internal Result Ban(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Ban, champion, now);
 
-    public Result Pick(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Pick, champion, now);
+    internal Result Pick(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Pick, champion, now);
 
     /// <summary>Swap fazında iki yuvadaki şampiyonların yerini değiştirir (arayüzde top'a, sonra adc'ye tıklamak).</summary>
-    public Result SwapRoles(Side side, Role a, Role b, Instant now)
+    internal Result SwapRoles(Side side, Role a, Role b, Instant now)
     {
         var check = CheckSwap(side, now);
         if (check.IsFailure)
@@ -87,7 +88,7 @@ public sealed class DraftSession
     }
 
     /// <summary>Takım dizilimini onaylar; iki takım da onaylayınca draft biter.</summary>
-    public Result LockLineup(Side side, Instant now)
+    internal Result LockLineup(Side side, Instant now)
     {
         var check = CheckSwap(side, now);
         if (check.IsFailure)
@@ -103,7 +104,7 @@ public sealed class DraftSession
     /// Sunucu sayacı süre dolunca çağırır: ban adımında boş ban, pick adımında uygun
     /// şampiyonlardan rastgele biri, swap'ta o anki dizilimler kabul edilir.
     /// </summary>
-    public Result Timeout(Instant now, IDraftRandom random)
+    internal Result Timeout(Instant now, IDraftRandom random)
     {
         ArgumentNullException.ThrowIfNull(random);
 

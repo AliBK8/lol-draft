@@ -26,11 +26,12 @@ internal static class GatewayTransforms
             // istemcinin sahte değeri API'ye taşınabilirdi. RemoteIpAddress zaten ForwardedHeaders'tan geçti.
             // Dikkat: YARP istemci başlıklarını dönüşümlerden sonra tembel kopyalar; ProxyRequest.Headers'a doğrudan
             // yazmak istemcinin değerini silmez, yanına ekler. RequestTransform yardımcıları bu sırayı bilir.
+            // Değer adresin kendisi değil istemci anahtarıdır (IPv6'da /64 öneki, bkz. ClientKey): API'deki
+            // "IP başına lobi" sınırı gateway'in rate limit'leriyle aynı kovayı sayar.
             context.AddRequestTransform(transform =>
             {
                 RequestTransform.RemoveHeader(transform, ClientIpHeader);
-                RequestTransform.AddHeader(transform, ClientIpHeader,
-                    transform.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+                RequestTransform.AddHeader(transform, ClientIpHeader, ClientKey.Of(transform.HttpContext));
                 return ValueTask.CompletedTask;
             });
         });

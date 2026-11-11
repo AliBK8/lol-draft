@@ -3,7 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using LolDraft.Api.Middleware;
+using LolDraft.Application.Lobbies;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -114,6 +117,26 @@ public sealed class LobbyEndpointsTests : IDisposable
 
         Assert.Equal(3, responses.Count(r => r.StatusCode == HttpStatusCode.OK));
         Assert.Equal(7, responses.Count(r => r.StatusCode == HttpStatusCode.TooManyRequests));
+    }
+
+    // --- Toplam lobi tavanı (sunucu dolu) ---
+
+    [Fact]
+    public async Task Sunucu_doluysa_farkli_ipden_de_503()
+    {
+        using var factory = _factory.WithWebHostBuilder(host => host.ConfigureTestServices(services =>
+            services.AddSingleton(new LobbyCapacity(MaxOpenLobbies: 2))));
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(GatewayOnlyMiddleware.HeaderName, Secret);
+
+        Assert.Equal(HttpStatusCode.OK, (await PostCreateFrom("203.0.113.1", client)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await PostCreateFrom("198.51.100.2", client)).StatusCode);
+
+        // Kişi başı sınırın çok altında ama sunucu dolu: açık oyunlar sürer, yenisi beklemeye çağrılır.
+        var rejected = await PostCreateFrom("192.0.2.3", client);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, rejected.StatusCode);
+        Assert.Equal("server_busy", await ErrorCode(rejected));
     }
 
     // --- Katılma ---
@@ -239,14 +262,14 @@ public sealed class LobbyEndpointsTests : IDisposable
         _client.PostAsJsonAsync("/api/lobbies", new { format, fearless });
 
     // Gateway'in yazacağı istemci IP başlığıyla (API testleri gateway'den gelmiş gibi istek atar).
-    private Task<HttpResponseMessage> PostCreateFrom(string ip)
+    private Task<HttpResponseMessage> PostCreateFrom(string ip, HttpClient? client = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/lobbies")
         {
             Content = JsonContent.Create(new { format = "bo1", fearless = false }),
         };
         request.Headers.Add(GatewayOnlyMiddleware.ClientIpHeader, ip);
-        return _client.SendAsync(request);
+        return (client ?? _client).SendAsync(request);
     }
 
     private Task<HttpResponseMessage> PostJoin(string code) => _client.PostAsync($"/api/lobbies/{code}/join", null);
