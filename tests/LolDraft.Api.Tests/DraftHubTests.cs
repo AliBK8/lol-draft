@@ -189,6 +189,7 @@ public sealed class DraftHubTests : IAsyncDisposable
         var id = match.GetProperty("id").GetString()!;
         Assert.Equal(id, seenByGuest.GetProperty("id").GetString());
         Assert.Equal(1, match.GetProperty("gameNumber").GetInt32());
+        Assert.Equal(1, match.GetProperty("version").GetInt32());   // sözleşme sürümü (DESIGN.md §8.16)
 
         var events = match.GetProperty("events").EnumerateArray().ToList();
         Assert.Equal("nexus", events[^1].GetProperty("type").GetString());
@@ -213,6 +214,8 @@ public sealed class DraftHubTests : IAsyncDisposable
         var replay = await Client().GetFromJsonAsync<JsonElement>($"/api/matches/{id}");
         Assert.Equal(events.Count, replay.GetProperty("events").GetArrayLength());
         Assert.Equal(match.GetProperty("end").GetRawText(), replay.GetProperty("end").GetRawText());
+        // Tek belge (DESIGN.md §8.16): canlı yayın ile diskten gelen birebir aynı.
+        Assert.True(JsonElement.DeepEquals(match, replay));
     }
 
     [Theory]

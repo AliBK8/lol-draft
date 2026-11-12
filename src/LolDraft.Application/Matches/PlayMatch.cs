@@ -4,14 +4,14 @@ using LolDraft.Engine;
 namespace LolDraft.Application.Matches;
 
 /// <summary>
-/// Oynanmış bir maç: tekrar izlemenin tek kaynağı (olay listesi, dakika kareleri, karne).
-/// Seed ve motor sürümü sadece teşhis için (aynı seed'le yeniden simülasyon denge ayarından sonra başka maç verir).
+/// Oynanmış bir maç: tekrar izlemenin tek kaynağı dondurulmuş belgedir (<see cref="Replay"/>: olaylar, dakika kareleri,
+/// karne). Seed ve motor sürümü sadece teşhis için (aynı seed'le yeniden simülasyon denge ayarından sonra başka maç verir).
 /// </summary>
 /// <param name="BlueTeam">Bu maçta mavi olan takım koltuğu; motorun renkleri koltuğa bununla çevrilir.</param>
 /// <param name="EngineVersion">Motor derlemesinin kimliği (kod değişince değişir; deterministik derleme).</param>
 public sealed record MatchRecord(
     MatchId Id, LobbyCode Lobby, int GameNumber, TeamSlot BlueTeam, Seed Seed, string EngineVersion, Instant PlayedAt,
-    MatchResult Result);
+    Replay Replay);
 
 /// <summary>
 /// Draft biten maçı oynatır (DESIGN.md §8.15): draft → motor girdisi → simülasyon → <see cref="Lobby.RecordGame"/>.
@@ -40,8 +40,11 @@ public sealed class PlayMatch(IChampionCatalog catalog, IMatchSimulator simulato
 
         var id = MatchId.FromBytes(random.Bytes(MatchId.ByteLength));
         // Maç numarası ve mavi takım yazmadan önce okunur: RecordGame seriyi bir sonraki maça geçirir.
-        var record = new MatchRecord(
-            id, lobby.Code, lobby.Series.GameNumber, lobby.Series.BlueTeam, seed, EngineVersion, now, result);
+        // Belge seriye yazmadan önce üretilir: çeviri hata verirse (sözleşmede olmayan olay) skor da yazılmaz.
+        var gameNumber = lobby.Series.GameNumber;
+        var blueTeam = lobby.Series.BlueTeam;
+        var replay = MatchReplay.Create(id, gameNumber, blueTeam, result);
+        var record = new MatchRecord(id, lobby.Code, gameNumber, blueTeam, seed, EngineVersion, now, replay);
 
         var winner = result.End.Winner == TeamSide.Blue ? Side.Blue : Side.Red;
         var recorded = lobby.RecordGame(winner, id, now);

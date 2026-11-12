@@ -2,7 +2,12 @@
 
 Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan, ardından maçın gizli bir puan motoruyla simüle edilip haritada ikonlar ve olay log'uyla izlendiği bir web oyunu. Kâr amacı yok.
 
-**Tüm tasarım, formüller ve kararlar: `docs/DESIGN.md`.** Bir şeyi değiştirmeden önce oraya bak; tasarım kararı değişirse DESIGN.md'yi de güncelle.
+**Tüm tasarım, formüller ve kararlar: `docs/`.** Bir şeyi değiştirmeden önce oraya bak; tasarım kararı değişirse dokümanı da güncelle. § numaraları dosyalar arasında ortak; hangi § hangi dosyada, `docs/DESIGN.md` başındaki haritada:
+- `DESIGN.md`: §0-7, §10-15 (ilkeler, karar günlüğü §1, motor v1, hareket, veri hattı, ön yüz)
+- `SISTEM.md`: §8.1-8.9 (mimari, kapsülleme, rate limiting, güvenlik, API)
+- `UYGULAMA.md`: §8.10+ (adım adım uygulama notları; **yeni adım bitince buraya yeni §8.x**)
+- `EKONOMI-V2.md`: §16 (şampiyon modeli v2, ekonomi, kurallar K1-K13)
+- `DENGE.md`: §9 + §16.13 (denge aracı, ölçümler, ayar turları)
 
 ## Stack
 - `src/LolDraft.Gateway` — YARP gateway: tek dış giriş, TLS, rate limiting, JWT doğrulama, güvenlik başlıkları
@@ -35,24 +40,10 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - Görev yerine getirildikten sonra bir kez daha üzerinde kontrol yapılıp sonrasında görev bitirilir ve kontrol edildiği belirtilir.
 
 ## Sıradaki işler
-1. ~~Veri hattı 01-04, `zones.json`, `transitions.json`, `kill_heatmap.json`~~ (bitti)
-2. ~~4a: Çözüm iskeleti (§8.2): `LolDraft.slnx`, 6 src + 3 test projesi, mimari testleri~~ (bitti)
-3. ~~4b: C# motor iskeleti (sinerji + koridor + dk 35 son savaş), mulberry32, deterministiklik testleri~~ (bitti). Prototiple birebir port bitti; §14 bilinen sorunlar çözüldü (zaman çizelgesi, gank sınırı, kule = fırsat); nehir çatışması aralıklı/eşitsiz ve ejder ruhu/Elder eklendi (§4.5). Denge aracı bitti (§9).
-4. Draft ve ekonomi v2 (DESIGN.md §16, sıra §16.13): ~~A ekonomi~~ (bitti) → B şampiyon modeli v2 + kurallar (bitti: model v2, K1-K13, karne, kural/kimlik raporu) → ~~C 40 şampiyon~~ (bitti: `data/champions.json`) → D dengeleme (tur 1: K5, K6, kuşatma eşiği; tur 2: 15. dk 5.000+ önde %77 (savunma avantajı, yakalanma, s −%10); açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+; DESIGN.md §16.13 adım 13)
-5. ~~4c: Gateway (YARP) + API iletişimi, `GatewayOnlyMiddleware`~~ (bitti, DESIGN.md §8.10)
-6. ~~4d: Draft durum makinesi (`LolDraft.Domain`): `DraftSession` (sıra tablosu, doğrulama, zaman aşımı, swap) + `Series` (bo1/3/5, skor, renk değişimi, fearless kilitleri)~~ (bitti, DESIGN.md §8.3 "Uygulama (4d)" ve "Seri", 52 test). Kararlar:
-   - (2026-11-04) Sadece açık draft; gizli/eşzamanlı seçim modu yok.
-   - (2026-11-10) Soft fearless yok; fearless tek tür (iki takıma da kilit). Fearless + bo5 40'lık havuza sığmıyor, `Series.Start` reddediyor; havuz 60 olunca kendiliğinden açılır.
-   - (2026-11-10) Kimlik `TeamSlot` A/B (Host/Guest değil: 2v2/turnuva modu), JWT `seat` = A/B. İlk mavi rastgele (sunucu), sonra renkler her maç değişir; "kaybeden seçer" kaldırıldı.
-7. ~~4e-1: Lobi uç noktaları + misafir JWT (Domain: `Lobby`, `LobbyCode`, `PlayerId`; Application: `CreateLobby`/`JoinLobby`/`GetLobby` + portlar; Infrastructure: `GuestTokenService`, bellekte lobi deposu, gömülü şampiyon listesi)~~ (bitti, DESIGN.md §8.11). Kararlar (2026-11-10): aktif lobiler bellekte (`ILobbyRepository` arkasında, lobi başına kilit); rejoin ertelendi; açan A koltuğuna oturur. API artık `JWT_SIGNING_KEY` ister (gateway ile aynı değer).
-8. 4e-2: DraftHub (SignalR). Kararlar (2026-11-10): draft iki oyuncu `Ready` deyince başlar (seride her maç); saniyelik `TimerTick` yok, durumda `deadline` + `serverNow`; seri başladıktan sonra 2 dk kesintisiz bağlı olmayan oyuncu seriyi hükmen kaybeder.
-   - ~~4e-2a: hub, hamleler (Ready/Ban/Pick/SwapRoles/LockLineup) lobi kilidi altında, `actionId` tekrar koruması, `LobbyUpdated` DTO'su, API'de `GuestAuthenticationHandler`~~ (bitti, DESIGN.md §8.12).
-   - ~~4e-2b: lobi saati (`LobbyClockService` → `Lobby.Advance` → `DraftSession.Timeout`), `RateLimitHubFilter` (sn'de 5, dk'da 60; dk'da 10 ihtar → bağlantı kapanır)~~ (bitti, DESIGN.md §8.13).
-   - ~~4e-2c: bağlantı takibi + hükmen galibiyet (2 dk), ikisi birden yoksa lobi 5 dk sonra kapanır, 30 dk hareketsiz lobi kapanır (`LobbyClosed`), IP başına 3 lobi (gateway `X-Client-Ip`, depoda atomik `TryAdd`)~~ (bitti, DESIGN.md §8.14). Bu adımda 4c'den kalma bir açık bulundu ve düzeltildi: güvenilen proxy listesi boşken gateway herkesin `X-Forwarded-For`'una güveniyordu (§8.10).
-9. ~~4f-1: Simülasyon bağlantısı: draft biter (son kilit ya da swap zaman aşımı) → kilit altında katalogdan profiller, CSPRNG seed, motor, `Lobby.RecordGame` → maç kaydı (bellekte) → `MatchReady` + `GET /api/matches/{id}`~~ (bitti 2026-11-12, DESIGN.md §8.15). Kararlar:
-   - (2026-11-12) Skor hemen yazılır ve yayınlanır; istemci oynatma bitene (ya da "sona atla") kadar göstermez.
-   - (2026-11-12) Rol dışı: mesafe tablosu (%20/%25/%30/%35) + lane fazında oynaklık + karne satırı (DESIGN.md §16.8). Ölçüm: rol dışı takım %43 kazanıyor; oynaklık maç sonunu neredeyse etkilemiyor, kumarın kaldıracı faz D'de (öneri: rol dışı koridorda sürpriz sıklığı).
-   - Biten maçın olay listesi saklanır, replay onu oynatır; seed + motor sürümü (MVID) sadece teşhis.
-   **← KALDIĞIMIZ YER.** 4f-2: `IMatchRepository` → EF Core + SQLite (kalıcı replay), migration, volume. Rejoin hâlâ ertelendi.
-10. 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). İstemci kuralları: küçük/eşit `revision`'lı `LobbyUpdated`'ı at (§8.12); skoru oynatma bitene kadar gizle (§8.15); swap'ta rol dışı yuvayı ceza ve "oynak" etiketiyle göster (§16.8). 6: Docker + CI.
-11. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket
+Bitenler (ayrıntı ve kararlar dokümanda): veri hattı 01-05 · 4a çözüm iskeleti (§8.2) · 4b C# motoru + denge aracı (§4, §9) · ekonomi v2 faz A-C (§16, `data/champions.json`) · 4c gateway (§8.10) · 4d draft + seri (§8.3) · 4e-1 lobi + misafir JWT (§8.11) · 4e-2a/b/c hub, lobi saati, bağlantı takibi (§8.12-8.14) · 4f-1 simülasyon bağlantısı + rol dışı kumar (§8.15, §16.8) · 4f-2 kalıcı replay, EF Core + SQLite, saklama 180 gün (§8.16).
+
+1. **← KALDIĞIMIZ YER.** 5: Ön yüz (`web/`, çirkin ama çalışan: lobi → draft → maç oynatıcı → seri). İstemci kuralları: küçük/eşit `revision`'lı `LobbyUpdated`'ı at (§8.12); skoru oynatma bitene kadar gizle (§8.15); swap'ta rol dışı yuvayı ceza ve "oynak" etiketiyle göster (§16.8).
+2. 6: Docker + CI (volume `/data/matches.db` + SQLite yedeği, §8.8).
+3. Faz D dengeleme (§16.13 adım 13, DENGE.md), açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+, rol dışı kumarın kaldıracı (§16.8).
+4. Rejoin (ertelendi, gateway rotası hazır).
+5. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket.

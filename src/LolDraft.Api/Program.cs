@@ -16,11 +16,11 @@ using Microsoft.AspNetCore.SignalR;
 var builder = WebApplication.CreateBuilder(args);
 
 // Sırlar başlangıçta doğrulanır; eksikse uygulama açılmaz.
-var settings = ApiSettings.From(builder.Configuration);
+var settings = ApiSettings.From(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.AddSingleton(settings);
 
-// Portların gerçekleri (lobi deposu, token, CSPRNG, şampiyon listesi) ve onları kullanan senaryolar.
-builder.Services.AddInfrastructure(settings.JwtSigningKey);
+// Portların gerçekleri (lobi deposu, maç veritabanı, token, CSPRNG, şampiyon listesi) ve onları kullanan senaryolar.
+builder.Services.AddInfrastructure(settings.JwtSigningKey, settings.MatchStorage);
 builder.Services.AddSingleton(LobbyCapacity.Default);
 builder.Services.AddSingleton<CreateLobby>();
 builder.Services.AddSingleton<JoinLobby>();
@@ -32,6 +32,11 @@ builder.Services.AddSingleton<AdvanceLobbies>();
 builder.Services.AddSingleton(MatchEngine.CreateSimulator());
 builder.Services.AddSingleton<PlayMatch>();
 builder.Services.AddSingleton<GetMatch>();
+
+// Replay saklama süresi (DESIGN.md §8.16): günde bir eski maçlar silinir.
+builder.Services.AddSingleton(settings.MatchRetention);
+builder.Services.AddSingleton<PruneMatches>();
+builder.Services.AddHostedService<MatchRetentionService>();
 
 // Lobi saati: draft adımlarının süresini sunucu tutar (istemcinin saati kullanılmaz).
 builder.Services.AddHostedService<LobbyClockService>();
@@ -64,6 +69,9 @@ builder.WebHost.ConfigureKestrel(kestrel =>
 
 var app = builder.Build();
 
+// Maç veritabanı: bekleyen migration'lar uygulanmadan istek kabul edilmez (şema uyuşmazsa uygulama açılmaz).
+await app.Services.InitializeAsync(CancellationToken.None);
+
 // İlk iş: gateway'den gelmeyen istek hiçbir uç noktaya ulaşmaz.
 app.UseMiddleware<GatewayOnlyMiddleware>();
 
@@ -86,4 +94,4 @@ app.MapLobbyEndpoints();
 app.MapMatchEndpoints();
 app.MapHub<DraftHub>(DraftHub.Path);
 
-app.Run();
+await app.RunAsync();

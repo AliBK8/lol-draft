@@ -46,10 +46,11 @@ public sealed class AdvanceLobbies(
             else if (view is not null)
                 changed.Add(view);
 
-            // Kayıt kilidin dışında, yayından önce (LobbyCommands ile aynı sıra).
+            // Kayıt kilidin dışında, yayından önce (LobbyCommands ile aynı sıra). İptal edilemez: kapanışta tik
+            // yarıda kesilse bile oynanmış (seriye yazılmış) maç kaydedilir.
             if (match is not null)
             {
-                await matches.Save(match, ct);
+                await matches.Save(match, CancellationToken.None);
                 played.Add(match);
             }
         }

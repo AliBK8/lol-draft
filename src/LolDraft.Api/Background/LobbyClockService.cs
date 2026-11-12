@@ -32,7 +32,7 @@ internal sealed class LobbyClockService(
                 foreach (var match in report.Played)
                 {
                     await hub.Clients.Group(DraftHub.Group(match.Lobby))
-                        .SendAsync(DraftHub.MatchReady, MatchDto.Of(match), stoppingToken);
+                        .SendAsync(DraftHub.MatchReady, ReplayPayload.Of(match), stoppingToken);
                 }
 
                 foreach (var view in report.Changed)

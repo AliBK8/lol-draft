@@ -4,7 +4,8 @@
       "commandName": "Project",
       "applicationUrl": "http://localhost:5100",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MATCH_DB_PATH": "../../data/local/matches.db"
       }
     }
   }

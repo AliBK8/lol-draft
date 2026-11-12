@@ -1,25 +1,59 @@
-using LolDraft.Application.Matches;
+using System.Text.Json;
+using LolDraft.Domain;
 using LolDraft.Engine;
 using LolDraft.Engine.Events;
 
-namespace LolDraft.Api.Matches;
+namespace LolDraft.Application.Matches;
 
-// Maçın JSON sözleşmesi (MatchReady olayı ve GET /api/matches/{id} aynı biçim). Motor tipleri doğrudan serileştirilmez
-// (Engine JSON bilmez, DESIGN.md §8.3); çeviri burada, elle. Olay tipleri DESIGN.md §4.9 tablosundaki adlarla.
+// Maçın JSON sözleşmesi (MatchReady olayı ve GET /api/matches/{id} aynı belge, DESIGN.md §8.16). Motor tipleri doğrudan
+// serileştirilmez (Engine JSON bilmez, DESIGN.md §8.3); çeviri burada, elle. Olay tipleri DESIGN.md §4.9 tablosundaki adlarla.
 // Dışarı çıkmayanlar: seed (DESIGN.md §8.6) ve puan dökümü (ScoreSheet, v2'den beri karara girmiyor).
+// Belge maç oynandığı anda bir kez üretilir ve dondurulur: yayın da, diskteki kayıt da, tekrar izleme de aynı baytlar.
 
+/// <summary>
+/// Dondurulmuş maç belgesi: sözleşme sürümü + UTF-8 JSON. Motor ya da çeviri sonradan değişse de eski maç aynı kalır;
+/// sözleşme kırılırsa <see cref="CurrentVersion"/> artar ve istemci eski sürümü ayrıca tanır.
+/// </summary>
+public sealed class Replay
+{
+    public const int CurrentVersion = 1;
+
+    public Replay(int version, ReadOnlyMemory<byte> json)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
+        Version = version;
+        Json = json;
+    }
+
+    public int Version { get; }
+
+    /// <summary>UTF-8 JSON (camelCase, ASP.NET'in web varsayılanları).</summary>
+    public ReadOnlyMemory<byte> Json { get; }
+}
+
+/// <summary>Maç sonucu → dondurulmuş belge.</summary>
+internal static class MatchReplay
+{
+    // ASP.NET'in Results.Ok ve SignalR'ın kullandığı biçimle aynı (camelCase); 4f-1'deki alanlar aynen korunur.
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    public static Replay Create(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result) =>
+        new(Replay.CurrentVersion, JsonSerializer.SerializeToUtf8Bytes(MatchDto.Of(id, gameNumber, blueTeam, result), Json));
+}
+
+/// <param name="Version">Sözleşme sürümü (<see cref="Replay.CurrentVersion"/>): eski kayıtları istemci buna bakıp tanır.</param>
 /// <param name="BlueTeam">Bu maçta mavi olan koltuk (A/B): istemci renkleri koltuğa bununla çevirir.</param>
 internal sealed record MatchDto(
-    string Id, int GameNumber, string BlueTeam, MatchEndDto End, object[] Events, GoldFrameDto[] GoldFrames,
+    int Version, string Id, int GameNumber, string BlueTeam, MatchEndDto End, object[] Events, GoldFrameDto[] GoldFrames,
     ReportDto Report)
 {
-    public static MatchDto Of(MatchRecord match)
+    public static MatchDto Of(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result)
     {
-        var result = match.Result;
         return new MatchDto(
-            match.Id.Value,
-            match.GameNumber,
-            match.BlueTeam.ToString(),
+            Replay.CurrentVersion,
+            id.Value,
+            gameNumber,
+            blueTeam.ToString(),
             new MatchEndDto(result.End.Minute, EngineNames.Side(result.End.Winner), EngineNames.EndKind(result.End.Kind),
                 result.End.WinnerProbability),
             [.. result.Events.Select(Event)],

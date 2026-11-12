@@ -54,8 +54,9 @@ public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock, PlayMa
         }, ct);
 
         // Kayıt kilidin dışında (depo async); yayından önce: link yayınlandığında maç okunabilir olsun.
+        // İptal edilemez: ct hamleyi yapanın bağlantısı; o tam bu anda koparsa oynanmış maç kaydedilmeden kalırdı.
         if (update is { IsSuccess: true, Value.Match: { } played })
-            await matches.Save(played, ct);
+            await matches.Save(played, CancellationToken.None);
 
         return update;
     }

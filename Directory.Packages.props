@@ -14,5 +14,8 @@
     <!-- JwtBearer 10.0.14'ün kullandığı sürümle aynı: gateway (doğrular) ve API (üretir) aynı kütüphaneyi kullanır -->
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+    <!-- Kalıcı replay (4f-2): EF Core + SQLite; Design sadece migration üretimi için (derleme zamanı) -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
   </ItemGroup>
 </Project>

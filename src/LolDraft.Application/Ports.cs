@@ -73,12 +73,19 @@ public interface IChampionCatalog
 }
 
 /// <summary>
-/// Oynanmış maçlar (tekrar izleme, DESIGN.md §8.7). 4f-1: bellekte, sınırlı; 4f-2: SQLite (kalıcı).
-/// Kayıt olay listesinin kendisidir: replay seed'le yeniden simüle etmez (denge ayarı eski maçı değiştirirdi).
+/// Oynanmış maçlar (tekrar izleme, DESIGN.md §8.7, §8.16): SQLite'ta kalıcı.
+/// Kayıt dondurulmuş belgenin kendisidir: replay seed'le yeniden simüle etmez (denge ayarı eski maçı değiştirirdi).
 /// </summary>
 public interface IMatchRepository
 {
+    /// <summary>
+    /// Maçı yazar. Hata fırlatmaz (loglar): maç oynandı ve seriye yazıldı, yayın ve diğer lobilerin tiki bir disk
+    /// hatası yüzünden durmamalı. Yazılamayan maçın sadece tekrar izleme linki 404 verir.
+    /// </summary>
     Task Save(MatchRecord match, CancellationToken ct);
 
     Task<MatchRecord?> Get(MatchId id, CancellationToken ct);
+
+    /// <summary>Oynanma anı <paramref name="cutoff"/>'tan eski maçları siler (saklama süresi); silinen sayısını döner.</summary>
+    Task<int> DeleteOlderThan(Instant cutoff, CancellationToken ct);
 }

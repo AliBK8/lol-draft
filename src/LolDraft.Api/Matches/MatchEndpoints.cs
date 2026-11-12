@@ -5,7 +5,8 @@ namespace LolDraft.Api.Matches;
 
 /// <summary>
 /// Tekrar izleme (DESIGN.md §8.7): GET /api/matches/{id}. Token istemez: link paylaşılır, kimlik 128 bit rastgele.
-/// Gateway'de IP başına dakikada 60 (replay politikası; cevap büyük, ~50 KB).
+/// Gateway'de IP başına dakikada 60 (replay politikası; cevap büyük, ~32 KB).
+/// Cevap diskteki dondurulmuş belgenin baytlarıdır (DESIGN.md §8.16): yeniden serileştirilmez, MatchReady ile birebir aynı.
 /// </summary>
 internal static class MatchEndpoints
 {
@@ -20,6 +21,8 @@ internal static class MatchEndpoints
             return ApiErrors.Failure(MatchErrors.NotFound);
 
         var match = await getMatch.Handle(matchId.Value, ct);
-        return match.IsSuccess ? Results.Ok(MatchDto.Of(match.Value)) : ApiErrors.Failure(match.Error!);
+        return match.IsSuccess
+            ? Results.Bytes(match.Value.Replay.Json, "application/json; charset=utf-8")
+            : ApiErrors.Failure(match.Error!);
     }
 }

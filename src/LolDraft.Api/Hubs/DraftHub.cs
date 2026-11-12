@@ -120,7 +120,7 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
     public static async Task Publish(IClientProxy group, LobbyUpdate update, CancellationToken ct)
     {
         if (update.Match is { } match)
-            await group.SendAsync(MatchReady, MatchDto.Of(match), ct);
+            await group.SendAsync(MatchReady, ReplayPayload.Of(match), ct);
         await group.SendAsync(LobbyUpdated, LobbyStateDto.Of(update.View), ct);
     }
 }
