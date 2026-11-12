@@ -27,7 +27,8 @@ internal sealed class GatewayPipeline : IDisposable
     private readonly WebApplicationFactory<CorrelationIdMiddleware> _gateway;
 
     /// <param name="trustedProxy">Gateway'in X-Forwarded-For'una güveneceği proxy (Gateway:TrustedProxies); yoksa hiçbiri.</param>
-    public GatewayPipeline(string signingKey = SigningKey, string? trustedProxy = null)
+    /// <param name="webRoot">İstemci build'inin klasörü (wwwroot); yoksa gateway'de istemci dosyası yok.</param>
+    public GatewayPipeline(string signingKey = SigningKey, string? trustedProxy = null, string? webRoot = null)
     {
         _api = new WebApplicationFactory<GatewayOnlyMiddleware>().WithWebHostBuilder(host => host
             .UseSetting("GATEWAY_SECRET", Secret)
@@ -46,6 +47,8 @@ internal sealed class GatewayPipeline : IDisposable
                 });
             if (trustedProxy is not null)
                 host.UseSetting("Gateway:TrustedProxies:0", trustedProxy);
+            if (webRoot is not null)
+                host.UseWebRoot(webRoot);
         });
     }
 

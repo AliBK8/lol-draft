@@ -153,3 +153,47 @@ Testler: Domain (`Lobby.RecordGame`: skor, renk değişimi, sürüm, draft bitme
 Testler (`MatchStorageTests`, her test kendi geçici dosyasıyla): yeniden başlatmadan sonra aynen okunur (seed üst sınırı dahil) · belge sıkıştırılmış yazılır · aynı kimlik ikinci kez fırlatmaz · 180 günden eskiler silinir, yenisi kalır · 0 gün hiç silmez · API yeniden başlasa da GET kayıtlı baytları döner · üretimde yol zorunlu, geliştirmede bellek · saklama ayarı geçerli/geçersiz değerler. `DraftHubTests`: canlı `MatchReady` ile GET birebir aynı (`DeepEquals`).
 
 Kalan: rejoin (ertelendi). Yedekleme (SQLite `.backup` cron'u) Docker adımında (§8.8).
+
+### 8.17 Uygulama: 5a (ön yüz iskeleti, şampiyon listesi, gateway'de istemci)
+
+**Bir sayfanın yolu:** tarayıcı `/l/{kod}` ister → gateway: yönlendirme hiçbir YARP rotası bulmaz, yol bir istemci yolu → `index.html` (no-cache) → React Router `/l/:code` → `sessionStorage`'da bu lobinin token'ı varsa `GET /api/lobbies/{kod}`, yoksa "Katıl" (`POST /join`). Geliştirmede sayfayı Vite (5173) sunar, `/api` ve `/hubs` gateway'e (5000) proxy'lenir.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Şampiyon listesi | `Application/Matches/ListChampions.cs`, `Api/Champions/ChampionEndpoints.cs` | `GET /api/champions`: `id`, `name`, `roles`, `offRole` (yuva → ceza). `champions.json` istemciye gömülmez: içinde gizli motor sayıları var (§0). Liste bir kez hesaplanır, `Cache-Control: public, max-age=300`; gateway'de token ve özel limit yok (genel IP limiti). |
+| Rol dışı ceza | `Engine/MatchEngine.OffRolePenalty` | Tablo motorda tek kaynak (`OffRole`, internal); istemciye hesaplanmış değer gider, kopya tablo yok. Yeni public tip eklenmedi (mimari listesi aynı). |
+| İstemci dosyaları | `Gateway/WebClient.cs` | `wwwroot`'tan statik dosya; yönlendirmeden ve rate limiter'dan **sonra** (her dosya isteği genel IP limitinden geçer), JWT'den önce. Önbellek: `index.html` no-cache, `/assets/*` (içerik hash'li) bir yıl `immutable`, diğerleri (portreler) bir gün. |
+| SPA yönlendirmesi | `WebClient.IsClientRoute` | Rota eşleşmediyse ve yol GET/HEAD, uzantısız, `/api` ve `/hubs` dışı ise `index.html`. Catch-all fallback **rotası** denendi, reddedildi: aday rota olarak 405'i bozuyordu (`GET /api/lobbies` 404 oluyordu). Beyaz liste korunur: listede olmayan `/api/...` 404 kalır, HTML dönmez; olmayan `app.js` da 404 (HTML'i script diye yüklemez). |
+| Şampiyon portreleri | `web/scripts/fetch-champion-icons.mjs` → `web/public/champions/{id}.png` | Data Dragon'dan bir kez (`npm run icons`), repoda (40 × ~30 KB). Kimlik ↔ Riot anahtarı ada göre eşlenir; eşleşmeyen varsa betik durur. Kaynak sürüm `SOURCE.txt`'de (şu an 16.22.1). Sayfa altında Riot'un fan projesi notu (`Layout.tsx`). Karar §1. |
+| İstemci yığını | `web/` | Vite 8 + React 19 + TypeScript 7, `react-router-dom`, `@microsoft/signalr` (5b). Stil düz CSS (`index.css`); Tailwind sonradan eklenebilir, mevcut stili bozmaz. Build satır içi script üretmez: CSP `script-src 'self'` değişmedi. |
+| Token | `web/src/session.ts` | Lobi koduna göre `sessionStorage`: yenilenen sekme aynı koltuğa döner, sekme kapanınca silinir (localStorage'da iki sekme aynı koltuğu açardı). 401/404'te silinir. Rejoin hâlâ yok. |
+| Hata gösterimi | `web/src/api/http.ts` | Gövde `{error, message}` ise sunucunun Türkçe mesajı; gövdesizse (gateway 429) duruma göre Türkçe metin. |
+| Geliştirme | `web/vite.config.ts`, `src/LolDraft.Api/appsettings.json` | Proxy gateway'e (API sır başlığı olmadan istek kabul etmez). EF'in SQL komut logları `Warning`'e çekildi (her tikte gürültü yapıyordu). |
+| Windows tuzağı | `web/scripts/vitest.mjs` | Terminal küçük harfli sürücüyle (`c:\`, VS Code varsayılanı) açılınca Vitest kendi modülünü `c:/`, testleri `C:/` yolundan yükler; testler "reading 'config'" ile düşer. `npm test` Vitest'i büyük harfli dizinle başlatır. |
+
+Çalıştırma (geliştirme): API (`dotnet run --project src/LolDraft.Api`), gateway (`dotnet run --project src/LolDraft.Gateway`), ikisine de `GATEWAY_SECRET` ve `JWT_SIGNING_KEY` (aynı değerler; user-secrets ya da ortam değişkeni); `cd web && npm run dev` → http://localhost:5173. Gateway'in build'i sunduğunu denemek için: `npm run build`, gateway'e `--webroot <tam yol>/web/dist`.
+
+Testler: Api (`ChampionEndpointsTests`: 40 şampiyon, beş yuva, kendi rolünde 0, tablo değerleri, gizli alan yok), Gateway (`WebClientTests`: istemci yolları index.html + no-cache + CSP, hash'li dosya immutable, portre bir gün, olmayan dosya 404, `/api`/`/API`/`/hubs` SPA'ya düşmez ve API'ye ulaşmaz, `/api/champions` tokensiz), web (Vitest: hata çözme, oturum saklama). Elle: gateway + API + Vite ile lobi aç → katıl → ikinci katılım `lobby_full` → token'la durum; portreler ve CSP başlığı.
+
+Kalan (5b): hub istemcisi, canlı lobi, draft ve swap ekranı. Arayüz henüz tarayıcıda gözle denenmedi (curl ile denendi).
+
+### 8.18 Uygulama: 5b (canlı lobi, draft, swap, geliştirme rakibi)
+
+**Bir hamlenin yolu (istemci):** havuzdan şampiyon seç → "Banla/Seç" → `act('Ban', id)` yeni bir `actionId` (UUID) ile `invoke` → sunucu kuralı uygular → hamleyi yapana `{ok, error, message}`, herkese `LobbyUpdated` (tam durum) → `revision` elimdekinden büyükse ekran o durumu çizer. İstemci kural hesaplamaz; havuzda soluk görünenler (ban'lı, seçilmiş, fearless) sadece görüntü, son söz sunucunun.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Bağlantı | `web/src/live/useLobbyConnection.ts` | Sekme başına tek hub bağlantısı; token `accessTokenFactory` → sorgu parametresi (WebSocket başlık gönderemez, §8.4). Bağlanınca sunucu güncel durumu kendiliğinden yollar (`OnConnectedAsync`); 5a'daki GET ve "Yenile" kalktı. |
+| Yeniden bağlanma | aynı dosya, `retryPolicy` | İlk 2 dk (hükmen süresi) sık (0, 1, 2, sonra 3 sn), sonra 10 sn'de bir, 10 dk sonra vazgeç. Varsayılan politika ~30 sn'de bırakıyordu: kısa bir kopma seriyi hükmen kaybettirebilirdi. |
+| Hamle tekrarı | `act` | Bağlantı tam hamle anında koparsa yeniden bağlanınca **aynı** `actionId` ile bir kez daha (sunucu ikinci kez uygulamaz, §8.12). Bağlantı ayaktayken gelen hata tekrarlanmaz. Rate limit (sn'de 5) hata fırlatmaz, başarısız cevap döner; mesajı gösterilir. |
+| Eski durum | `live/revision.ts` | Küçük ya da eşit `revision` atılır (yeniden bağlanınca eski durum gelebilir). |
+| Geri sayım | `live/clock.ts`, `components/Countdown.tsx` | Kalan = `deadline − (yerel saat + offset)`, offset her durumda `serverNow − yerel saat`. Yerel saat kaymış olsa da sunucuya göre sayar. Saniyede 4 çizim; sunucudan saniyelik mesaj yok. Ağ gecikmesi ihmal (saniye çözünürlüğü). |
+| Draft ekranı | `screens/DraftBoard.tsx`, `live/draft.ts` | Faz, sıra, sayaç, iki takımın 5 ban + 5 yuvası, rol filtreli ve aramalı havuz, seç → onayla (yanlış tıklama hamle değil). Renk koltuktan: `blueTeam === seat` (renkler her maç değişir). Sıra tablosu Domain'le aynı (test: 20 adım, takım başına 5+5). |
+| Swap ekranı | `screens/SwapBoard.tsx` | Pick sırası yuva sırası; iki yuvaya tıkla → `SwapRoles`. Rol dışı yuvada "rol dışı −%X · oynak" (değer `/api/champions`'tan, §8.17). Rakibin dizilimi ve kilit durumu görünür (sunucu ikisini de yollar). Kilitle ya da süre dolsun. |
+| Koltuklar ve hükmen | `screens/LobbyScreen.tsx` `Seats` | Gerçek bağlantı durumu (hub). Hükmen sayacı Domain'deki koşulla: seri başladı (`games > 0` ya da draft var), oyuncu yok, rakip bağlı → `absentSince + 2 dk`'ya geri sayım. |
+| Skor gizliliği | `live/reveal.ts` | Lobi başına "kaç maçın sonucu açıldı" `sessionStorage`'da (yenilemede izlenen maç tekrar gizlenmez). Skor sadece açılmış maçlardan; seri kazananı son maç açılınca (hükmen ise hemen). 5b'de "sonucu göster" düğmesi açar, 5c'de oynatıcının bitişi. |
+| Geliştirme rakibi | `web/scripts/rakip.mjs` (`npm run rakip`) | Tek başına test için otomatik oynayan ikinci oyuncu: `-- <link>` katılır, `-- --yeni bo3 [--fearless]` lobi açıp linki yazar. Gerçek istemci gibi gateway'den (ya da `--gateway http://localhost:5173` ile Vite proxy'sinden) geçer; sunucuya özel kod yok. Ban rastgele, pick sıradaki yuvanın rolünden, swap'ta olduğu gibi kilitler. Oyunun bilgisayar rakibi değil (§14 açık soru ayrı). |
+
+Testler: Vitest (18): revision, saat farkı ve kalan süre, draft sırası, renk, sıra, kullanılamayanlar, yuvalar, rol dışı ceza, gizli skor. Uçtan uca (iki `rakip` birbirine karşı): bo3 gateway üzerinden (2 maç, 40 adım, swap, kilit, seri sonu, iki tarafta aynı maç kimlikleri ve skor; replay linkleri 200), bo1 Vite proxy'si üzerinden (WebSocket proxy'si). Reddedilen hamle yok. Arayüzün kendisi tarayıcıda gözle denenmedi.
+
+Kalan (5c): maç oynatıcısı (harita, log, HUD, karne), `/m/{id}` sayfası, oynatma bitince sonucun açılması.

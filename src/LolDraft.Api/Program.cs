@@ -2,6 +2,7 @@
 using LolDraft.Api;
 using LolDraft.Api.Auth;
 using LolDraft.Api.Background;
+using LolDraft.Api.Champions;
 using LolDraft.Api.Hubs;
 using LolDraft.Api.Lobbies;
 using LolDraft.Api.Matches;
@@ -32,6 +33,7 @@ builder.Services.AddSingleton<AdvanceLobbies>();
 builder.Services.AddSingleton(MatchEngine.CreateSimulator());
 builder.Services.AddSingleton<PlayMatch>();
 builder.Services.AddSingleton<GetMatch>();
+builder.Services.AddSingleton<ListChampions>();
 
 // Replay saklama süresi (DESIGN.md §8.16): günde bir eski maçlar silinir.
 builder.Services.AddSingleton(settings.MatchRetention);
@@ -92,6 +94,7 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapLobbyEndpoints();
 app.MapMatchEndpoints();
+app.MapChampionEndpoints();
 app.MapHub<DraftHub>(DraftHub.Path);
 
 await app.RunAsync();

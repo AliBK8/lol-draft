@@ -220,6 +220,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
 | POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
 | GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
+| GET | `/api/champions` | yok | 40 şampiyon: `id`, `name`, `roles`, `offRole` (yuva → rol dışı ceza); gizli motor sayıları yok (§8.17) |
 | GET | `/api/matches/{id}` | yok (paylaşım linki; kimlik 128 bit) | Oynanmış maç: olaylar, dakika kareleri, karne (§8.15); diskteki dondurulmuş belge, `MatchReady` ile aynı (§8.16) |
 | WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow` + `revision` + `games`; saniyelik `TimerTick` yok, karar 2026-11-10), `MatchReady` (draft bitince oynanan maç, §8.15), `LobbyClosed` |
 

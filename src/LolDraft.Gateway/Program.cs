@@ -59,6 +59,9 @@ if (!app.Environment.IsDevelopment())
 app.UseRouting();
 // Rate limit kimlik doğrulamadan önce: sel saldırısı imza doğrulamasına (kriptografi) CPU harcatmadan durur.
 app.UseRateLimiter();
+// İstemci dosyaları (React build'i): genel IP limitinden sonra, JWT'den önce (dosyalar herkese açık). Yönlendirmeden
+// sonra: rota eşleşmeyen istemci yolu index.html olur (SPA); dosya yoksa istek devam eder (404).
+app.UseWebClient();
 app.UseAuthentication();
 app.UseAuthorization();
 
