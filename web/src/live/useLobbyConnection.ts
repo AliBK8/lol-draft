@@ -1,6 +1,7 @@
 import * as signalR from '@microsoft/signalr'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { LobbyState } from '../api/types'
+import type { Replay } from '../match/types'
 import { clockOffset } from './clock'
 import { newer } from './revision'
 
@@ -16,13 +17,6 @@ export interface ActionResult {
   message: string | null
 }
 
-/** MatchReady: oynanan maçın dondurulmuş belgesi (§8.16). 5b sadece kimliğini kullanır; oynatıcı 5c'de. */
-export interface MatchPayload {
-  version: number
-  id: string
-  gameNumber: number
-  [key: string]: unknown
-}
 
 export type HubMethod = 'Ready' | 'Ban' | 'Pick' | 'SwapRoles' | 'LockLineup'
 
@@ -41,7 +35,7 @@ export function useLobbyConnection(token: string) {
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [closed, setClosed] = useState(false)
   const [offsetMs, setOffsetMs] = useState(0)
-  const [matches, setMatches] = useState<MatchPayload[]>([])
+  const [matches, setMatches] = useState<Replay[]>([])
   const connectionRef = useRef<signalR.HubConnection | null>(null)
 
   useEffect(() => {
@@ -58,7 +52,8 @@ export function useLobbyConnection(token: string) {
       setOffsetMs(clockOffset(state.serverNow, Date.now()))
       setLobby((current) => (newer(current, state) ? state : current))
     })
-    connection.on('MatchReady', (match: MatchPayload) => {
+    // MatchReady: oynanan maçın dondurulmuş belgesi (§8.16); oynatıcı bunu çalar, ayrıca GET gerekmez.
+    connection.on('MatchReady', (match: Replay) => {
       setMatches((current) => (current.some((m) => m.id === match.id) ? current : [...current, match]))
     })
     connection.on('LobbyClosed', () => {

@@ -10,7 +10,7 @@ Bölüm numaraları (§) bütün dosyalarda ortaktır; koddaki "DESIGN.md §X" a
 |---|---|---|
 | `DESIGN.md` (bu dosya) | §0-7, §10-15 | Özet, karar günlüğü, oyun akışı, motor v1 kuralları, hareket, veri hattı, ön yüz, yol haritası, fikirler |
 | [`SISTEM.md`](SISTEM.md) | §8.1-8.9 | Mimari, katmanlar, kapsülleme, rate limiting, güvenlik, API yüzeyi, dağıtım |
-| [`UYGULAMA.md`](UYGULAMA.md) | §8.10 ve sonrası | Adım adım uygulama notları (4c, 4e-1, 4e-2a/b/c, 4f-1, 4f-2, 5a, 5b, …); yeni adımlar buraya eklenir |
+| [`UYGULAMA.md`](UYGULAMA.md) | §8.10 ve sonrası | Adım adım uygulama notları (4c, 4e-1, 4e-2a/b/c, 4f-1, 4f-2, 5a, 5b, 5c, …); yeni adımlar buraya eklenir |
 | [`EKONOMI-V2.md`](EKONOMI-V2.md) | §16 (16.13 hariç) | Şampiyon modeli v2, altın ekonomisi, kurallar K1-K13, yakalanma, kuşatma, karne |
 | [`DENGE.md`](DENGE.md) | §9, §16.13 | Denge aracı, ölçümler, ayar turları, uygulama sırası (faz A-D) |
 
@@ -317,9 +317,9 @@ Klasör: `data-pipeline/`. Anahtar ortam değişkeninde: `RIOT_API_KEY`. Develop
   - Ejder çukuru (400, 400), Baron/Herald (200, 200).
 - **İkonlar:** Riot Data Dragon portreleri, takım rengi çerçeveyle; bir kez indirilip kendi sunucumuzdan sunulur (`web/public/champions`, §8.17). Ölü ikon %30 opak, base'te.
 - **Oynatma:** 1x = 20 oyun saniyesi / gerçek saniye (1 dk = 3 sn), 2x, 4x, sona atla. Olay zamanı gelince log'a yazılır, haritada kısa bir işaret çıkar (✕, "Ejder", "Çatışma", "Throw!").
-- **HUD:** Kill skoru, saat, altın farkı (`toplam puan × 110`, 100'e yuvarlanmış), ejder sayısı, yıkılan kule sayısı, kule ikonları.
+- **HUD:** Kill skoru, saat, altın farkı (`goldFrames`'ten, dakikalar arası doğrusal, 100'e yuvarlanmış), ejder sayısı, yıkılan kule sayısı, kule ikonları (§8.19).
 - **Geliştirici modu ("Matematiği göster"):** Canlı toplam ve koridor puanları, log'da olay ihtimalleri.
-- **Maç sonu:** Kazanan, dakika, bitiş türü, son savaşın ihtimali, kategori bazlı ıraksak çubuk grafik, sinerji maddeleri. Puanda önde olan kaybettiyse açıklama satırı.
+- **Maç sonu (karne, §16.11):** Kazanan, dakika, bitiş türü, son savaşın ihtimali, iki takımın altın kaynakları, etkiye göre draft kuralları, hiper taşıyıcılar, rol dışı kumarlar (§8.19). v1'deki kategori grafiği ve sinerji maddeleri v2'de karneye dönüştü.
 - **Denge paneli:** "1000 maç oynat" (seed = i × 7919).
 
 ---

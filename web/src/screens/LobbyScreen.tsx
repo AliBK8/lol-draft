@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { LobbyState, Seat } from '../api/types'
+import type { Champion, Game, LobbyState, Seat } from '../api/types'
 import { Countdown } from '../components/Countdown'
 import { useChampions } from '../live/champions'
 import { mySide } from '../live/draft'
 import { loadRevealed, saveRevealed, visibleScore } from '../live/reveal'
 import { useLobbyConnection } from '../live/useLobbyConnection'
+import { MatchPlayer } from '../match/MatchPlayer'
+import type { Replay } from '../match/types'
+import { useReplay } from '../match/useReplay'
 import type { Session } from '../session'
 import { DraftBoard } from './DraftBoard'
 import { SwapBoard } from './SwapBoard'
@@ -17,6 +20,8 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
   const { lobby, status, closed, offsetMs, matches, act } = useLobbyConnection(session.token)
   const champions = useChampions()
   const [revealed, setRevealed] = useState(() => loadRevealed(code))
+  // Elle açılan eski maç (izlenmiş olanlar); izlenmemiş maç varsa o kendiliğinden açılır.
+  const [watching, setWatching] = useState<number | null>(null)
 
   function reveal(count: number) {
     setRevealed(count)
@@ -31,6 +36,9 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
   const me = mySide(lobby, session.seat)
   const score = visibleScore(lobby, revealed)
   const draft = lobby.draft
+  // Oynanmış ama izlenmemiş ilk maç: MatchReady gelince iki oyuncu da oynatıcıya geçer (skor bitince açılır, §8.15).
+  const pending = revealed < lobby.games.length ? revealed : null
+  const viewing = draft ? null : (watching ?? pending)
 
   return (
     <section className="lobby">
@@ -55,8 +63,25 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
       {draft?.phase === 'swap' && (
         <SwapBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
       )}
-      {!draft && lobby.isFull && (
-        <SeriesPanel lobby={lobby} you={session.seat} revealed={revealed} onReveal={reveal} act={act} newMatch={matches.length > 0} />
+      {viewing !== null && (
+        <GameViewer
+          key={lobby.games[viewing].match}
+          game={lobby.games[viewing]}
+          known={matches.find((m) => m.id === lobby.games[viewing].match)}
+          champions={champions}
+          you={session.seat}
+          onFinished={() => {
+            // Bitince skor açılır; oynatıcı karneyle açık kalır (yoksa "izlenmemiş" listesi boşalınca hemen kapanırdı).
+            if (viewing === revealed) {
+              setWatching(viewing)
+              reveal(revealed + 1)
+            }
+          }}
+          onClose={watching !== null || viewing < revealed ? () => setWatching(null) : undefined}
+        />
+      )}
+      {!draft && viewing === null && lobby.isFull && (
+        <SeriesPanel lobby={lobby} you={session.seat} revealed={revealed} onWatch={setWatching} act={act} />
       )}
     </section>
   )
@@ -107,11 +132,10 @@ function SeriesPanel(props: {
   lobby: LobbyState
   you: Seat
   revealed: number
-  onReveal: (count: number) => void
+  onWatch: (index: number) => void
   act: ReturnType<typeof useLobbyConnection>['act']
-  newMatch: boolean
 }) {
-  const { lobby, you, revealed, onReveal, act, newMatch } = props
+  const { lobby, you, revealed, onWatch, act } = props
   const [error, setError] = useState<string | null>(null)
   const score = visibleScore(lobby, revealed)
   const iAmReady = lobby.ready.includes(you)
@@ -128,16 +152,15 @@ function SeriesPanel(props: {
         <ol className="games">
           {lobby.games.map((g, i) => (
             <li key={g.match}>
-              Maç {g.number}: {g.blue === you ? 'mavi' : 'kırmızı'} taraftaydın ·{' '}
-              {/* 5c: maç oynatıcısı; bitince sonuç açılır. Şimdilik bağlantı + geçici "sonucu göster". */}
-              <Link to={`/m/${g.match}`}>izle</Link>
-              {i < revealed ? (
-                <b> · {g.winner === you ? 'kazandın' : 'kaybettin'}</b>
-              ) : (
-                <button className="link" onClick={() => onReveal(i + 1)} disabled={i > revealed}>
-                  sonucu göster
-                </button>
-              )}
+              Maç {g.number}: {g.blue === you ? 'mavi' : 'kırmızı'} taraftaydın
+              {i < revealed && <b> · {g.winner === you ? 'kazandın' : 'kaybettin'}</b>}
+              <button className="link" onClick={() => onWatch(i)}>
+                tekrar izle
+              </button>
+              {/* Paylaşım linki: lobisiz tekrar izleme (token istemez). */}
+              <Link to={`/m/${g.match}`} target="_blank">
+                link
+              </Link>
             </li>
           ))}
         </ol>
@@ -156,7 +179,6 @@ function SeriesPanel(props: {
           <p>
             {lobby.games.length === 0 ? 'İlk maç' : `Maç ${lobby.gameNumber}`}: bu maçta{' '}
             <b className={mySide(lobby, you)}>{mySide(lobby, you) === 'blue' ? 'mavisin' : 'kırmızısın'}</b>.
-            {newMatch && lobby.games.length > revealed && ' Önceki maç oynandı, sonucu izleyerek öğren.'}
           </p>
           <button className="primary" disabled={iAmReady} onClick={ready}>
             {iAmReady ? 'Hazırsın, rakip bekleniyor' : 'Hazırım'}
@@ -165,6 +187,30 @@ function SeriesPanel(props: {
         </>
       )}
       {error && <p className="error">{error}</p>}
+    </div>
+  )
+}
+
+// Oynanmış maçın oynatıcısı: belge MatchReady'den (elde) ya da GET'ten.
+function GameViewer(props: {
+  game: Game
+  known: Replay | undefined
+  champions: Map<string, Champion>
+  you: Seat
+  onFinished: () => void
+  onClose?: () => void
+}) {
+  const { game, known, champions, you, onFinished, onClose } = props
+  const { replay, error } = useReplay(game.match, known)
+  return (
+    <div className="card">
+      <div className="row viewer-head">
+        <h2>Maç {game.number}</h2>
+        {onClose && <button onClick={onClose}>Kapat</button>}
+      </div>
+      {error && <p className="error">{error}</p>}
+      {!replay && !error && <p className="muted">Maç yükleniyor…</p>}
+      {replay && <MatchPlayer replay={replay} champions={champions} you={you} onFinished={onFinished} />}
     </div>
   )
 }

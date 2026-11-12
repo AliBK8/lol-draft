@@ -197,3 +197,24 @@ Kalan (5b): hub istemcisi, canlı lobi, draft ve swap ekranı. Arayüz henüz ta
 Testler: Vitest (18): revision, saat farkı ve kalan süre, draft sırası, renk, sıra, kullanılamayanlar, yuvalar, rol dışı ceza, gizli skor. Uçtan uca (iki `rakip` birbirine karşı): bo3 gateway üzerinden (2 maç, 40 adım, swap, kilit, seri sonu, iki tarafta aynı maç kimlikleri ve skor; replay linkleri 200), bo1 Vite proxy'si üzerinden (WebSocket proxy'si). Reddedilen hamle yok. Arayüzün kendisi tarayıcıda gözle denenmedi.
 
 Kalan (5c): maç oynatıcısı (harita, log, HUD, karne), `/m/{id}` sayfası, oynatma bitince sonucun açılması.
+
+### 8.19 Uygulama: 5c (maç oynatıcısı, karne, tekrar izleme sayfası)
+
+**Bir karenin yolu:** `requestAnimationFrame` → oyun saati `T += geçen gerçek süre × hız × 20` (kare başına en fazla 0,1 sn: arka plandaki sekme dönünce sıçramasın) → `stateAt(replay, T)` (skor, ejder, kaybedilen kuleler, ölüler, log, altın farkı) → her şampiyon için `placement(...)` → SVG. Olay "uygulanmaz", T'ye kadar olanlar sayılır: sona atla, baştan izle ve hız değişimi aynı fonksiyondan; mantık React'tan bağımsız ve testli.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Belge tipleri | `web/src/match/types.ts` | `MatchReplay.cs` ile birebir (olay birleşik tipi `type` alanıyla). Kule `side` = yıkan taraf; kaybeden karşı taraf sayılır. |
+| Kadro ve roller | `timeline.roster` | Belgede rol yok: `goldFrames[0]` yuva sırasıyla gelir (mavi top…support, sonra kırmızı). Bu sıra sözleşmedir (motor `MatchRun.Gold.RecordGoldFrame`); değişirse oynatıcı rolleri yanlış yerleştirir. |
+| Konumlar | `match/positions.ts`, `geometry.ts` | Prototipin kuralları, öncelik sırasıyla: ölü → üs; objektif (−22…+5 sn) → çukur; kuşatma (lead/tail) → savunanın üssü önü; `move` → koridor ön hattı ya da nehir; `split` → rakibin dış kulesi; recall (oyuncu başına kaydırılmış 270 sn periyot) → üs; yoksa rolün yeri (ormancı kamplar, 14. dk'dan sonra bot ikilisi mid, 25. dk'dan sonra top yan koridor). Ön hat v1'in koridor puanı yerine **kaybedilen kulelerle** kayar (belgede koridor puanı yok). Yumuşatma CSS `transition: transform 0.3s`. |
+| Nehir | `geometry.ts` | Sol üstten sağ alta (çukurlardan geçer, mid'e dik). Prototip nehri mid'le aynı köşegene çiziyordu. |
+| İşaretler | `MapView.Pops` | T'den türetilir (zamanlayıcı yok): olaydan sonraki 25 oyun sn. Kill işareti öldürenin yanında (kurban o anda üsse taşınmış olur). |
+| HUD | `MatchPlayer` | Kill, saat, altın farkı (`goldDiffAt`: dakika kareleri arasında doğrusal), ejder, kule. İhtimaller (%) varsayılan gizli (§0), "Matematiği göster" açar. |
+| Karne | `match/MatchReport.tsx` | Kazanan (koltuk biliniyorsa "Kazandın/Kaybettin"), dakika, bitiş türü, son savaş ihtimali; iki takımın altın kaynakları; kurallar etkiye göre (ilk 12, çubuk en büyüğe oranla); hiper taşıyıcılar; rol dışı kumarlar. Oynatma bitince açılır. |
+| Lobide | `screens/LobbyScreen.tsx` `GameViewer` | Oynanmış ama izlenmemiş ilk maç kendiliğinden açılır (MatchReady'nin belgesi; sayfa yenilendiyse GET). Bitince (ya da sona atla) skor açılır, oynatıcı karneyle açık kalır, "Kapat" → seri paneli ve "Hazırım". Eski maçlar "tekrar izle" (skoru etkilemez) ve paylaşım "link"i. 5b'deki geçici "sonucu göster" kalktı. |
+| Paylaşım sayfası | `pages/ReplayPage.tsx` | `/m/{id}`: `useReplay` → GET; koltuk yok, sonuç "Mavi kazandı". |
+| Belge kaynağı | `match/useReplay.ts` | Elde varsa (MatchReady) onu, yoksa bir kez GET (belge dondurulmuş, değişmez). |
+
+Testler (Vitest, 31): gerçek bir maç belgesi (`match/__fixtures__/match.json`, iki geliştirme rakibinin oynadığı) üzerinden zaman çizelgesi (başta sıfır, sonda belgedeki kill sayısı, log sırası ve süzgeci, ölü → yeniden doğma, kule kaybeden tarafa, altın aradeğeri, kadro), konumlar (ölü üste, objektifte yaşayanlar çukura 60 px içinde, ön hat kayması), çizim duman testleri (`renderToString`: 10 şampiyon, 18 kule, sonda yıkık kule sayısı, karne koltuğa göre). Arayüz tarayıcıda gözle denenmedi.
+
+Kalan: 6. adım (Docker + CI). Oynatıcıda geri sarma çubuğu ve gerçek hareket tablosu (`transitions.json`, v0.2) yok.

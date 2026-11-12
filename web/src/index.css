@@ -363,3 +363,229 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- 5c: maç oynatıcısı --- */
+.viewer-head {
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.hud .clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.player-main {
+  display: grid;
+  grid-template-columns: minmax(0, 600px) 1fr;
+  gap: 16px;
+}
+
+.map {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.map-bg {
+  fill: #13261c;
+}
+
+.map-river {
+  stroke: #1d3a52;
+  stroke-width: 60;
+  fill: none;
+}
+
+.map-lane {
+  stroke: #3b3a30;
+  stroke-width: 26;
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.map-pit {
+  fill: none;
+  stroke: var(--muted);
+  stroke-dasharray: 3 4;
+}
+
+.map-label {
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.map-base.blue {
+  fill: rgb(74 144 226 / 0.18);
+  stroke: var(--blue);
+}
+
+.map-base.red {
+  fill: rgb(226 86 74 / 0.18);
+  stroke: var(--red);
+}
+
+.map-tower.blue {
+  fill: var(--blue);
+}
+
+.map-tower.red {
+  fill: var(--red);
+}
+
+.map-tower.down {
+  fill-opacity: 0.12;
+}
+
+/* Konum her karede değişir; tarayıcı arada kalan yolu yumuşatır. */
+.map-champ {
+  transition: transform 0.3s linear;
+}
+
+.map-champ.dead {
+  opacity: 0.3;
+}
+
+.map-ring {
+  fill: none;
+  stroke-width: 2.5;
+}
+
+.map-ring.blue {
+  stroke: var(--blue);
+}
+
+.map-ring.red {
+  stroke: var(--red);
+}
+
+.map-pop {
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+.map-pop.blue {
+  fill: var(--blue);
+}
+
+.map-pop.red {
+  fill: var(--red);
+}
+
+.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 600px;
+  overflow-y: auto;
+  font-size: 0.88rem;
+}
+
+.log li {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.log li.big {
+  font-weight: 600;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.controls button.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.controls .check {
+  margin: 0 0 0 auto;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.gold-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.gold-table td,
+.gold-table th {
+  padding: 3px 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+}
+
+.gold-table td:first-child {
+  text-align: left;
+}
+
+.gold-table tr.total td {
+  font-weight: 700;
+}
+
+.rules {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rules li {
+  position: relative;
+  padding: 3px 6px;
+  margin-bottom: 3px;
+}
+
+.rule-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  opacity: 0.18;
+  z-index: 0;
+}
+
+.rules li.blue .rule-bar {
+  background: var(--blue);
+}
+
+.rules li.red .rule-bar {
+  background: var(--red);
+}
+
+.rules li > span:last-child {
+  position: relative;
+}
+
+@media (max-width: 860px) {
+  .player-main,
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .log {
+    max-height: 260px;
+  }
+}
