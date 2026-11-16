@@ -51,7 +51,7 @@ public sealed class TowerTests
         foreach (var events in Matches())
         {
             var postFight = TestEvents.PostFightTimes(events);
-            foreach (var tower in events.OfType<TowerEvent>().Where(t => !postFight.Contains(t.T)))
+            foreach (var tower in events.OfType<TowerEvent>().Where(t => !postFight.Contains(t.T) && !IsPokePush(t)))
             {
                 Assert.True(tower.T >= 13 * 60, "koridor kulesi 14. dakikadan önce düşemez");
                 Assert.All(Rivals(tower), rival => Assert.True(TestEvents.IsAbsent(events, rival.Id, tower.T),
@@ -62,6 +62,27 @@ public sealed class TowerTests
 
         Assert.True(count > 0);
     }
+
+    // K6 poke itişi: fırsat kuralının tek istisnası (rakip koridordayken de düşer). Test takımlarında poke'u fazla
+    // olan Kırmızı (scale 4, erken 2): poke'la kuleyi sadece o alır, 14. dakikadan önce değil.
+    [Fact]
+    public void Poke_itisi_sadece_poke_ustun_tarafa_ve_14_dakikadan_sonra()
+    {
+        var count = 0;
+        foreach (var events in Matches())
+        {
+            foreach (var tower in events.OfType<TowerEvent>().Where(IsPokePush))
+            {
+                Assert.Equal(TeamSide.Red, tower.Side);
+                Assert.True(tower.T >= 13 * 60, "poke itişi 14. dakikadan önce olamaz");
+                count++;
+            }
+        }
+
+        Assert.True(count > 0);
+    }
+
+    private static bool IsPokePush(TowerEvent tower) => tower.Text.Contains("poke'la");
 
     private IReadOnlyList<ChampionProfile> Rivals(TowerEvent tower) =>
         TestEvents.LaneChampions(tower.Side == TeamSide.Blue ? _red : _blue, tower.Lane);

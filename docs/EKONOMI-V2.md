@@ -178,9 +178,9 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | # | Kural | Koşul | Nerede | Etki |
 |---|---|---|---|---|
 | K5 | Engage | `en` toplam farkı | objektif savaşı, son savaş | d += 1,0 × fark (±4); rakip `dis + peel` toplamı kadar silinir (faz D: eskiden yarısı) |
-| K6 | Poke | `poke` toplam farkı | kuşatma (saldırı ve savunma), objektif savaşı | kuşatmada d += 1,0 × fark (±4); objektif savaşında rakip `en` ≥ 8 ise poke takımına −2, değilse poke takımına 0,5 × fark (±2) (faz D: eskiden sadece ceza, eşik 5) |
+| K6 | Poke | `poke` toplam farkı | kuşatma (saldırı ve savunma), objektif savaşı | kuşatmada d += 1,0 × fark (±4); objektif savaşında rakip `en` ≥ 8 ise poke takımına −2, değilse poke takımına 0,5 × fark (±2) (faz D: eskiden sadece ceza, eşik 5) · **poke itişi** (faz D tur 4): dk ≥ 14 koridor anında normal kule fırsatı yoksa poke'u fazla olan takım, koridorcusu koridordaysa kuleyi savunan oradayken de alır, ihtimal %1 × fark (≤ %5) |
 | K7 | Pick | `pick` toplam farkı | nehir çatışması, gank, yakalanma | çatışma d += 1,0 × fark (±3); gank başarısı +%5 × fark (±%15) |
-| K8 | Dive tehdidi | rakipte hiper taşıyıcı ve rakip `peel + fl` < 3 | takım savaşları | d += 0,8 × `dive` toplamı (±3) |
+| K8 | Dive | etkin dive = `dive` toplamı − rakip `peel` toplamı (≥ 0); iki takımın farkı | takım savaşları | d += 0,5 × fark (±3) (faz D tur 4: eskiden sadece rakipte hiper taşıyıcı ve `peel + fl` < 3 iken 0,8 × `dive`) |
 | K9 | Korunan taşıyıcı | takımda hiper taşıyıcı | dk ≥ 25 takım savaşları | `peel` ≥ 3 → d +2 · `peel + fl` < 2 → taşıyıcının `G_eff` × 0,85 |
 | K10 | Frontline eksik | `fl` toplamı < 2 | takım savaşları | d −3 (rakip `en` ≥ 4 ise −4) |
 | K11 | Tek tip hasar | AP payı < %20 ya da > %80 | takım savaşları | d −2 |

@@ -4,7 +4,7 @@ namespace LolDraft.Engine.Simulation;
 
 /// <summary>
 /// Kule = fırsat: kuleye ancak koridorda rakip yokken vurulur. Rakip ya ölüdür ya da başka yerde meşguldür
-/// (nehir çatışması, objektif savaşı, kuşatma, gank'a giden support).
+/// (nehir çatışması, objektif savaşı, kuşatma, gank'a giden support). Tek istisna K6 poke itişi (TryPokePush).
 /// </summary>
 internal sealed partial class MatchRun
 {
@@ -70,6 +70,28 @@ internal sealed partial class MatchRun
                 TakeTower(side, lane, t, $"{side.DisplayName()}, {LaneName(lane)} koridorda", scored: true);
                 return true;
             }
+        }
+
+        return TryPokePush(lane, t);
+    }
+
+    // K6 poke itişi (TeamRules.PokePushChance): fırsat yoksa poke'u fazla olan taraf, kendi koridorcusu koridordaysa
+    // savunan oradayken de kuleyi alabilir. Zar sadece şartlar tutunca atılır.
+    private bool TryPokePush(Lane lane, double t)
+    {
+        foreach (var side in (TeamSide[])[TeamSide.Blue, TeamSide.Red])
+        {
+            var chance = TeamRules.PokePushChance(Team(side).Champions, Team(side.Opponent()).Champions);
+            if (chance <= 0 || !IsInLane(LaneChampions(side, lane)[0], t) || _towersDestroyed[(int)side, (int)lane] >= TowersPerLane)
+                continue;
+
+            if (_rng.NextDouble() < chance)
+            {
+                TakeTower(side, lane, t, $"{side.DisplayName()} poke'la {LaneName(lane)} koridorda", scored: true);
+                return true;
+            }
+
+            return false;
         }
 
         return false;

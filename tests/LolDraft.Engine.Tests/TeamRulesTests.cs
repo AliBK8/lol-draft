@@ -58,6 +58,19 @@ public sealed class TeamRulesTests
         Assert.Equal(-2.0, Sum(FightKind.Objective, NoTags, poke, 20, "K6"), 9);      // poke Kırmızı +min(3, 2)
     }
 
+    // K6 poke itişi: koridor kulesini zorla alma ihtimali %1 × poke farkı (tavan %5); poke'u az olana 0.
+    [Fact]
+    public void Poke_itisi_poke_farkiyla_artar_ve_tavanlidir()
+    {
+        IReadOnlyList<ChampionProfile> somePoke = Team(Tags(poke: 3), Tags(), Tags(), Tags(), Tags());
+        IReadOnlyList<ChampionProfile> heavyPoke = Team(Tags(poke: 3), Tags(poke: 3), Tags(), Tags(poke: 3), Tags());
+
+        Assert.Equal(0.03, TeamRules.PokePushChance(somePoke, NoTags), 9);
+        Assert.Equal(0.05, TeamRules.PokePushChance(heavyPoke, NoTags), 9);   // 9 × %1 → tavan
+        Assert.Equal(0.0, TeamRules.PokePushChance(NoTags, somePoke), 9);
+        Assert.Equal(0.0, TeamRules.PokePushChance(somePoke, somePoke), 9);
+    }
+
     // K7: çatışmaya gelenlerin pick farkı. Lee Sin (3) + Leona (2) vs Sejuani (2) → Mavi +3 (tavan).
     [Fact]
     public void Pick_catismada_gelenlere_bakar()
@@ -77,15 +90,18 @@ public sealed class TeamRulesTests
         Assert.Equal(expected, TeamRules.GankPickBonus(gankers.Select(ById), ById(victim)), 9);
     }
 
-    // K8: rakipte hiper taşıyıcı ve rakip peel + fl < 3 → 0,8 × dive (tavan 3).
+    // K8: etkin dive = dive − rakibin peel'i; fark × 0,5 (tavan 3). Erken comp dive 7. Frontline dive'ı durdurmaz.
     [Fact]
-    public void Dive_korumasiz_hiper_tasiyiciyi_cezalandirir()
+    public void Dive_peel_ile_silinir_frontline_ile_silinmez()
     {
         var jinx = Scale[3];
-        IReadOnlyList<ChampionProfile> unprotected = Team(Tags(frontline: 1), Tags(), Tags(), jinx, Tags(peel: 1));
+        IReadOnlyList<ChampionProfile> unprotected = Team(Tags(frontline: 3), Tags(), Tags(), jinx, Tags(peel: 1));
+        IReadOnlyList<ChampionProfile> somePeel = Team(Tags(peel: 3), Tags(), Tags(), Tags(), Tags(peel: 1));
 
-        Assert.Equal(3.0, Sum(FightKind.Final, Early, unprotected, 20, "K8"), 9);   // dive 7 × 0,8 → tavan 3
-        Assert.Equal(0.0, Sum(FightKind.Final, Early, Scale, 20, "K8"), 9);         // scale peel + fl 8
+        Assert.Equal(3.0, Sum(FightKind.Final, Early, unprotected, 20, "K8"), 9);   // (7 − 1) × 0,5 → tavan 3
+        Assert.Equal(1.5, Sum(FightKind.Final, Early, somePeel, 20, "K8"), 9);      // (7 − 4) × 0,5
+        Assert.Equal(-1.5, Sum(FightKind.Final, somePeel, Early, 20, "K8"), 9);     // aynısı Kırmızı'ya
+        Assert.Equal(0.0, Sum(FightKind.Final, Early, Scale, 20, "K8"), 9);         // scale'in peel'i dive'ı siler
     }
 
     // K9: hiper taşıyıcılı takım dk ≥ 25'te peel ≥ 3 → +2; peel + fl < 2 → taşıyıcı gücü × 0,85.

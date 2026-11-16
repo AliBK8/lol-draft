@@ -127,3 +127,29 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 
      Okuma: solo kuyrukta kartopu motordan çok daha sert (3.000+ önde %85-98, geride olan %8,5 kurtarıyor). Ama solo kuyruk **teslimle** biter (geride olan 15-20. dk'da bırakır; ortalama 26,4 dk) ve koordinasyon zayıftır; turnuva oyunu daha az kill ve daha çok geri dönüş üretir.
      **Karar (kullanıcı): eğlence önce (§1).** Motor solo kuyruğa oturtulmaz; "turnuva hissi" hedefleri kalır, geride olanın her zaman gerçek şansı olur. Gerçek veri sadece yön verir: önde olanın kazanma oranı en fazla %80-85 (5.000+ önde için üst sınır), erken fark biraz daha belirleyici olabilir (gerçekte 10. dk 1.500+ önde %79). Geri dönüş hedefi %25-35 kalır. Kill sayısı turnuvaya yakın (15-30).
+   - **Ayar turu 4** (40'lık havuz, 10.000 draft, seed 1; başlangıç tur 2 C):
+
+     | # | Değişiklik | Neden | Sonuç |
+     |---|---|---|---|
+     | 1 | K8 iki yönlü: etkin dive = `dive` − rakip `peel`, fark × 0,5 (±3); hiper taşıyıcı ve `fl` şartı kalktı | Dive %44: K8 maçların ~%6'sında çalışıyordu; tank dive'ı durdurmaz, peel durdurur | Dive %44,0 → %49,5 ✓ · Engage %57,0 → %58,2 · Poke %46,2 → %44,6 · K8 objektif savaşı olan maçların %84'ünde (ort. 1,8 puan, lehine olan %55) · scale comp kurtarıyor %36,9 · Mavi %49,8, süre 29,7 |
+
+     Karar (kullanıcı): K8 kalıyor; "her maçta küçük etki" (küçük farklara eşik) sonraki değişikliklere göre yeniden bakılacak.
+
+     **Poke teşhisi** (hepsi denendi, geri alındı; başlangıç: Poke %44,6, Brand %40,7, Engage vs Poke %66,8):
+
+     | Deney | Poke | Brand | Engage vs Poke |
+     |---|---|---|---|
+     | E1: K6 objektifte "poke kurdu" 0,5 → 1,0, tavan 2 → 3 | %46,0 | %41,3 | %65,8 |
+     | E2: Brand `pick` 1 → 2 (veri) | %44,9 | %40,7 | %65,1 |
+     | E3: E1 + E2 | %46,3 | %41,5 | %64,5 |
+     | E4: K6 objektif kuralı son savaşta da | %45,1 | %41,0 | %67,7 |
+     | E5: Brand `m` 7 → 8 (güç) | %44,9 | %41,6 | %66,2 |
+
+     Okuma: ne K6'nın ağırlığı ne Brand'in gücü düğme. Brand'in sorunu getirdiği değil **getirmediği**: etiket toplamı 4 (poke 3, pick 1); destek koltuğundaki diğerleri 7-13 (Leona/Alistar `fl 3 en 3`, Lulu/Janna `dis/peel 3`). Brand'li takım K10'a (frontline), K5'e (engage) ve K8'den beri rakibin dive'ına açık. Kuşatmada poke'u fazla olan +4,3 puan alıp yine %46,9 kazanıyor: poke draft'ı objektifleri kaybedip savunmaya düşüyor. Kural ayarının tavanı ~%46.
+
+     | # | Değişiklik | Neden | Sonuç |
+     |---|---|---|---|
+     | 2 | **K6 poke itişi** (kullanıcı kararı): dk ≥ 14, koridor anında normal fırsat yoksa poke'u fazla olan takım kuleyi savunan koridordayken de alır, %1 × poke farkı (≤ %5). Kule = fırsat kuralının tek istisnası (`MatchRun.Towers.cs` `TryPokePush`) | Poke'un gerçek gücü kule kırmak; frontline'sız kazanma yolu kule → kuşatma (orada K6 +4) | Poke %44,6 → **%48,4** · Engage vs Poke %66,8 → %61,4 (karşı hâlâ çalışıyor) · Poke vs diğerleri %47,5-52 · maç başı kule 5,3 → 6,6 · erken comp %46,3 → %47,1, 35'ten önce %29,5 → %32,2 ✓ · scale comp kurtarıyor %35,5 · Engage %57,3 · Dive %47,1 · Mavi %50,3 · süre 29,2. Şampiyonlar: Caitlyn %51,9, Karma %51,1, Ezreal %50,9, Jayce %46,9, Karthus %47,3, **Brand %41,8** |
+     | 2b | ~~%1,5 × fark, ≤ %7~~ (geri alındı) | daha güçlüsü | Poke %49,0, kule 6,9: doyuyor, değmez |
+
+     Açık: Brand %41,8 kural değil koltuk sorunu (destekte boş etiket); veride çözülecek (ayrı karar). Dive %49,5 → %47,1 (gürültü sınırında, izlenecek).

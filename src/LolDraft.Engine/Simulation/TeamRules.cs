@@ -32,6 +32,12 @@ internal static class TeamRules
     private const double PokeObjectiveCap = 2;
     private const double PokeEngagedPenalty = 2;
 
+    // K6 poke itişi (koridor kulesi, dk ≥ 14): poke'u fazla olan takım kuleyi savunan koridordayken de alabilir
+    // (savunanı kule altında aşındırır). Normal fırsat yoksa her koridor anında ihtimal %1 × poke farkı (en fazla %5).
+    // Faz D tur 4: Poke'un frontline'sız kazanma yolu kule → kuşatma.
+    private const double PokePushPerPoke = 0.01;
+    private const double PokePushCap = 0.05;
+
     // K7 Pick (nehir çatışması): gelenlerin pick farkı, d += 1,0 × fark (±3).
     // Gank: başarı += %5 × (gank'a gelenlerin pick toplamı − hedefin mob'u), ±%15.
     private const double PickWeight = 1.0;
@@ -39,10 +45,10 @@ internal static class TeamRules
     private const double GankPickChance = 0.05;
     private const double GankPickCap = 0.15;
 
-    // K8 Dive tehdidi (takım savaşı): rakipte hiper taşıyıcı var ve rakip peel + fl < 3 → d += 0,8 × dive toplamı (±3).
-    private const double DiveWeight = 0.8;
+    // K8 Dive (takım savaşı): etkin dive = dive toplamı − rakibin peel toplamı (≥ 0); iki takımın etkin dive farkı
+    // fazla olana d += 0,5 × fark (±3). Faz D tur 4: eskiden sadece rakipte hiper taşıyıcı ve peel + fl < 3 iken.
+    private const double DiveWeight = 0.5;
     private const double DiveCap = 3;
-    private const int DiveProtection = 3;
 
     // K9 Korunan taşıyıcı (dk ≥ 25 takım savaşı): hiper taşıyıcısı olan takımda peel ≥ 3 → d +2;
     // peel + fl < 2 → taşıyıcının gücü × 0,85 (d'den 0,15 × G_eff düşer).
@@ -99,9 +105,10 @@ internal static class TeamRules
         if (kind == FightKind.Objective)
             PokeEngaged(blue, red, effects);
 
+        Dive(blue, red, effects);
+
         foreach (var (side, us, them) in new[] { (TeamSide.Blue, blue, red), (TeamSide.Red, red, blue) })
         {
-            DiveThreat(side, us, them, effects);
             if (minute >= CarryMinute)
                 ProtectedCarry(side, us, power, effects);
             NoFrontline(side, us, them, effects);
@@ -166,15 +173,25 @@ internal static class TeamRules
             $"Poke objektifi kurdu ({source.Name})"));
     }
 
-    private static void DiveThreat(TeamSide side, IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them, List<RuleEffect> effects)
+    private static void Dive(IReadOnlyList<ChampionProfile> blue, IReadOnlyList<ChampionProfile> red, List<RuleEffect> effects)
     {
-        var dive = us.Sum(c => c.Tags.Dive);
-        if (dive == 0 || !them.Any(c => c.IsHyperCarry) || them.Sum(c => c.Tags.Peel + c.Tags.Frontline) >= DiveProtection)
+        var diff = EffectiveDive(blue, red) - EffectiveDive(red, blue);
+        if (diff == 0)
             return;
 
-        var source = us.MaxBy(c => c.Tags.Dive)!;
-        effects.Add(new RuleEffect("K8", side, Math.Min(DiveWeight * dive, DiveCap), source, $"Taşıyıcıya dive ({source.Name})"));
+        var (side, team) = diff > 0 ? (TeamSide.Blue, blue) : (TeamSide.Red, red);
+        var source = team.MaxBy(c => c.Tags.Dive)!;
+        effects.Add(new RuleEffect("K8", side, Math.Min(DiveWeight * Math.Abs(diff), DiveCap), source,
+            $"Arka hatta dive ({source.Name})"));
     }
+
+    /// <summary>K6 poke itişi: <paramref name="us"/> takımının koridor anında kuleyi zorla alma ihtimali (poke'u azsa 0).</summary>
+    public static double PokePushChance(IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them) =>
+        Math.Clamp(PokePushPerPoke * (us.Sum(c => c.Tags.Poke) - them.Sum(c => c.Tags.Poke)), 0, PokePushCap);
+
+    // Etkin dive: dalış gücünden rakibin koruması düşülür (tank dive'ı durdurmaz, peel durdurur).
+    private static int EffectiveDive(IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them) =>
+        Math.Max(0, us.Sum(c => c.Tags.Dive) - them.Sum(c => c.Tags.Peel));
 
     private static void ProtectedCarry(TeamSide side, IReadOnlyList<ChampionProfile> us, Func<ChampionProfile, double> power, List<RuleEffect> effects)
     {
