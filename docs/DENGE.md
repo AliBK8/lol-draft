@@ -153,3 +153,46 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
      | 2b | ~~%1,5 × fark, ≤ %7~~ (geri alındı) | daha güçlüsü | Poke %49,0, kule 6,9: doyuyor, değmez |
 
      Açık: Brand %41,8 kural değil koltuk sorunu (destekte boş etiket); veride çözülecek (ayrı karar). Dive %49,5 → %47,1 (gürültü sınırında, izlenecek).
+
+     **Kural toplamına tavan** (adım 3): takım savaşında iki tarafın kural etkilerinin net toplamı ±T (`TeamRules.CappedTotal`; çatışmada sadece K7 ±3, tavan değmez). Karnedeki kural etkisi "bu kural olmasa" ihtimaline tavanla bakar (tavana takılmış savaşta fazlalık kural ~0). Rapordaki "kural farkı" ekseni tavansız ham draft farkı (son savaş, dk 35).
+
+     | Kural farkı | Tavansız | T = 10 | **T = 8 (seçildi)** | T = 6 |
+     |---|---|---|---|---|
+     | 4 | %57,5 | %57,5 | %57,5 | %57,2 |
+     | 5-6 | %60,3 / %61,6 | %60,3 / %61,5 | %60,4 / %61,4 | %59,6 / %60,8 |
+     | 7-8 | %64,4 / %65,1 | %64,0 / %64,7 | %63,3 / %63,6 | %61,5 / %61,0 |
+     | 9-10 | %67,4 / %70,0 | %67,4 / %68,6 | %65,6 / %66,4 | %59,8 / %61,2 |
+     | 12 / 14 | %79,1 / %78,8 | %75,0 / %76,9 | %71,5 / %73,1 | %66,3 / %67,3 |
+     | Engage / Poke | %57,3 / %48,4 | %57,0 / %48,5 | %56,5 / %48,8 | %55,5 / %49,1 |
+     | Brand | %41,8 | %42,1 | %42,6 | %43,6 |
+
+     T = 8: eğri tekdüze kalıyor, fark 12+ ~%71-73 (önce %79-82; 12+ maçların ~%3'ü, hata payı ±6). T = 6 eğriyi 6'dan sonra %61'de düzleştiriyor: "çok daha iyi draft" ödüllenmiyor. Tavansız (T = 99) önceki ölçümü birebir verdi: tavan başka hiçbir şeyi değiştirmiyor. Diğerleri değişmedi: Mavi %50,4, süre 29,2, erken comp %47,1 / %32,2, scale comp kurtarıyor %35,6, Engage vs Poke %60,4.
+
+     **Rol dışı kumarın kaldıracı** (adım 4; `--off-role 0.1`, hepsi denendi, geri alındı). Sütunlar: rol dışı oyuncunun takımı kazanıyor · maç sonu rol rakibinin 1.000+ önünde ("tuttu") · 1.000+ gerisinde. Kendi rolünde: %50,9 · %29,9 · %27,6.
+
+     | Deney | Kazanma | Tuttu | Tutmadı |
+     |---|---|---|---|
+     | Bugün (ceza %20-35, lane fazı gürültü × 1,5) | %42,2 | %19,3 | %39,4 |
+     | Rol dışı koridorda sürpriz ihtimali × 2 / × 3 / × 4 (yazı-tura kill) | %42,2-42,3 | %19,4-19,6 | %39 |
+     | "Rolü kaptı": 14. dk rol rakibinden öndeyse ceza kalkar | %44,5 | %22,6 | %37,0 |
+     | Aynısı, ceza yarıya iner / eşik 500 altın | %43,1 / %43,3 | %21,0 / %20,9 | %38 |
+     | Ceza tablosu × 0,75 (%15-26) | %43,9 | %21,1 | %36,7 |
+     | Ceza tablosu × 0,5 (%10-18) | %46,0 | %23,0 | %34,0 |
+
+     Okuma: sürpriz lane fazında rol dışı koridorda ~0,2 olay (× 4 ile ~1); tek kill maç boyu süren cezayı oynatmıyor. "Rolü kapma" da az tetikleniyor (cezayla 14. dk'da önde olmak nadir). Cezayı yarıya indirmek bile "tuttu"yu %23'e taşıyor: **kumar yapısal olarak ~beşte bir tutuyor; oynaklık düğmesi yok, tek gerçek düğme bedel (kazanma oranı)**.
+
+     Karar (kullanıcı): bedel sertleşsin ("support top oynayan takım %40 kazanmamalı"). Ceza dilimine göre takım kazanıyor:
+
+     | Tablo (yakın / orman / geçiş / uzak) | Yakın | Orman | Geçiş | Uzak | Ortalama · tuttu |
+     |---|---|---|---|---|---|
+     | Eski %20 / %25 / %30 / %35 | %45,7 | %42,8 | %42,0 | %40,5 | %42,2 · %19,3 |
+     | %25 / %30 / %40 / %45 | %44,1 | %41,0 | %39,7 | %39,4 | %40,7 · %17,3 |
+     | %22 / %30 / %40 / %50 | %45,0 | %41,3 | %39,9 | %37,4 | %40,1 · %17,4 |
+     | **%22 / %30 / %45 / %60 (seçildi)** | %45,4 | %42,3 | %39,0 | **%35,6** | %39,5 · %16,6 |
+     | %25 / %35 / %50 / %65 | %44,3 | %42,1 | %38,6 | %34,9 | %38,8 · %15,9 |
+
+     Ceza büyüdükçe etkisi azalıyor (bir oyuncu takım gücünün beşte biri, altın çarpanı tabanı 0,5): uzak rol %35 → %60 sadece 5 puan. Seçilen tablo yakın rolü neredeyse aynı bırakıyor (makul esneklik: Syndra top), uzak rolü belirgin cezalandırıyor (Leona top). Rol dışısız ölçümler değişmez (ceza sadece rol dışında).
+
+     **Brand** (adım 5, veri; geçici havuz dosyasıyla ölçüldü): poke 3, pick 1 → %42,6 · + pick 2, peel 1 → %46,2 · + pick 2, peel 2 → %50,0 · + pick 2, dis 1, peel 1 → %47,8. Peel işe yarıyor (K5 engage'ini, K8 dive'ını siler) ama Brand peel şampiyonu değil. Brand'in asıl değeri takım savaşında AoE hasar (yanma, seken ulti); etiket setinde karşılığı yok, sadece e/m/l'de (`m` 7 → 8 etkisiz, E5). Karar (kullanıcı): sadece gerçekçi olan **pick 2** (yanan hedefe stun) → Brand %43,2 (gürültü sınırında); asıl çözüm ileride `aoe` etiketi (takım savaşı hasarı / toplu CC: Brand, Orianna, Karthus, Malphite, Amumu, Yasuo...; şimdi K13 kombo tablosu kısmen karşılıyor). Diğerleri: Poke %49,2, Engage %56,7, Dive %46,6, Mavi %50,4.
+
+     **Tur 4 sonu.** Dive %46,6 kabul (kullanıcı): kimlikler %46-52 bandında (Split %47, Pick %49, Poke %49), taş-kağıt-makas çalışıyor (Koruma > Dive %55, Dive > Split %53). Gerçek "başarılı dive oranı" ölçülemiyor (Riot verisi comp ya da dive olayı işaretlemiyor; solo kuyruk referans değil) ve gerçekte çok değişkene bağlı (kaç kişi dalıyor, tank hasarı emiyor mu). K8 bilerek basit: dalış toplamı − rakip peel; tankın hasarı emmesi K8'de yok, frontline K10'da. Açık kalan: Brand (→ `aoe` etiketi).

@@ -58,6 +58,16 @@ public sealed class TeamRulesTests
         Assert.Equal(-2.0, Sum(FightKind.Objective, NoTags, poke, 20, "K6"), 9);      // poke Kırmızı +min(3, 2)
     }
 
+    // Toplam tavan: takım savaşında net kural toplamı ±8 (tek tek tavanlı kurallar üst üste binince uçlar kırpılır).
+    [Theory]
+    [InlineData(5.0, 5.0)]
+    [InlineData(13.0, 8.0)]
+    [InlineData(-11.0, -8.0)]
+    public void Kural_toplami_tavanlidir(double sum, double expected)
+    {
+        Assert.Equal(expected, TeamRules.CappedTotal(sum), 9);
+    }
+
     // K6 poke itişi: koridor kulesini zorla alma ihtimali %1 × poke farkı (tavan %5); poke'u az olana 0.
     [Fact]
     public void Poke_itisi_poke_farkiyla_artar_ve_tavanlidir()

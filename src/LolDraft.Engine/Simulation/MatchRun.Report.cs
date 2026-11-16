@@ -83,13 +83,17 @@ internal sealed partial class MatchRun
 
     // Savaşta her kuralın doğrudan etkisi: kuralın tarafının kazanma ihtimali kuralla ve kuralsız (yüzde puan).
     // Örnek: d = 4 (K5 Mavi +2 dahil), bölen 15 → %56,6; K5'siz d = 2 → %53,3 → K5 bu savaşta +3,3 puan.
-    private void ReportFightRules(IReadOnlyList<RuleEffect> effects, RuleContext context, double d, double divisor)
+    // Etki = "bu kural olmasa ihtimal ne olurdu": kural toplamı tavanlı olduğu için kuralsız d de tavanla yeniden
+    // hesaplanır (tavana takılmış savaşta fazlalık kural ~0 gösterilir). ruleSum: tavansız net kural toplamı.
+    private void ReportFightRules(IReadOnlyList<RuleEffect> effects, RuleContext context, double d, double ruleSum, double divisor)
     {
+        var baseD = d - TeamRules.CappedTotal(ruleSum);
         foreach (var effect in effects)
         {
             var tally = Tally(effect, context);
             tally.Count++;
-            tally.Impact += 100 * (WinChance(effect.Side, d, divisor) - WinChance(effect.Side, d - effect.Signed, divisor));
+            var without = baseD + TeamRules.CappedTotal(ruleSum - effect.Signed);
+            tally.Impact += 100 * (WinChance(effect.Side, d, divisor) - WinChance(effect.Side, without, divisor));
         }
     }
 

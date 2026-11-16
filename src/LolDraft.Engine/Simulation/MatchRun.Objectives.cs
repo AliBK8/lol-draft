@@ -151,13 +151,15 @@ internal sealed partial class MatchRun
         var blue = _blue.Champions.Except(absent ?? []).ToList();
         var red = _red.Champions.Except(absent ?? []).ToList();
         var rules = TeamRules.Effects(kind, blue, red, minute, c => EffectivePower(c, minute, t));
-        var d = (EffectivePower(blue, minute, t) - EffectivePower(red, minute, t)) + rules.Sum(e => e.Signed)
+        // Kurallar net toplamda tavanlı (TeamRules.CappedTotal): uç draft'ların cezaları sonsuz birikmesin.
+        var ruleSum = rules.Sum(e => e.Signed);
+        var d = (EffectivePower(blue, minute, t) - EffectivePower(red, minute, t)) + TeamRules.CappedTotal(ruleSum)
                 + soulBonus + BuffBonus(TeamSide.Blue, t, siege) - BuffBonus(TeamSide.Red, t, siege);
         // Kuşatmada side = saldıran; savunan kule altında savaşır (MatchRun.Siege.cs).
         if (siege)
             d -= side.Sign() * SiegeDefenseBonus;
         if (report is { } context)
-            ReportFightRules(rules, context, d, FightDivisor);
+            ReportFightRules(rules, context, d, ruleSum, FightDivisor);
         return Probability.Clamp(Probability.Logistic(side.Sign() * d / FightDivisor));
     }
 

@@ -43,7 +43,8 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 ## Sıradaki işler
 Bitenler (ayrıntı ve kararlar dokümanda): veri hattı 01-05 · 4a çözüm iskeleti (§8.2) · 4b C# motoru + denge aracı (§4, §9) · ekonomi v2 faz A-C (§16, `data/champions.json`) · 4c gateway (§8.10) · 4d draft + seri (§8.3) · 4e-1 lobi + misafir JWT (§8.11) · 4e-2a/b/c hub, lobi saati, bağlantı takibi (§8.12-8.14) · 4f-1 simülasyon bağlantısı + rol dışı kumar (§8.15, §16.8) · 4f-2 kalıcı replay, EF Core + SQLite, saklama 180 gün (§8.16) · 5a ön yüz iskeleti, `GET /api/champions`, gateway'de istemci + SPA, Data Dragon portreleri (§8.17) · 5b canlı lobi, draft, swap, gizli skor, geliştirme rakibi (§8.18) · 5c maç oynatıcısı, karne, `/m/{id}` (§8.19) · 6 Docker + Caddy + SQLite yedeği + CI (§8.20).
 
-1. **← KALDIĞIMIZ YER.** Faz D dengeleme (§16.13 adım 13, DENGE.md), tur 4 sürüyor (K8 iki yönlü, K6 poke itişi: Poke %48,4); açık: Brand %41,8 (destek koltuğu boş, veri), kural farkı 11+, rol dışı kumarın kaldıracı (§16.8).
-2. Rejoin (ertelendi, gateway rotası hazır).
-3. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket.
-4. Sunucuya kurulum: alan adı (`SITE_ADDRESS`), yedeklerin makine dışına kopyası (§8.20).
+1. **← KALDIĞIMIZ YER.** Faz D tur 4 bitti (DENGE.md: K8 iki yönlü, K6 poke itişi, kural toplamı ±8 tavan, rol dışı ceza %22-60, Brand pick 2; Dive %46,6 kabul). Sıradaki: `aoe` etiketi + takım savaşı kuralı (takım savaşı hasarı / toplu CC: Brand, Orianna, Karthus, Malphite...; Brand %43'ün asıl çözümü).
+2. Havuz genişletme (40 → gerçek oyundaki ~170): etiket taslağı Data Dragon / CommunityDragon'dan, güç eğrisi veri hattından, onay kullanıcıda, `--check` ile kontrol. Fearless bo5'te rol dışı zorunluluğunu da kaldırır.
+3. Rejoin (ertelendi, gateway rotası hazır).
+4. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket.
+5. Sunucuya kurulum: alan adı (`SITE_ADDRESS`), yedeklerin makine dışına kopyası (§8.20).

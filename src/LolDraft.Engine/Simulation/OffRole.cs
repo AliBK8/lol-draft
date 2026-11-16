@@ -13,19 +13,21 @@ namespace LolDraft.Engine.Simulation;
 /// </summary>
 internal static class OffRole
 {
-    // Ceza [doğal rol, oynanan yuva]; simetrik. Başlangıç değerleri, faz D'de denge aracıyla ayarlanır.
-    //   %20 yakın: aynı tip iş (top↔mid fighter/büyücü, mid↔bot ranged hasar)
-    //   %25 orman: kamp ve gank ritmi ayrı beceri
-    //   %30 büyücü/support geçişi (Lux, Brand örnekleri var ama nadir)
-    //   %35 uzak: support ↔ carry roller, bot ↔ top/orman
+    // Ceza [doğal rol, oynanan yuva]; simetrik. Faz D tur 4'te uzaklığa göre sertleştirildi (kullanıcı: support top
+    // oynayan takım %40 kazanmamalı). Takım kazanma oranı (--off-role 0.1): yakın %45, orman %42, geçiş %39, uzak %36.
+    // Ceza büyüdükçe etkisi azalır (bir oyuncu takımın beşte biri, altın çarpanı tabanı 0,5): %35 → %60 sadece 5 puan.
+    //   %22 yakın: aynı tip iş (top↔mid fighter/büyücü, mid↔bot ranged hasar)
+    //   %30 orman: kamp ve gank ritmi ayrı beceri
+    //   %45 büyücü/support geçişi (Lux, Brand örnekleri var ama nadir)
+    //   %60 uzak: support ↔ carry roller, bot ↔ top/orman
     private static readonly double[,] Penalties =
     {
         //          top    jg     mid    bot    sup
-        /* top */ { 0.00,  0.25,  0.20,  0.35,  0.35 },
-        /* jg  */ { 0.25,  0.00,  0.25,  0.35,  0.35 },
-        /* mid */ { 0.20,  0.25,  0.00,  0.20,  0.30 },
-        /* bot */ { 0.35,  0.35,  0.20,  0.00,  0.30 },
-        /* sup */ { 0.35,  0.35,  0.30,  0.30,  0.00 },
+        /* top */ { 0.00,  0.30,  0.22,  0.60,  0.60 },
+        /* jg  */ { 0.30,  0.00,  0.30,  0.60,  0.60 },
+        /* mid */ { 0.22,  0.30,  0.00,  0.22,  0.45 },
+        /* bot */ { 0.60,  0.60,  0.22,  0.00,  0.45 },
+        /* sup */ { 0.60,  0.60,  0.45,  0.45,  0.00 },
     };
 
     /// <summary>Rol dışı koridorun (ve ormanın) lane fazındaki gürültü çarpanı: σ 0,8 → 1,2.</summary>

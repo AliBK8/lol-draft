@@ -39,7 +39,7 @@ public sealed class ChampionEndpointsTests : IDisposable
                 if (roles.Contains(slot.Name))
                     Assert.Equal(0, penalty);
                 else
-                    Assert.Contains(penalty, new[] { 0.20, 0.25, 0.30, 0.35 });
+                    Assert.Contains(penalty, new[] { 0.22, 0.30, 0.45, 0.60 });
             }
         }
     }
@@ -49,11 +49,11 @@ public sealed class ChampionEndpointsTests : IDisposable
     {
         var (_, champions) = await Get();
 
-        // Tek rollü bir support: top'ta %35, mid'de %30 (tablo motorda, istemciye hesaplanmış gider).
+        // Tek rollü bir support: top'ta %60, mid'de %45 (tablo motorda, istemciye hesaplanmış gider).
         var support = champions.First(c =>
             c.GetProperty("roles").EnumerateArray().Select(r => r.GetString()).SequenceEqual(["support"]));
-        Assert.Equal(0.35, support.GetProperty("offRole").GetProperty("top").GetDouble());
-        Assert.Equal(0.30, support.GetProperty("offRole").GetProperty("mid").GetDouble());
+        Assert.Equal(0.60, support.GetProperty("offRole").GetProperty("top").GetDouble());
+        Assert.Equal(0.45, support.GetProperty("offRole").GetProperty("mid").GetDouble());
     }
 
     [Fact]

@@ -58,7 +58,7 @@ internal sealed partial class MatchRun
         // yansır: herkes G=6 iken 1v3'te fark −12 → ~%12 (kalabalığa yakalanmak). Altın üstünlüğü G_eff'in içinde.
         var rules = TeamRules.Effects(FightKind.Skirmish, blue, red, minute, c => EffectivePower(c, minute, t));
         var d = EffectivePower(blue, minute, t) - EffectivePower(red, minute, t) + rules.Sum(e => e.Signed);
-        ReportFightRules(rules, RuleContext.Skirmish, d, SkirmishDivisor);
+        ReportFightRules(rules, RuleContext.Skirmish, d, rules.Sum(e => e.Signed), SkirmishDivisor);
         var blueProbability = Probability.Clamp(Probability.Logistic(d / SkirmishDivisor));
         var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;

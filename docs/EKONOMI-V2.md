@@ -187,6 +187,8 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | K12 | Split | top/mid'de `split` ≥ 2, takım savaşı kaybetmeye yakın | dk ≥ 14 ejder/Herald/Baron | bir karar zinciri (aşağıda): splitter savaşa gelmez; rakip ya cevap verir (4v4 + düello) ya da kuleyi kaybeder (4v5) |
 | K13 | Kombo | tablo (Orianna+Malphite, Yasuo+knock-up…) | tablodaki olay türü | d +2 |
 
+**Toplam tavan** (faz D tur 4): bir takım savaşında iki tarafın kural etkilerinin net toplamı ±8 (kurallar tek tek tavanlı ama üst üste binince uç draft'lar %76-83 kazanıyordu).
+
 Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11, K13'e dağılır; maç başı tek "sinerji puanı" kalkar (uygulandı, `SynergyCalculator` silindi).
 
 **Uygulama (adım 9b, `TeamRules.cs`):** `FightKind` (objektif, kuşatma, son savaş, nehir çatışması); takım savaşlarında iki takımın tamamı, çatışmada sadece gelenler. Etkiler `RuleEffect` (koridor kurallarıyla aynı). Yorumlar:
@@ -208,10 +210,11 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 - Örnek: Fiora (split 3), 18. dk ejder, takımı geride (5v5 %38). %60 ihtimalle split'e gider. Renekton cevap verirse ejder 4v4 (~%45), Fiora düelloyu kazanırsa kill + kule; cevap vermezse ejder 4v5 (~%25) ama kule kesin.
 
 **Rol dışı: ceza + kumar (karar 2026-11-10, yeniden düşünüldü ve uygulandı 2026-11-12; `Engine/Simulation/OffRole.cs`):**
-- Düz −%25 yerine **rol mesafesi tablosu** (simetrik): top↔mid, mid↔bot %20 · orman %25 · mid↔sup, bot↔sup %30 · support ↔ top/orman, bot ↔ top/orman %35. Çok rollü şampiyon en yakın rolünü sayar. Bilinen flex'ler (Jayce top) `roles`'ta: cezasız. Ceza G_pot'a çarpan: `G_eff = G_pot × (1 − ceza) × altın çarpanı`.
+- Düz −%25 yerine **rol mesafesi tablosu** (simetrik): top↔mid, mid↔bot %22 · orman %30 · mid↔sup, bot↔sup %45 · support ↔ top/orman, bot ↔ top/orman %60 (faz D tur 4'te sertleştirildi; eskiden %20 / %25 / %30 / %35, uzak rol takımı %40,5 kazanıyordu). Çok rollü şampiyon en yakın rolünü sayar. Bilinen flex'ler (Jayce top) `roles`'ta: cezasız. Ceza G_pot'a çarpan: `G_eff = G_pot × (1 − ceza) × altın çarpanı`.
 - Eşleşme avantajı ayrı (kurallardan): ranged büyücü top'ta melee'ye karşı K1 (+0,3/dk) alır, ceza onun bedelidir. Örnek: Syndra (7-8-7) top'ta %20 cezayla Darius'a (8-7-5) karşı koridorda hâlâ hafif önde (5. dk Δ +0,06/dk), geç oyunda güçlü. Ortalama bonus bilerek yok (olsaydı rol dışı counterpick optimal olurdu).
 - **Kumar (oynaklık):** lane fazında (dk < 14) rol dışı oyuncunun koridorunda (ve ormanda) gürültü × 1,5. Amaç "ya ezer ya ezilir" hikâyesi. Karnede satır (`OffRoleReport`): "Rol dışı kumar tuttu / tutmadı / başa baş" (maç sonu rol rakibine göre ±1.000 altın).
 - **Ölçüm (2026-11-12, 10.000 draft, her yuva %10 rol dışı, `--off-role 0.1`):** rol dışı oynayan takım %43,2 kazanıyor (kendi rolünde %50,8). Maç sonu rol rakibinin 1.000+ önünde: rol dışı %18,9, kendi rolünde %29,7; 1.000+ gerisinde: %38,9 / %27,4. **Açık sorun:** oynaklık neredeyse etkisiz; ×2 yapınca "önde" %19,0 (lane gürültüsü sadece CS'yi oynatıyor, maç sonu altınını kill/objektif/savaş belirliyor). Cezayı 5 puan indirmek kazanmayı %44,6'ya çıkarıyor, "önde"yi %20,1'e. Kumarın gerçekten tutabilmesi için daha güçlü bir kaldıraç gerekiyor (faz D; öneri: rol dışı koridorda sürpriz sıklığı, ortalama-nötr kill'ler).
+- **Faz D tur 4 (DENGE.md):** sürpriz sıklığı (× 2-4) ve "14. dk'da öndeyse ceza kalkar" denendi, ikisi de "tuttu"yu %19-23 bandından çıkaramadı: kumar yapısal olarak ~beşte bir tutuyor, tek gerçek düğme bedel. Karar (kullanıcı): bedel sertleşsin, uzak rol gerçekten acıtsın. Yeni tabloyla takım kazanıyor: yakın %45,4 · orman %42,3 · geçiş %39,0 · uzak %35,6 (ortalama %39,5); "tuttu" %16,6, "tutmadı" %44,4.
 - Eski not (2026-11-10):
 - Sorun: motor yuvayı rol sayar, şampiyonun `roles`'unu bilmez (`ChampionProfile`'da yok). `e/m/l` şampiyonun kendi rolündeki gücü; rol dışında da aynen kullanılınca istismar açılır (ör. erken gücü yüksek Leona top'ta tam farm alır, cezası yok).
 - Karar: yasak değil ceza. Swap'ta yerleştirme serbest, arayüz rol dışı yuvayı uyarır. Yasak olsa fearless bo3'ün 3. maçında (kalan 20 şampiyon) bir rol için uygun şampiyon kalmayabilir, draft kilitlenirdi.

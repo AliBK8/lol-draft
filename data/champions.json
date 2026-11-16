@@ -124,6 +124,6 @@
       "tags": { "dis": 1, "peel": 2, "poke": 3, "mob": 1 } },
     { "id": "brand", "name": "Brand", "roles": ["sup"], "range": "ranged", "classes": ["mage"],
       "e": 7, "m": 7, "l": 6, "econ": 1, "ap": 1,
-      "tags": { "poke": 3, "pick": 1 } }
+      "tags": { "poke": 3, "pick": 2 } }
   ]
 }

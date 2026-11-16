@@ -13,11 +13,11 @@ public sealed class OffRoleTests
 
     [Theory]
     [InlineData(ChampionRole.Top, ChampionRole.Top, 0.0)]
-    [InlineData(ChampionRole.Top, ChampionRole.Mid, 0.20)]      // yakın
-    [InlineData(ChampionRole.Mid, ChampionRole.Jungle, 0.25)]   // orman
-    [InlineData(ChampionRole.Support, ChampionRole.Bot, 0.30)]
-    [InlineData(ChampionRole.Support, ChampionRole.Top, 0.35)]  // uzak
-    [InlineData(ChampionRole.Bot, ChampionRole.Jungle, 0.35)]
+    [InlineData(ChampionRole.Top, ChampionRole.Mid, 0.22)]      // yakın
+    [InlineData(ChampionRole.Mid, ChampionRole.Jungle, 0.30)]   // orman
+    [InlineData(ChampionRole.Support, ChampionRole.Bot, 0.45)]
+    [InlineData(ChampionRole.Support, ChampionRole.Top, 0.60)]  // uzak
+    [InlineData(ChampionRole.Bot, ChampionRole.Jungle, 0.60)]
     public void Ceza_rol_mesafesine_gore(ChampionRole natural, ChampionRole played, double penalty) =>
         Assert.Equal(penalty, OffRole.Penalty(Champion("x", natural), played));
 
@@ -26,7 +26,7 @@ public sealed class OffRoleTests
     {
         var mage = Champion("lux", ChampionRole.Mid, ChampionRole.Support);
 
-        Assert.Equal(0.20, OffRole.Penalty(mage, ChampionRole.Bot));   // mid→bot, sup→bot değil
+        Assert.Equal(0.22, OffRole.Penalty(mage, ChampionRole.Bot));   // mid→bot, sup→bot değil
         Assert.Equal(0.0, OffRole.Penalty(mage, ChampionRole.Support));
     }
 
@@ -42,10 +42,10 @@ public sealed class OffRoleTests
 
         Assert.Empty(inRole.Report.OffRoles);
         var report = Assert.Single(offRole.Report.OffRoles);
-        Assert.Equal(("b0", TeamSide.Blue, ChampionRole.Top, 0.20), (report.ChampionId, report.Side, report.Role, report.Penalty));
+        Assert.Equal(("b0", TeamSide.Blue, ChampionRole.Top, 0.22), (report.ChampionId, report.Side, report.Role, report.Penalty));
         Assert.StartsWith("Rol dışı", report.Text);
         Assert.Contains("top'ta", report.Text);
-        Assert.EndsWith("(−%20)", report.Text);
+        Assert.EndsWith("(−%22)", report.Text);
     }
 
     // Kumar: rol dışı top ortalamada koridorunu kaybeder ama sonuçları daha dağınıktır (ezer ya da ezilir).
