@@ -29,6 +29,7 @@ data-pipeline/tools/zone_points.js
 # Sırlar ve yerel ayarlar
 .env
 .env.*
+!.env.example
 appsettings.*.local.json
 secrets.json
 

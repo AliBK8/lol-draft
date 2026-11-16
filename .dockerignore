@@ -1,0 +1,26 @@
+# Docker build bağlamı repo kökü; imajlara sadece derlemenin gerektirdiği girer. Sırlar (.env) ve veritabanları asla.
+.git
+.github
+.vs
+.vscode
+.idea
+**/bin
+**/obj
+**/node_modules
+**/TestResults
+web/dist
+docs
+prototype
+data-pipeline
+tests
+tools
+deploy
+data/*
+!data/champions.json
+**/*.db
+**/*.db-shm
+**/*.db-wal
+.env
+.env.*
+**/secrets.json
+**/appsettings.*.local.json

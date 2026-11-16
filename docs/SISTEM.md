@@ -12,10 +12,15 @@ Dışarıya tek bir giriş noktası açılır: **Gateway**. Oyun API'si ve Signa
 
 ```
  İnternet
-    │  HTTPS / WSS (443)
+    │  HTTPS / WSS (443), HTTP (80) → HTTPS
     ▼
 ┌───────────────────────────────┐
-│ Gateway (YARP, ASP.NET Core)  │  TLS · güvenlik başlıkları · CORS · rate limiting
+│ Caddy                         │  TLS sonlandırma · sertifika (Let's Encrypt) · sıkıştırma (§8.20)
+└──────────────┬────────────────┘
+               │ HTTP, X-Forwarded-For/Proto (gateway sadece Caddy'nin IP'sine güvenir)
+               ▼
+┌───────────────────────────────┐
+│ Gateway (YARP, ASP.NET Core)  │  güvenlik başlıkları · HSTS · CORS · rate limiting
 │                               │  JWT doğrulama · istek boyutu sınırı · correlation id
 └──────────────┬────────────────┘
                │ iç ağ (docker network), sadece gateway erişebilir
@@ -200,7 +205,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 - Ağır simülasyon işleri sınırlı eşzamanlılıkla kuyrukta çalışır (§8.5 `simulate-heavy`).
 
 **Ağ ve dağıtım**
-- API ve veritabanı sadece iç docker ağında; dışarıya sadece gateway'in 443 portu açık.
+- API ve veritabanı sadece iç docker ağında (`internal: true`, internete çıkışı da yok); dışarıya sadece Caddy'nin 80/443 portları açık, Caddy sadece gateway'e iletir.
 - API, gateway'den gelmeyen istekleri reddeder (iç ağ + gateway'in eklediği paylaşılan gizli başlık; ileride mTLS).
 - Konteynerler root olmayan kullanıcıyla çalışır.
 
@@ -226,10 +231,12 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 
 ### 8.8 Dağıtım
 
-`docker-compose`:
-- `gateway`: 443 dışarı açık, React build'i ve TLS sertifikası (Let's Encrypt) burada.
-- `api`: sadece iç ağ.
-- `sqlite`: API konteynerine bağlı volume (yedekleme cron'u ile). API `MATCH_DB_PATH=/data/matches.db`, `MATCH_RETENTION_DAYS` (varsayılan 180); açılışta migration'ları kendisi uygular (§8.16).
+`docker-compose.yml` (ayrıntı ve doğrulama §8.20):
+- `caddy`: 80/443 dışarı açık; TLS sertifikası (localhost'ta iç CA, alan adında Let's Encrypt) burada. Sadece gateway'e iletir.
+- `gateway`: React build'i (`wwwroot`) + YARP; dışarıya portu yok, `edge` ve `internal` ağlarında.
+- `api`: sadece `internal` ağı (internete çıkışı yok). `MATCH_DB_PATH=/data/matches.db`, `MATCH_RETENTION_DAYS` (varsayılan 180); açılışta migration'ları kendisi uygular (§8.16).
+- `backup`: API'yle aynı `matches` volume'u; `sqlite3 .backup` ile `BACKUP_INTERVAL_HOURS`'ta (6) bir tutarlı yedek, `backups` volume'unda son `BACKUP_KEEP` (28) tanesi. Ağı yok.
+- Sırlar `.env`'de (şablon `.env.example`), repoya ve imajlara girmez. CI: `.github/workflows/ci.yml` (testler + imaj derleme, push yok).
 
 Ölçeklendirme gerekirse sırasıyla: SQLite → PostgreSQL, SignalR için Redis backplane, rate limit için dağıtık depolama, simülasyon için ayrı işçi servisi.
 

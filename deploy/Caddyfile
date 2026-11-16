@@ -1,0 +1,18 @@
+# Dış kapı (DESIGN.md §8.8): TLS burada sonlanır, her şey gateway'e gider. Güvenlik başlıkları, rate limit ve JWT
+# gateway'de; Caddy sadece sertifika, HTTP→HTTPS yönlendirmesi ve sıkıştırma yapar.
+#
+# SITE_ADDRESS=localhost (varsayılan): Caddy kendi iç CA'sıyla sertifika üretir (tarayıcı ilk seferde uyarır).
+# Gerçek alan adı (ör. draft.example.com): sertifikayı Let's Encrypt'ten kendisi alır ve yeniler (80/443 dışa açık olmalı).
+#
+# X-Forwarded-For: Caddy istemcinin gönderdiğine güvenmez, bağlanan IP'yi yazar. Gateway sadece Caddy'nin sabit
+# IP'sinden gelen bu başlığa güvenir (docker-compose.yml, Gateway__TrustedProxies__0).
+
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	reverse_proxy gateway:8080
+	# Yazılım bilgisi sızdırmasın (gateway de "Server: Kestrel"i kapatıyor). Via'yı reverse_proxy ekler.
+	header {
+		-Server
+		-Via
+	}
+}

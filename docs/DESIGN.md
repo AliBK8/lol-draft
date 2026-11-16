@@ -10,7 +10,7 @@ Bölüm numaraları (§) bütün dosyalarda ortaktır; koddaki "DESIGN.md §X" a
 |---|---|---|
 | `DESIGN.md` (bu dosya) | §0-7, §10-15 | Özet, karar günlüğü, oyun akışı, motor v1 kuralları, hareket, veri hattı, ön yüz, yol haritası, fikirler |
 | [`SISTEM.md`](SISTEM.md) | §8.1-8.9 | Mimari, katmanlar, kapsülleme, rate limiting, güvenlik, API yüzeyi, dağıtım |
-| [`UYGULAMA.md`](UYGULAMA.md) | §8.10 ve sonrası | Adım adım uygulama notları (4c, 4e-1, 4e-2a/b/c, 4f-1, 4f-2, 5a, 5b, 5c, …); yeni adımlar buraya eklenir |
+| [`UYGULAMA.md`](UYGULAMA.md) | §8.10 ve sonrası | Adım adım uygulama notları (4c, 4e-1, 4e-2a/b/c, 4f-1, 4f-2, 5a, 5b, 5c, 6, …); yeni adımlar buraya eklenir |
 | [`EKONOMI-V2.md`](EKONOMI-V2.md) | §16 (16.13 hariç) | Şampiyon modeli v2, altın ekonomisi, kurallar K1-K13, yakalanma, kuşatma, karne |
 | [`DENGE.md`](DENGE.md) | §9, §16.13 | Denge aracı, ölçümler, ayar turları, uygulama sırası (faz A-D) |
 
@@ -43,6 +43,7 @@ Temel ilkeler:
 | Güvenlik | Sunucu otoriter, kayıtsız misafir JWT, iki katmanlı rate limiting (gateway + hub), katmanlı mimari ve sıkı kapsülleme. | §8 |
 | Seri: taraf ve fearless | Takım kimliği sabit koltuk (`TeamSlot` A/B), renk maçlık: ilk mavi rastgele, sonra renkler her maç değişir. Fearless tek tür: seçilen şampiyon iki takıma da kilitlenir. Fearless + bo5 havuz yetene kadar kapalı (40'lık havuza sığmıyor). (2026-11-10) | Reddedildi: "kaybeden taraf seçer" (ek bir seçim ekranı, otomatik değişim daha basit). Reddedildi: Host/Guest koltuk adı (2v2 ve turnuva modunda anlamsız). Reddedildi: soft fearless. |
 | Rol dışı oynama | Serbest ama cezalı ve kumarlı: rol mesafesine göre güç −%20…−%35, lane fazında oynak koridor, karnede "kumar tuttu / tutmadı" (§16.8). (2026-11-10, güncellendi 2026-11-12) | Reddedildi: swap'ta yasak (fearless 3. maçta uygun şampiyon kalmayabilir). Reddedildi: cezasız bırakmak (motor rolü bilmiyor, istismar açılır). |
+| TLS | Gateway'in önünde Caddy: sertifikayı (localhost'ta iç CA, alan adında Let's Encrypt) alır, yeniler, HTTP→HTTPS yönlendirir. Gateway düz HTTP konuşur, `X-Forwarded-*`'a sadece Caddy'nin sabit IP'sinden güvenir (§8.20). (2026-11-13) | Reddedildi: sertifikayı gateway'de (.NET içinde ACME) yönetmek; ek kod, yenileme ve bakım. Bedeli ek bir konteyner. |
 | Şampiyon görselleri | Riot Data Dragon portreleri, betikle bir kez indirilir ve gateway'den sunulur; sayfa altında Riot'un fan projesi notu. (2026-11-12) | Reddedildi: tarayıcının doğrudan Riot'tan çekmesi (CSP'ye dış adres, oyuncunun IP'si Riot'a gider, yama sürümü kayar). Kısaltmalı daireler yerine gerçek portre: draft ekranında tanımak çok daha kolay. |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 

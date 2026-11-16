@@ -1,0 +1,53 @@
+# CI (DESIGN.md §8.8, UYGULAMA.md §8.20): her push ve PR'da .NET testleri, istemci testleri + build, Docker imajları.
+# İmajlar sadece derlenir (bir yere gönderilmez). Sır gerekmez: testler kendi sırlarını üretir.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet restore LolDraft.slnx
+      - run: dotnet build LolDraft.slnx -c Release --no-restore
+      - run: dotnet test LolDraft.slnx -c Release --no-build
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    needs: [dotnet, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -f src/LolDraft.Api/Dockerfile -t lol-draft-api .
+      - run: docker build -f src/LolDraft.Gateway/Dockerfile -t lol-draft-gateway .
+      - run: docker build -t lol-draft-backup deploy/backup

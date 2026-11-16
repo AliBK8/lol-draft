@@ -10,7 +10,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - `DENGE.md`: §9 + §16.13 (denge aracı, ölçümler, ayar turları)
 
 ## Stack
-- `src/LolDraft.Gateway` — YARP gateway: tek dış giriş, TLS, rate limiting, JWT doğrulama, güvenlik başlıkları
+- `src/LolDraft.Gateway` — YARP gateway: tek dış giriş (TLS önündeki Caddy'de), rate limiting, JWT doğrulama, güvenlik başlıkları
 - `src/LolDraft.Api` — ASP.NET Core + SignalR (`DraftHub`), sadece iç ağda, SQLite
 - `src/LolDraft.Application`, `LolDraft.Domain`, `LolDraft.Infrastructure` — katmanlar (DESIGN.md §8.2)
 - `src/LolDraft.Engine` — simülasyon motoru (saf, seed'li, deterministik; dışarıya sadece `IMatchSimulator`)
@@ -18,6 +18,7 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - `data-pipeline/` — Python (requests; pandas yok, saf Python): Riot match-v5 timeline'larından hareket tabloları
 - `prototype/mac-motoru.html` — çalışan JS prototip; v1 motor kurallarının referansı (ekonomi v2'den sonra C# motoru ondan ayrıldı, DESIGN.md §16)
 - `tools/LolDraft.Balance` — denge aracı: rastgele ayna draft'larla motoru ölçer (DESIGN.md §9)
+- `docker-compose.yml` + `deploy/` — caddy (TLS) → gateway → api + SQLite yedekçisi; `.env.example` → `.env`, `docker compose up -d --build` (§8.8, §8.20). CI: `.github/workflows/ci.yml`
 -- Hedef: .NET 10 (`net10.0`), SDK `global.json` ile sabit
 
 ## Temel kurallar
@@ -40,9 +41,9 @@ Arkadaşa link atıp LoL turnuva draft'ı (ban/pick, bo1/3/5, fearless) yapılan
 - Görev yerine getirildikten sonra bir kez daha üzerinde kontrol yapılıp sonrasında görev bitirilir ve kontrol edildiği belirtilir.
 
 ## Sıradaki işler
-Bitenler (ayrıntı ve kararlar dokümanda): veri hattı 01-05 · 4a çözüm iskeleti (§8.2) · 4b C# motoru + denge aracı (§4, §9) · ekonomi v2 faz A-C (§16, `data/champions.json`) · 4c gateway (§8.10) · 4d draft + seri (§8.3) · 4e-1 lobi + misafir JWT (§8.11) · 4e-2a/b/c hub, lobi saati, bağlantı takibi (§8.12-8.14) · 4f-1 simülasyon bağlantısı + rol dışı kumar (§8.15, §16.8) · 4f-2 kalıcı replay, EF Core + SQLite, saklama 180 gün (§8.16) · 5a ön yüz iskeleti, `GET /api/champions`, gateway'de istemci + SPA, Data Dragon portreleri (§8.17) · 5b canlı lobi, draft, swap, gizli skor, geliştirme rakibi (§8.18) · 5c maç oynatıcısı, karne, `/m/{id}` (§8.19).
+Bitenler (ayrıntı ve kararlar dokümanda): veri hattı 01-05 · 4a çözüm iskeleti (§8.2) · 4b C# motoru + denge aracı (§4, §9) · ekonomi v2 faz A-C (§16, `data/champions.json`) · 4c gateway (§8.10) · 4d draft + seri (§8.3) · 4e-1 lobi + misafir JWT (§8.11) · 4e-2a/b/c hub, lobi saati, bağlantı takibi (§8.12-8.14) · 4f-1 simülasyon bağlantısı + rol dışı kumar (§8.15, §16.8) · 4f-2 kalıcı replay, EF Core + SQLite, saklama 180 gün (§8.16) · 5a ön yüz iskeleti, `GET /api/champions`, gateway'de istemci + SPA, Data Dragon portreleri (§8.17) · 5b canlı lobi, draft, swap, gizli skor, geliştirme rakibi (§8.18) · 5c maç oynatıcısı, karne, `/m/{id}` (§8.19) · 6 Docker + Caddy + SQLite yedeği + CI (§8.20).
 
-1. **← KALDIĞIMIZ YER.** 6: Docker + CI (volume `/data/matches.db` + SQLite yedeği, §8.8).
-2. Faz D dengeleme (§16.13 adım 13, DENGE.md), açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+, rol dışı kumarın kaldıracı (§16.8).
-3. Rejoin (ertelendi, gateway rotası hazır).
-4. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket.
+1. **← KALDIĞIMIZ YER.** Faz D dengeleme (§16.13 adım 13, DENGE.md), açık: erken comp %46,6, Dive %44, poke destekler, kural farkı 11+, rol dışı kumarın kaldıracı (§16.8).
+2. Rejoin (ertelendi, gateway rotası hazır).
+3. (v0.2) Prototipte/motorda gerçek `transitions.json` ile hareket.
+4. Sunucuya kurulum: alan adı (`SITE_ADDRESS`), yedeklerin makine dışına kopyası (§8.20).

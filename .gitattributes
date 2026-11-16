@@ -1,0 +1,3 @@
+# Konteynerde çalışan betikler LF kalmalı: Windows'taki autocrlf CRLF'e çevirirse "/bin/sh^M" ile başlamaz.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf
