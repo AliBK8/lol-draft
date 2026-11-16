@@ -59,6 +59,7 @@ internal static class PoolCheck
         ("fl", c => c.Tags.Frontline), ("en", c => c.Tags.Engage), ("dis", c => c.Tags.Disengage),
         ("peel", c => c.Tags.Peel), ("poke", c => c.Tags.Poke), ("pick", c => c.Tags.Pick),
         ("dive", c => c.Tags.Dive), ("split", c => c.Tags.Split), ("mob", c => c.Tags.Mobility),
+        ("aoe", c => c.Tags.AreaDamage),
     ];
 
     internal static IEnumerable<string> Warnings(ChampionProfile c, IReadOnlyCollection<Role> roles)

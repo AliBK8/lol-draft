@@ -10,7 +10,7 @@ internal enum FightKind
 }
 
 /// <summary>
-/// Takım kuralları K5-K11, K13 (DESIGN.md §16.8): draft'ın kimliği, savaşın d'sine eklenir (Mavi lehine pozitif).
+/// Takım kuralları K5-K11, K13, K14 (DESIGN.md §16.8): draft'ın kimliği, savaşın d'sine eklenir (Mavi lehine pozitif).
 /// Her kural sadece kendi savaş türünde işler. Saf: şampiyonlara, dakikaya ve verilen güce bakar, zar atmaz.
 /// </summary>
 internal static class TeamRules
@@ -69,6 +69,16 @@ internal static class TeamRules
     private const double MaxApShare = 0.8;
     private const double OneDamageTypePenalty = 2;
 
+    // K14 Toplu hasar (takım savaşı): etkin aoe = aoe toplamı, takımın en toplamı ≥ 5 ise × 1,5 (wombo: engage rakibi
+    // toplar, toplu hasar vurur; 5 ≈ havuzdaki ortalama takım en'i). Etkin farkı fazla olana d += 0,25 × fark (±2).
+    // Örnek: Leona (en 3) + Sejuani (en 3, aoe 1) + Brand (aoe 3) → 4 × 1,5 = 6; rakip aoe 2 → 0,25 × 4 = +1.
+    // Faz D tur 5: 0,5 / ±3 Brand'i %46'ya çıkarıyordu ama Dive %42, erken comp %44,6 (aoe'liler çoğunlukla geç
+    // oyun büyücü/nişancıları); yumuşak ayar seçildi (kullanıcı).
+    private const double AreaWeight = 0.25;
+    private const double AreaCap = 2;
+    private const int WomboEngage = 5;
+    private const double WomboFactor = 1.5;
+
     // Toplam tavan (takım savaşı): iki tarafın kural etkilerinin net toplamı ±8. Kurallar tek tek tavanlı ama üst üste
     // binince (K5 +4, K10 +4, K8 +3, K11 +2...) uç draft'lar %76-83 kazanıyordu (faz D tur 4). Normal draft'lara dokunmaz.
     private const double TotalCap = 8;
@@ -120,6 +130,7 @@ internal static class TeamRules
             Combo(side, us, effects);
         }
 
+        AreaDamage(blue, red, effects);
         return effects;
     }
 
@@ -195,6 +206,23 @@ internal static class TeamRules
     /// <summary>K6 poke itişi: <paramref name="us"/> takımının koridor anında kuleyi zorla alma ihtimali (poke'u azsa 0).</summary>
     public static double PokePushChance(IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them) =>
         Math.Clamp(PokePushPerPoke * (us.Sum(c => c.Tags.Poke) - them.Sum(c => c.Tags.Poke)), 0, PokePushCap);
+
+    private static void AreaDamage(IReadOnlyList<ChampionProfile> blue, IReadOnlyList<ChampionProfile> red, List<RuleEffect> effects)
+    {
+        var diff = EffectiveArea(blue) - EffectiveArea(red);
+        if (diff == 0)
+            return;
+
+        var (side, team) = diff > 0 ? (TeamSide.Blue, blue) : (TeamSide.Red, red);
+        var source = team.MaxBy(c => c.Tags.AreaDamage)!;
+        var wombo = team.Sum(c => c.Tags.Engage) >= WomboEngage;
+        effects.Add(new RuleEffect("K14", side, Math.Min(AreaWeight * Math.Abs(diff), AreaCap), source,
+            wombo ? $"Wombo: engage toplar, toplu hasar vurur ({source.Name})" : $"Toplu hasar üstünlüğü ({source.Name})"));
+    }
+
+    // Etkin toplu hasar: engage'i yüksek takımda × 1,5 (rakip bir araya toplanmış olur).
+    private static double EffectiveArea(IReadOnlyList<ChampionProfile> team) =>
+        team.Sum(c => c.Tags.AreaDamage) * (team.Sum(c => c.Tags.Engage) >= WomboEngage ? WomboFactor : 1);
 
     // Etkin dive: dalış gücünden rakibin koruması düşülür (tank dive'ı durdurmaz, peel durdurur).
     private static int EffectiveDive(IReadOnlyList<ChampionProfile> us, IReadOnlyList<ChampionProfile> them) =>

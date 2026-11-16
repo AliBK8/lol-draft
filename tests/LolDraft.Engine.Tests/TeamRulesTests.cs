@@ -58,6 +58,21 @@ public sealed class TeamRulesTests
         Assert.Equal(-2.0, Sum(FightKind.Objective, NoTags, poke, 20, "K6"), 9);      // poke Kırmızı +min(3, 2)
     }
 
+    // K14 toplu hasar: aoe farkı × 0,25 (tavan 2); takımın en toplamı ≥ 5 ise aoe × 1,5 (wombo). Çatışmada yok.
+    [Fact]
+    public void Toplu_hasar_engage_ile_wombo_olur_ve_tavanlidir()
+    {
+        IReadOnlyList<ChampionProfile> area = Team(Tags(aoe: 3), Tags(aoe: 2), Tags(), Tags(), Tags());
+        IReadOnlyList<ChampionProfile> wombo = Team(Tags(engage: 3), Tags(engage: 3), Tags(aoe: 3), Tags(aoe: 2), Tags());
+        IReadOnlyList<ChampionProfile> heavy = Team(Tags(aoe: 3), Tags(aoe: 3), Tags(aoe: 3), Tags(aoe: 3), Tags());
+
+        Assert.Equal(1.25, Sum(FightKind.Objective, area, NoTags, 20, "K14"), 9);     // 5 × 0,25
+        Assert.Equal(1.875, Sum(FightKind.Final, wombo, NoTags, 20, "K14"), 9);       // 5 × 1,5 × 0,25
+        Assert.Equal(-2.0, Sum(FightKind.Siege, NoTags, heavy, 20, "K14"), 9);        // 12 × 0,25 → tavan, Kırmızı
+        Assert.Equal(0.0, Sum(FightKind.Final, area, area, 20, "K14"), 9);
+        Assert.Equal(0.0, Sum(FightKind.Skirmish, area, NoTags, 20, "K14"), 9);
+    }
+
     // Toplam tavan: takım savaşında net kural toplamı ±8 (tek tek tavanlı kurallar üst üste binince uçlar kırpılır).
     [Theory]
     [InlineData(5.0, 5.0)]
@@ -164,8 +179,8 @@ public sealed class TeamRulesTests
 
     private static ChampionProfile ById(string id) => Early.Concat(Scale).Single(c => c.Id == id);
 
-    private static ChampionTags Tags(int frontline = 0, int engage = 0, int disengage = 0, int peel = 0, int poke = 0) =>
-        new(frontline, engage, disengage, peel, poke);
+    private static ChampionTags Tags(int frontline = 0, int engage = 0, int disengage = 0, int peel = 0, int poke = 0, int aoe = 0) =>
+        new(frontline, engage, disengage, peel, poke, areaDamage: aoe);
 
     private static int _next;
 

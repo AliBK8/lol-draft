@@ -8,7 +8,7 @@ public sealed record ChampionTags
 {
     public ChampionTags(
         int frontline = 0, int engage = 0, int disengage = 0, int peel = 0, int poke = 0,
-        int pick = 0, int dive = 0, int split = 0, int mobility = 0)
+        int pick = 0, int dive = 0, int split = 0, int mobility = 0, int areaDamage = 0)
     {
         Frontline = InRange(frontline, nameof(frontline));
         Engage = InRange(engage, nameof(engage));
@@ -19,6 +19,7 @@ public sealed record ChampionTags
         Dive = InRange(dive, nameof(dive));
         Split = InRange(split, nameof(split));
         Mobility = InRange(mobility, nameof(mobility));
+        AreaDamage = InRange(areaDamage, nameof(areaDamage));
     }
 
     /// <summary>fl: önde durur, hasar emer.</summary>
@@ -47,6 +48,12 @@ public sealed record ChampionTags
 
     /// <summary>mob: hareket kabiliyeti.</summary>
     public int Mobility { get; }
+
+    /// <summary>
+    /// aoe: takım savaşında aynı anda birden çok kişiye ciddi HASAR (CC değil: toplu CC en'de). 3 savaşı tek başına
+    /// çevirir (Orianna, Brand, Karthus), 2 düzenli (Viktor, Jinx), 1 kısmen. Tank build'li ultiler (Malphite) 0-1.
+    /// </summary>
+    public int AreaDamage { get; }
 
     private static int InRange(int value, string name) =>
         value is >= 0 and <= 3

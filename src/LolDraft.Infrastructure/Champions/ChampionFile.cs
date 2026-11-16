@@ -45,7 +45,7 @@ public static class ChampionFile
                     c.Id!, c.Name!, ParseRange(c.Range), ParseClass(c.Classes[0]),
                     c.Classes.Count == 2 ? ParseClass(c.Classes[1]) : null,
                     c.E, c.M, c.L, c.Econ, c.Ap,
-                    new ChampionTags(t.Fl, t.En, t.Dis, t.Peel, t.Poke, t.Pick, t.Dive, t.Split, t.Mob),
+                    new ChampionTags(t.Fl, t.En, t.Dis, t.Peel, t.Poke, t.Pick, t.Dive, t.Split, t.Mob, t.Aoe),
                     roles.Select(ToEngine));
             }
             catch (ArgumentException error)
@@ -108,5 +108,6 @@ public static class ChampionFile
         int E, int M, int L, int Econ, double Ap, TagsEntry? Tags);
 
     private sealed record TagsEntry(
-        int Fl = 0, int En = 0, int Dis = 0, int Peel = 0, int Poke = 0, int Pick = 0, int Dive = 0, int Split = 0, int Mob = 0);
+        int Fl = 0, int En = 0, int Dis = 0, int Peel = 0, int Poke = 0, int Pick = 0, int Dive = 0, int Split = 0, int Mob = 0,
+        int Aoe = 0);
 }

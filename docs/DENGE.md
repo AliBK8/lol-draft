@@ -196,3 +196,17 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
      **Brand** (adım 5, veri; geçici havuz dosyasıyla ölçüldü): poke 3, pick 1 → %42,6 · + pick 2, peel 1 → %46,2 · + pick 2, peel 2 → %50,0 · + pick 2, dis 1, peel 1 → %47,8. Peel işe yarıyor (K5 engage'ini, K8 dive'ını siler) ama Brand peel şampiyonu değil. Brand'in asıl değeri takım savaşında AoE hasar (yanma, seken ulti); etiket setinde karşılığı yok, sadece e/m/l'de (`m` 7 → 8 etkisiz, E5). Karar (kullanıcı): sadece gerçekçi olan **pick 2** (yanan hedefe stun) → Brand %43,2 (gürültü sınırında); asıl çözüm ileride `aoe` etiketi (takım savaşı hasarı / toplu CC: Brand, Orianna, Karthus, Malphite, Amumu, Yasuo...; şimdi K13 kombo tablosu kısmen karşılıyor). Diğerleri: Poke %49,2, Engage %56,7, Dive %46,6, Mavi %50,4.
 
      **Tur 4 sonu.** Dive %46,6 kabul (kullanıcı): kimlikler %46-52 bandında (Split %47, Pick %49, Poke %49), taş-kağıt-makas çalışıyor (Koruma > Dive %55, Dive > Split %53). Gerçek "başarılı dive oranı" ölçülemiyor (Riot verisi comp ya da dive olayı işaretlemiyor; solo kuyruk referans değil) ve gerçekte çok değişkene bağlı (kaç kişi dalıyor, tank hasarı emiyor mu). K8 bilerek basit: dalış toplamı − rakip peel; tankın hasarı emmesi K8'de yok, frontline K10'da. Açık kalan: Brand (→ `aoe` etiketi).
+   - **Ayar turu 5: `aoe` etiketi ve K14 toplu hasar** (EKONOMI-V2 §16.2, §16.8). Tanım kullanıcıyla: hasar, CC değil (toplu CC `en`'de; yoksa engage tank'lar iki kez ödüllenir). Tank'lar hasar yapmaz (kullanıcı): Malphite 0, Amumu 1. 18 şampiyon: aoe 3 Brand, Karthus · 2 Orianna, Viktor, Jinx, Kayle · 1 Darius, Gnar, Amumu, Sejuani, Graves, Syndra, Yasuo, Jayce, Varus, Ezreal, Ashe, Karma. Havuz ortalaması 0,65.
+
+     | Ayar | Brand | Dive | Erken comp | Orianna | Poke |
+     |---|---|---|---|---|---|
+     | K14 yok (`0bec59f`) | %43,2 | %46,6 | %47,1 | ~%55,5 | %49,2 |
+     | 0,5 × fark (±3), Orianna 3 | %46,3 | %42,4 | %44,6 | %59,9 | %51,7 |
+     | aynısı, wombo × 1,0 (yok) | %46,5 | %43,1 | %44,3 | %59,3 | %51,7 |
+     | 0,75 × fark (±3), Orianna 3 | %47,3 | %41,1 | %43,9 | %60,9 | %52,2 |
+     | 0,5 × fark (±3), Orianna 2 | %46,4 | %42,6 | %44,6 | %58,5 | %51,7 |
+     | 0,35 × fark (±2), Orianna 2 | %45,2 | %43,6 | %44,9 | %58,0 | %51,0 |
+     | **0,25 × fark (±2), Orianna 2 (seçildi)** | **%44,8** | %44,4 | %45,2 | %57,7 | %50,5 |
+
+     Okuma: K14 takım savaşı değerini toplu hasarcılara verir; onlar çoğunlukla geç oyun büyücü/nişancıları (Orianna, Viktor, Jinx, Karthus, Kayle). Kaybeden: aoe'si doğru olarak 0 olan Dive (suikastçılar tek hedef) ve erken comp. Brand'e kazandırılan her puan Dive/erken comp'tan ~bir puan götürüyor; ağırlık takası yumuşatıyor, kaldırmıyor. Wombo çarpanı ölçümde neredeyse etkisiz ama kavram olarak kaldı (Brand'i engage'li takımda değerli kılar, karnede "Wombo" metni). Karar (kullanıcı): yumuşak ayar. Diğerleri: Mavi %50,4, süre 29,3, Engage %56,9, Koruma %52,1, scale comp kurtarıyor %36,7, erken comp 35'ten önce %31,0 ✓, kural farkı 10 %67, 12 %65.
+     Açık: Orianna %57,7 (aoe değil: her etiketten biraz alıyor, en 2 · peel 2 · poke 2 + K13 kombo; veri meselesi). Dive %44,4 ve erken comp %45,2 bandın alt sınırında.

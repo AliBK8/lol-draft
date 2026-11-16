@@ -46,6 +46,7 @@ Draft oyunun asıl kararı. Motor şu zinciri kurar; her halka gerçek etkidir v
 | `dive` | arka hatta atlama | korunmasız taşıyıcıya karşı |
 | `split` | yan koridorda tek başına baskı | kule fırsatı, objektifte yokluk |
 | `mob` | hareket kabiliyeti | range'e yaklaşma, yakalanmadan kaçma |
+| `aoe` | takım savaşında aynı anda birden çok kişiye ciddi **hasar** (CC değil: toplu CC `en`'de). 3 savaşı tek başına çevirir (Brand, Karthus), 2 düzenli (Orianna, Viktor, Jinx, Kayle), 1 kısmen; tank build'li ultiler 0-1 (Malphite 0, Amumu 1) | K14 (faz D tur 5) |
 
 **`range` = koridor menzili (karar):** `range`'e sadece K1 bakar, o da lane fazında (dk < 14). Geç oyundaki menzil sınıf ve etiketlerde (poke, peel, dive). Form değiştiren şampiyon, **lane'de hangi formda baskı kuruyorsa** öyle etiketlenir. `hybrid` ya da dakikaya bağlı menzil denendi, elendi: kural bir dal fazla, veri modeline zaman girer.
 
@@ -186,6 +187,7 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | K11 | Tek tip hasar | AP payı < %20 ya da > %80 | takım savaşları | d −2 |
 | K12 | Split | top/mid'de `split` ≥ 2, takım savaşı kaybetmeye yakın | dk ≥ 14 ejder/Herald/Baron | bir karar zinciri (aşağıda): splitter savaşa gelmez; rakip ya cevap verir (4v4 + düello) ya da kuleyi kaybeder (4v5) |
 | K13 | Kombo | tablo (Orianna+Malphite, Yasuo+knock-up…) | tablodaki olay türü | d +2 |
+| K14 | Toplu hasar (faz D tur 5) | etkin `aoe` = `aoe` toplamı, takımın `en` toplamı ≥ 5 ise × 1,5 (wombo: engage toplar, toplu hasar vurur) | takım savaşları (çatışmada yok) | d += 0,25 × fark (±2) |
 
 **Toplam tavan** (faz D tur 4): bir takım savaşında iki tarafın kural etkilerinin net toplamı ±8 (kurallar tek tek tavanlı ama üst üste binince uç draft'lar %76-83 kazanıyordu).
 
