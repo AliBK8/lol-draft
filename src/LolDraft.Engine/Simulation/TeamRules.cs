@@ -104,6 +104,9 @@ internal static class TeamRules
         ("lucian", "braum"),    // Lucian'ın çift atışı Braum pasifini hızla doldurur
         ("pyke", "draven"),     // kill odaklı bot lane (ikisi de bilinçli bandın altında, hafif destek)
         ("kalista", "blitzcrank"), // Kalista ultisiyle fırlatılan Blitzcrank kancası
+        // Faz H parti 1 (125'lik havuz):
+        ("lucian", "nami"),     // Nami'nin E'si Lucian'ın çift atışına işler
+        ("kogmaw", "lulu"),     // Lulu koruması + hiper taşıyıcı
     ];
 
     /// <summary>

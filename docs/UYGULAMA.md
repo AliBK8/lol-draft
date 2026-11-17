@@ -259,3 +259,19 @@ H1-H3 havuzu ve motoru 80 şampiyona taşıdı (DENGE.md faz H); H4 bunu oyuncuy
 Doğrulama: .NET Domain 102, Engine 186 (+1 kombo testi), Api 82, Gateway 50; web lint + 31 test + build. Denge: 20.000 draft önce/sonra, genel göstergeler değişmedi (DENGE.md faz H4).
 
 Kalan: havuzun geri kalanı (~90), aynı yol (H1-H4).
+
+### 8.22 Uygulama: havuz parti 1 (80 → 125)
+
+Yol H1-H4'le aynı, sırası değişti: taslak önce **geçici havuz dosyasında** ölçülür (`--champions <dosya>`), onaydan sonra `data/champions.json`'a yazılır. Böylece kullanıcı etiketleri ölçüm sonuçlarıyla birlikte görür, onaylanmamış veri repoya girmez.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Taslak | geçici betik (repoya girmez) | 45 şampiyon, her biri §16.2 biçiminde; havuzda olanı tekrar eklerse durur. Geçici havuz = 80 + 45 → `--check` ve 30.000 draft. Ölçümle 3 düzeltme ve kullanıcının 3 değişikliği (DENGE.md parti 1). |
+| Havuza yazma | `data/champions.json` | Yeni kayıtlar kendi koridor grubunun sonuna, dosyanın 3 satırlık kompakt biçiminde; dosya yeniden biçimlenmez. Diff'te silinen sadece not satırı ve Senna'nın satırı (sona virgül). Yazılan 125 kayıt taslakla birebir karşılaştırıldı. |
+| Portreler | `web/public/champions/` | `npm run icons`: 45 yeni, eski 80 aynı yama (16.22.1) ve bayt bayt aynı; 125 kimlik = 125 portre. |
+| K13 | `TeamRules.cs` | +2 ikili (Lucian + Nami, Kog'Maw + Lulu) → 17. Havuz eşleşme testi (§8.21) yenileri de denetler. |
+| Sayıya bağlı test | `ChampionEndpointsTests` | 80 → 125 (test adı da). Lobi testi ve HomePage'deki havuz hesabı yorumları 125'e göre (40 kilit, 85 kalır). |
+
+Doğrulama: .NET Domain 102, Engine 186, Api 82, Gateway 50; web lint + 31 test + build; `--check` 2 bilinçli uyarı (Kayle, Nilah).
+
+Kalan: parti 2 (~45: Locke, Zaahen, Yunara için kit bilgisi kullanıcıdan; Ambessa, Pantheon, Zoe, Hwei, Aurora, Ryze, Rek'Sai…).

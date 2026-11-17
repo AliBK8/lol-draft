@@ -16,11 +16,11 @@ public sealed class ChampionEndpointsTests : IDisposable
             .UseSetting("JWT_SIGNING_KEY", "test-jwt-signing-key-0123456789abcdefghij"));
 
     [Fact]
-    public async Task Seksen_sampiyon_ad_rol_ve_yuva_basina_rol_disi_ceza_ile_gelir()
+    public async Task Yuz_yirmi_bes_sampiyon_ad_rol_ve_yuva_basina_rol_disi_ceza_ile_gelir()
     {
         var (response, champions) = await Get();
 
-        Assert.Equal(80, champions.Count);
+        Assert.Equal(125, champions.Count);
         Assert.Equal("public, max-age=300", response.Headers.CacheControl?.ToString());
 
         foreach (var champion in champions)

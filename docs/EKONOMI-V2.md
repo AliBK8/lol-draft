@@ -187,7 +187,7 @@ Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var
 | K10 | Frontline eksik | `fl` toplamı < 2 | takım savaşları | d −3 (rakip `en` ≥ 4 ise −4) |
 | K11 | Tek tip hasar | AP payı < %20 ya da > %80 | takım savaşları | d −2 |
 | K12 | Split | top/mid'de `split` ≥ 2, takım savaşı kaybetmeye yakın | dk ≥ 14 ejder/Herald/Baron | bir karar zinciri (aşağıda): splitter savaşa gelmez; rakip ya cevap verir (4v4 + düello) ya da kuleyi kaybeder (4v5) |
-| K13 | Kombo | tablo (`TeamRules.Combos`, 15 ikili: Lulu + hiper taşıyıcı, Yasuo + knock-up, Orianna/Miss Fortune + Amumu, Xayah + Rakan…; faz H4'te 7 → 15) | takım savaşları | d +2 (her ikili ayrı; toplam tavan ±8) |
+| K13 | Kombo | tablo (`TeamRules.Combos`, 17 ikili: Lulu + hiper taşıyıcı, Yasuo + knock-up, Orianna/Miss Fortune + Amumu, Xayah + Rakan, Lucian + Nami…; faz H4'te 7 → 15, parti 1'de 17) | takım savaşları | d +2 (her ikili ayrı; toplam tavan ±8) |
 | K14 | Toplu hasar (faz D tur 5) | etkin `aoe` = `aoe` toplamı, takımın `en` toplamı ≥ 5 ise × 1,5 (wombo: engage toplar, toplu hasar vurur) | takım savaşları (çatışmada yok) | d += 0,25 × fark (±2) |
 
 **Toplam tavan** (faz D tur 4): bir takım savaşında iki tarafın kural etkilerinin net toplamı ±8 (kurallar tek tek tavanlı ama üst üste binince uç draft'lar %76-83 kazanıyordu).
