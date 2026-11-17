@@ -149,7 +149,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 2. **Davet linki:** `/l/{LobbyCode}`. Kod tahmin edilemez; boş koltuk bir kez alınır.
 3. **Katılma:** `POST /api/lobbies/{code}/join` → ikinci oyuncuya JWT.
 4. **JWT içeriği:** `sub` (PlayerId), `lobby` (LobbyCode), `seat` (takım koltuğu A/B; renk değil, renk her maç seriden gelir), `exp` (2 saat). HMAC-SHA256 ile imzalanır, anahtar ortam değişkeninde.
-5. **Yeniden bağlanma (ertelendi, karar 2026-11-10):** JWT 2 saat geçerli; istemci saklarsa sayfa yenileme çalışır. Token kaybolursa koltuğu geri almak için ileride: JWT ile birlikte uzun ömürlü olmayan bir `rejoinToken` (tek kullanımlık, lobi ömrü kadar) verilir. Sayfa yenilenirse koltuk geri alınır.
+5. **Koltuğu geri alma (rejoin, uygulandı 2026-11-17, §8.24):** JWT 2 saat geçerli ve sekmeye bağlı (`sessionStorage`): sayfa yenilenince aynı koltuk. Sekme kapanırsa token gider; bunun için her bilet bir **koltuk anahtarı** (`rejoinToken`) da taşır: 32 bayt CSPRNG, tarayıcıda `localStorage`'da. Lobi anahtarın kendisini değil SHA-256 özetini tutar. `POST /rejoin { rejoinToken }` → eşleşen koltuğun **aynı oyuncusuna** yeni JWT + yeni anahtar; anahtar tek kullanımlık (eskisi geçersiz). Eski JWT süresi dolana kadar geçerli kalır (karar: iptal mekanizması gereksiz karmaşıklık). Başka cihaza taşıma linki yok (karar). Lobi en fazla 2 saat yaşar (`Lobby.MaxLifetime`), yani JWT lobi içinde hiç dolmaz: token yenileme gerekmez.
 6. **Doğrulama:** Gateway JWT imzasını ve süresini kontrol eder; geçersizse isteği API'ye hiç iletmez. API ayrıca **yetkiyi** kontrol eder: oyuncu bu lobide mi, bu koltukta mı, sıra onda mı. Yetki kontrolü domain'in işidir, gateway'in değil.
 7. SignalR bağlantısında token `access_token` sorgu parametresiyle gelir (WebSocket başlık gönderemez); gateway ve hub bu parametreyi okur. Bu parametre loglara yazılmaz.
 
@@ -200,7 +200,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 **DoS ve kaynak sınırları**
 - İstek gövdesi sınırı: 16 KB (gateway ve Kestrel).
 - SignalR: `MaximumReceiveMessageSize` 4 KB, `KeepAliveInterval` 15 sn, `ClientTimeoutInterval` 30 sn.
-- Lobi yaşam süresi: 30 dk hareketsiz lobi silinir. IP başına (§8.5 istemci anahtarı) en fazla 3 açık lobi.
+- Lobi yaşam süresi: 30 dk hareketsiz lobi silinir; hareket olsa da açılıştan 2 saat sonra kapanır (karar 2026-11-17). IP başına (§8.5 istemci anahtarı) en fazla 3 açık lobi.
 - Toplam açık lobi tavanı 2.000 (`LobbyCapacity`, 2026-11-11): kişi başı sınır tek kaynaktan gelen seli durdurur, tavan çok kaynaktan geleni. Dolunca yeni lobi `503 server_busy`; açık oyunlar etkilenmez. Sayma ve ekleme aynı kilit altında.
 - Ağır simülasyon işleri sınırlı eşzamanlılıkla kuyrukta çalışır (§8.5 `simulate-heavy`).
 
@@ -221,9 +221,9 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 
 | Metot | Yol | Yetki | Açıklama |
 |---|---|---|---|
-| POST | `/api/lobbies` | yok | Lobi oluştur, JWT + davet kodu döner |
-| POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
-| POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
+| POST | `/api/lobbies` | yok | Lobi oluştur, `{code, seat, token, rejoinToken}` döner |
+| POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, aynı bilet |
+| POST | `/api/lobbies/{code}/rejoin` | gövdede `rejoinToken` | Koltuğu geri al: aynı oyuncuya yeni bilet (yeni token + yeni anahtar). Yanlış/kullanılmış anahtar 403 `rejoin_rejected`, lobi yoksa 404. Hız sınırı katılmayla ortak (dakikada 10) |
 | GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
 | GET | `/api/champions` | yok | Havuzdaki şampiyonlar (şu an 170): `id`, `name`, `roles`, `offRole` (yuva → rol dışı ceza); gizli motor sayıları yok (§8.17) |
 | GET | `/api/matches/{id}` | yok (paylaşım linki; kimlik 128 bit) | Oynanmış maç: olaylar, dakika kareleri, karne (§8.15); diskteki dondurulmuş belge, `MatchReady` ile aynı (§8.16) |
@@ -248,7 +248,8 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | Hub mesaj limiti | `LolDraft.Api/Hubs/RateLimitHubFilter.cs` |
 | Yetki kontrolü (lobi/koltuk/sıra) | `LolDraft.Domain/Draft/DraftSession.cs` ve `LolDraft.Application/Draft/SubmitDraftActionHandler.cs` |
 | DTO doğrulama | `LolDraft.Api/Validation/*Validator.cs` |
-| JWT üretimi, rejoin token | `LolDraft.Infrastructure/Auth/GuestTokenService.cs` (arayüz `Application`'da) |
+| JWT üretimi | `LolDraft.Infrastructure/Auth/GuestTokenService.cs` (arayüz `Application`'da) |
+| Koltuk anahtarı (rejoin) | üretim ve özet `LolDraft.Application/Lobbies/RejoinSecrets.cs`, eşleşme `LolDraft.Domain/Lobby.cs` (`Rejoin`) |
 | CSPRNG seed | `LolDraft.Infrastructure/Random/CryptoSeedGenerator.cs` |
 | Sunucu sayacı | `LolDraft.Api/Background/DraftTimerService.cs` |
 | Lobi temizliği | `LolDraft.Api/Background/LobbyJanitorService.cs` |

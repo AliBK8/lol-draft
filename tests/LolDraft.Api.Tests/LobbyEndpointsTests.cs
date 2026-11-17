@@ -248,6 +248,79 @@ public sealed class LobbyEndpointsTests : IDisposable
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    // --- Koltuğu geri alma (rejoin) ---
+
+    [Fact]
+    public async Task Bilet_her_koltuga_ayri_koltuk_anahtari_tasir()
+    {
+        var host = await Create();
+        var guest = await Join(host.Code);
+
+        Assert.Matches("^[A-Za-z0-9_-]{43}$", host.RejoinToken);
+        Assert.Matches("^[A-Za-z0-9_-]{43}$", guest.RejoinToken);
+        Assert.NotEqual(host.RejoinToken, guest.RejoinToken);
+    }
+
+    // Sekmeyi kapatan oyuncu: koltuk anahtarıyla aynı oyuncu, aynı koltuk; yeni token lobiyi görür, anahtar yenilenir.
+    [Fact]
+    public async Task Koltuk_anahtari_ayni_oyuncuya_ayni_koltugu_ve_yeni_token_verir()
+    {
+        var host = await Create();
+        var guest = await Join(host.Code);
+
+        var back = await Read<Ticket>(await PostRejoin(host.Code, guest.RejoinToken));
+
+        Assert.Equal("B", back.Seat);
+        Assert.Equal(new JsonWebToken(guest.Token).Subject, new JsonWebToken(back.Token).Subject);
+        Assert.NotEqual(guest.RejoinToken, back.RejoinToken);
+        Assert.Equal("B", (await GetLobby(host.Code, back.Token)).YourSeat);
+        Assert.Equal("B", (await GetLobby(host.Code, guest.Token)).YourSeat);   // eski token da geçerli (karar)
+    }
+
+    [Fact]
+    public async Task Kullanilan_koltuk_anahtari_ikinci_kez_calismaz()
+    {
+        var host = await Create();
+        var back = await Read<Ticket>(await PostRejoin(host.Code, host.RejoinToken));
+
+        var again = await PostRejoin(host.Code, host.RejoinToken);
+        Assert.Equal(HttpStatusCode.Forbidden, again.StatusCode);
+        Assert.Equal("rejoin_rejected", await ErrorCode(again));
+
+        Assert.Equal(HttpStatusCode.OK, (await PostRejoin(host.Code, back.RejoinToken)).StatusCode);
+    }
+
+    // Başka lobinin anahtarı, uydurma ya da biçimi bozuk anahtar: 403. Anahtar sadece kendi lobisinde çalışır.
+    [Theory]
+    [InlineData("other")]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    [InlineData("kisa")]
+    [InlineData("")]
+    [InlineData(null)]
+    public async Task Gecersiz_koltuk_anahtari_reddedilir(string? token)
+    {
+        var host = await Create();
+        var other = await Create();
+
+        var response = await PostRejoin(host.Code, token == "other" ? other.RejoinToken : token);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("rejoin_rejected", await ErrorCode(response));
+    }
+
+    [Theory]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAA")]   // biçimi doğru, böyle lobi yok
+    [InlineData("bozuk")]
+    public async Task Olmayan_lobiye_geri_donulmez(string code)
+    {
+        var host = await Create();
+
+        var response = await PostRejoin(code, host.RejoinToken);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("lobby_not_found", await ErrorCode(response));
+    }
+
     public void Dispose() => _factory.Dispose();
 
     private Task<HttpResponseMessage> PostCreate(string? format, bool fearless) =>
@@ -265,6 +338,9 @@ public sealed class LobbyEndpointsTests : IDisposable
     }
 
     private Task<HttpResponseMessage> PostJoin(string code) => _client.PostAsync($"/api/lobbies/{code}/join", null);
+
+    private Task<HttpResponseMessage> PostRejoin(string code, string? rejoinToken) =>
+        _client.PostAsJsonAsync($"/api/lobbies/{code}/rejoin", new { rejoinToken });
 
     private async Task<Ticket> Create(string format = "bo3", bool fearless = false) =>
         await Read<Ticket>(await PostCreate(format, fearless));
@@ -301,7 +377,7 @@ public sealed class LobbyEndpointsTests : IDisposable
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)), SecurityAlgorithms.HmacSha256),
         });
 
-    private sealed record Ticket(string Code, string Seat, string Token);
+    private sealed record Ticket(string Code, string Seat, string Token, string RejoinToken);
 
     private sealed record LobbyResponse(string YourSeat, LobbyState Lobby);
 

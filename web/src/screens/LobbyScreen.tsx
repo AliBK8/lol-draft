@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Champion, Game, LobbyState, Seat } from '../api/types'
 import { Countdown } from '../components/Countdown'
@@ -9,7 +9,7 @@ import { useLobbyConnection } from '../live/useLobbyConnection'
 import { MatchPlayer } from '../match/MatchPlayer'
 import type { Replay } from '../match/types'
 import { useReplay } from '../match/useReplay'
-import type { Session } from '../session'
+import { clearRejoinToken, clearSession, type Session } from '../session'
 import { DraftBoard } from './DraftBoard'
 import { SwapBoard } from './SwapBoard'
 
@@ -28,7 +28,14 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
     saveRevealed(code, count)
   }
 
-  if (closed) return <p className="card">Lobi kapandı (uzun süre hareket yoktu ya da iki oyuncu da ayrıldı).</p>
+  // Lobi kapandı: token da koltuk anahtarı da artık işe yaramaz (linki yeniden açan "Katıl" görür, lobi yok der).
+  useEffect(() => {
+    if (!closed) return
+    clearSession(code)
+    clearRejoinToken(code)
+  }, [closed, code])
+
+  if (closed) return <p className="card">Lobi kapandı (2 saat doldu, uzun süre hareket yoktu ya da iki oyuncu da ayrıldı).</p>
   if (!lobby || !champions) {
     return <p className="muted">{status === 'failed' ? 'Lobiye bağlanılamadı. Sayfayı yenile.' : 'Bağlanıyor…'}</p>
   }

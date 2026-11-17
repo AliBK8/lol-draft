@@ -18,6 +18,8 @@ internal static class LobbyEndpoints
     {
         app.MapPost("/api/lobbies", Create);
         app.MapPost("/api/lobbies/{code}/join", Join);
+        // Token istemez: token'ı kaybeden oyuncu içindir; kimliği koltuk anahtarı kanıtlar.
+        app.MapPost("/api/lobbies/{code}/rejoin", Rejoin);
         // Token yoksa ya da geçersizse 401 (GuestAuthenticationHandler); API gateway'e güvenir ama kendisi de doğrular.
         app.MapGet("/api/lobbies/{code}", Get)
             .RequireAuthorization(policy => policy
@@ -46,6 +48,16 @@ internal static class LobbyEndpoints
         return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
     }
 
+    private static async Task<IResult> Rejoin(string code, RejoinRequest request, RejoinLobby rejoinLobby, CancellationToken ct)
+    {
+        var lobbyCode = LobbyCode.Create(code);
+        if (lobbyCode.IsFailure)
+            return Failure(LobbyErrors.NotFound);
+
+        var ticket = await rejoinLobby.Handle(lobbyCode.Value, request.RejoinToken, ct);
+        return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
+    }
+
     private static async Task<IResult> Get(string code, ClaimsPrincipal user, GetLobby getLobby, CancellationToken ct)
     {
         var identity = GuestAuthenticationHandler.IdentityOf(user);
@@ -67,10 +79,12 @@ internal static class LobbyEndpoints
 
     internal sealed record CreateLobbyRequest(string? Format, bool Fearless);
 
-    internal sealed record TicketResponse(string Code, string Seat, string Token)
+    internal sealed record RejoinRequest(string? RejoinToken);
+
+    internal sealed record TicketResponse(string Code, string Seat, string Token, string RejoinToken)
     {
         public static TicketResponse Of(LobbyTicket ticket) =>
-            new(ticket.Identity.Lobby.Value, ticket.Identity.Seat.ToString(), ticket.Token);
+            new(ticket.Identity.Lobby.Value, ticket.Identity.Seat.ToString(), ticket.Token, ticket.RejoinToken);
     }
 
     /// <summary>İsteyenin koltuğu + hub'ın LobbyUpdated olayıyla aynı biçimde lobi durumu.</summary>

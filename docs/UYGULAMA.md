@@ -166,7 +166,7 @@ Kalan: rejoin (ertelendi). Yedekleme (SQLite `.backup` cron'u) Docker adımında
 | SPA yönlendirmesi | `WebClient.IsClientRoute` | Rota eşleşmediyse ve yol GET/HEAD, uzantısız, `/api` ve `/hubs` dışı ise `index.html`. Catch-all fallback **rotası** denendi, reddedildi: aday rota olarak 405'i bozuyordu (`GET /api/lobbies` 404 oluyordu). Beyaz liste korunur: listede olmayan `/api/...` 404 kalır, HTML dönmez; olmayan `app.js` da 404 (HTML'i script diye yüklemez). |
 | Şampiyon portreleri | `web/scripts/fetch-champion-icons.mjs` → `web/public/champions/{id}.png` | Data Dragon'dan bir kez (`npm run icons`), repoda (40 × ~30 KB). Kimlik ↔ Riot anahtarı ada göre eşlenir; eşleşmeyen varsa betik durur. Kaynak sürüm `SOURCE.txt`'de (şu an 16.22.1). Sayfa altında Riot'un fan projesi notu (`Layout.tsx`). Karar §1. |
 | İstemci yığını | `web/` | Vite 8 + React 19 + TypeScript 7, `react-router-dom`, `@microsoft/signalr` (5b). Stil düz CSS (`index.css`); Tailwind sonradan eklenebilir, mevcut stili bozmaz. Build satır içi script üretmez: CSP `script-src 'self'` değişmedi. |
-| Token | `web/src/session.ts` | Lobi koduna göre `sessionStorage`: yenilenen sekme aynı koltuğa döner, sekme kapanınca silinir (localStorage'da iki sekme aynı koltuğu açardı). 401/404'te silinir. Rejoin hâlâ yok. |
+| Token | `web/src/session.ts` | Lobi koduna göre `sessionStorage`: yenilenen sekme aynı koltuğa döner, sekme kapanınca silinir (localStorage'da iki sekme aynı koltuğu açardı). 401/404'te silinir. Rejoin sonradan geldi (§8.24). |
 | Hata gösterimi | `web/src/api/http.ts` | Gövde `{error, message}` ise sunucunun Türkçe mesajı; gövdesizse (gateway 429) duruma göre Türkçe metin. |
 | Geliştirme | `web/vite.config.ts`, `src/LolDraft.Api/appsettings.json` | Proxy gateway'e (API sır başlığı olmadan istek kabul etmez). EF'in SQL komut logları `Warning`'e çekildi (her tikte gürültü yapıyordu). |
 | Windows tuzağı | `web/scripts/vitest.mjs` | Terminal küçük harfli sürücüyle (`c:\`, VS Code varsayılanı) açılınca Vitest kendi modülünü `c:/`, testleri `C:/` yolundan yükler; testler "reading 'config'" ile düşer. `npm test` Vitest'i büyük harfli dizinle başlatır. |
@@ -291,3 +291,27 @@ Yol §8.22'yle aynı (taslak geçici havuzda ölçülür, onaydan sonra yazılı
 Doğrulama: .NET Domain 102, Engine 186, Api 82, Gateway 50; web lint + 31 test + build; `--check` 2 bilinçli uyarı (Kayle, Nilah). Denge DENGE.md parti 2.
 
 Kalan: Locke, Zaahen, Yunara (kit bilgisiyle); bant dışındakiler için denge turu (DENGE.md parti 2 sonu).
+
+### 8.24 Uygulama: koltuğa geri dönme (rejoin) ve 2 saatlik lobi ömrü
+
+**Sorun:** token sekmeye bağlı (`sessionStorage`). Sekmeyi kapatıp linki yeniden açan oyuncu "Katıl" görüyordu, katılmak `lobby_full` alıyordu ve 2 dk sonra seri hükmen gidiyordu.
+
+**Akış (adım adım):**
+1. Lobi açılınca ya da katılınca bilet bir koltuk anahtarı taşır: `{code, seat, token, rejoinToken}`. Anahtar 32 bayt CSPRNG, base64url 43 karakter. Lobi sadece SHA-256 özetini tutar (`RejoinKey`).
+2. İstemci token'ı `sessionStorage`'a, anahtarı yazıldığı anla birlikte `localStorage`'a yazar.
+3. Oyuncu linki yeniden açar: sekmede token yok, anahtar var → `POST /api/lobbies/{code}/rejoin { rejoinToken }`.
+4. Lobinin kilidi altında özet eşleşir → anahtar yenisiyle değişir → aynı `PlayerId` ve koltuk için yeni JWT + yeni anahtar. İstemci ikisini yazar, hub'a bağlanır (bağlanınca "yok" sayacı durur).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Lobi ömrü | `Domain/Lobby.cs` (`MaxLifetime`, `CreatedAt`) | Açılıştan 2 saat sonra kapanır, hamle sayacı sıfırlamaz (hareketsizlik kapanışından farkı). Mevcut kapanış yolu: depodan silinir, `LobbyClosed`. Oynanmış maçlar SQLite'ta, `/m/{id}` çalışır. JWT de 2 saat: lobi içinde hiç dolmaz, token yenileme gerekmez. Kapanış metni sebebi söyler. |
+| Anahtar özeti | `Domain/RejoinKey.cs` | Domain kriptografi bilmez: opak, karşılaştırılan değer. `ToString` özeti yazmaz (log/hata mesajı). |
+| Anahtarın verilmesi | `Lobby.AssignRejoinKey` | `Create`/`Join` imzası değişmedi (19 test çağrısı); Application oturtmayla aynı kilit içinde, hemen ardından çağırır. Açan için depoya eklenmeden önce. Yeni anahtar eskisini geçersiz kılar. |
+| Eşleşme | `Lobby.Rejoin` | Tek kullanımlık: kullanılan anahtar yenisiyle değişir. Görünür durum değişmez (sürüm artmaz), hareketsizlik sayacı sıfırlanır. Yanlış anahtar hiçbir şeyi değiştirmez. |
+| Üretim ve özet | `Application/Lobbies/RejoinSecrets.cs` | SHA-256, tuzsuz ve hızlı: anahtar rastgele 256 bit, sözlük ya da kaba kuvvet yok. Biçimi bozuk anahtar (43 karakter base64url değil) özetlenmeden reddedilir. |
+| Uç nokta | `Api/Lobbies/LobbyEndpoints.cs` | Token istemez (token'ı kaybeden içindir). Anahtar gövdede (URL'de olsa loglara düşerdi). Hata: yanlış, kullanılmış, başka lobinin ya da bozuk anahtar 403 `rejoin_rejected`; lobi yok 404. Ayrı kod bilgi sızdırmaz: lobi kodu zaten gizli, kodu bilen "katıl" ile varlığını öğrenebilir. |
+| Gateway | `appsettings.json` `lobby-rejoin` | Rota önceden hazırdı: JWT istemez, katılmayla aynı hız sınırı (dakikada 10). Gövde loglanmaz. |
+| İstemci | `web/src/session.ts`, `pages/LobbyPage.tsx` | Token yok + anahtar var → kendiliğinden geri dönüş ("Koltuğuna dönülüyor…"). StrictMode efekti iki kez çalıştırır: ikinci istek kullanılmış anahtarı yollar ve anahtar silinirdi; `ref` ile bir kez. Sunucu reddederse (`rejoin_rejected`, `lobby_not_found`) anahtar silinir, "Katıl"a döner; ağ hatasında anahtar kalır, düğme "Koltuğuna dön" (tekrar dene). 2 saatten eski anahtar okunmaz ve her kayıtta temizlenir (localStorage'da birikmez). Lobi kapanınca ikisi de silinir. |
+| Eski token | — | Geri dönüşte eski JWT süresi dolana kadar geçerli (karar): iki sekme aynı koltukta zaten destekleniyor (bağlantı sayımı). |
+
+Doğrulama: Domain 110 (+1 ömür, +7 rejoin), Api 92 (+10: anahtar biçimi ve ayrılığı, aynı oyuncu/koltuk, eski token geçerli, tek kullanımlık, başka lobinin/uydurma/bozuk/boş anahtar, olmayan lobi), Gateway 51 (+1 uçtan uca: tokensiz rejoin, yeni token gateway'den geçer), Engine 186; web 35 (+4: sekme kapanınca kalır, yenisi yazılır, 2 saat, bozuk kayıt) + lint + build. Tarayıcıda elle deneme yapılmadı.

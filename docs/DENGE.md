@@ -239,3 +239,17 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 - Taslak ölçümle düzeltildi (geçici havuz; 30.000 draft ±2,0, sonra 60.000 draft ±1,2): Ambessa orta 8 → 7 (%56,1 → %52,0; güç toplamı 22, etiketleri geniş) · Hwei `aoe` 2 → 1 (%55,9 → %53,9; ulti toplu hasar ama Brand seviyesinde değil) · Yorick `pick` 1 → 2 (%43,7 → %45,5; W kafesi) · Bel'Veth `split` 2 → 1 (`--check`: sadece orman, K12 top/mid'de). Kullanıcı: Olaf geç 5 → 6, Nasus erken 3 → 4, Warwick geç 5 → 6, Pantheon erken 9 → 8. K13 +1: Yuumi + Zeri → 18.
 - 170'lik havuzda şampiyon başına maç azaldı: 30.000 draft'ta hata payı ±2,0; artık ölçüm **60.000 draft** (±1,0-1,4).
 - **Son ölçüm (170'lik havuz, 60.000 draft):** Mavi %50,1, süre 29,3, kill 25,0. Kimlikler: Engage %54,0 · Poke %50,4 · Pick %49,4 · Koruma %50,9 · Dive %49,6 · Split %47,2 (şimdiye kadarki en sıkı). Erken comp %49,7 / 35'ten önce %32,4 ✓, scale comp kurtarıyor %32,7 ✓, kural farkı 10 %64,3, 12 %67,7. K13 objektiflerde %2,9 maçta (havuz büyüdükçe ikililer seyrekleşiyor). Kullanıcı değişiklikleri: Warwick %50,8, Olaf %50,1, Nasus %48,8, Pantheon %47,3. Bant dışı: Thresh %56,4, Orianna %56,3, Ornn %55,8 · Fiddlesticks %44,9, Vladimir %44,7, **Bel'Veth %43,5** (taslakta %44,9), Draven %42,9, Pyke %41,3 (son ikisi bilinçli). Sonraki denge turu adayları: Thresh/Orianna/Ornn ve Bel'Veth/Vladimir/Fiddlesticks.
+
+**Faz H denge turu (170'lik havuz, 60.000 draft, ±1,0-1,4)**
+- Yöntem: bant dışındaki her şampiyona oyun bilgisine dayanan tek değişiklik, hepsi birlikte geçici havuzda ölçüldü (`--champions`); kullanıcı onayından sonra `champions.json`'a yazıldı. Gerçek havuzdaki ölçüm geçici havuzdakiyle bayt bayt aynı (seed'li motor).
+
+  | Şampiyon | Değişiklik | Önce → sonra | Neden |
+  |---|---|---|---|
+  | Thresh | `en` 2 → 1 | %56,4 → %54,0 | kancası `pick` 3'te; takımı açan engage'i yok |
+  | Orianna | `pick` 1 → 0 | %56,3 → %53,9 | her etiketten biraz almıştı; tek kişiyi yakalayan aracı yok |
+  | Ornn | `dive` 1 → 0 | %55,8 → %54,4 | ön saf tank, arka hatta atlamaz |
+  | Fiddlesticks | `aoe` 2 → 3 | %44,9 → %46,4 | flash + ulti savaşı tek başına çevirir (Karthus/Brand sınıfı) |
+  | Vladimir | erken 3 → 4 | %44,7 → %46,0 | etiket (`aoe` 3) yetmedi; lane'de 3 fazla zayıftı |
+  | Bel'Veth | orta 7 → 8, `aoe` 1 → 2 | %43,5 → %45,7 | objektif kontrolü (void) modelde yok; sadece orta güç %44,8'de bıraktı, E + ulti formu toplu hasar |
+
+- Sonrası: Mavi %50,0, süre 29,3, Engage %53,8 · Poke %50,5 · Pick %49,3 · Koruma %50,8 · Dive %49,4 · Split %47,3, erken comp %49,5 / 35'ten önce %32,2 ✓, scale comp kurtarıyor %32,6 ✓, kural farkı 10 %64,6, 12 %67,0. Kenarda, hata payından az: Alistar %55,1, Lucian %44,9 (önceki ölçümde %53,9 / ~%45; gürültü, dokunulmadı). Bilinçli: Draven %43,0, Pyke %41,6. Bandın dışında başka şampiyon yok.

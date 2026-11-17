@@ -39,11 +39,15 @@ public sealed class CreateLobby(
         if (lobby.IsFailure)
             return Result<LobbyTicket>.Fail(lobby.Error!);
 
+        // Koltuk anahtarı depoya eklenmeden önce: lobi görünür olduğunda açanın koltuğu anahtarsız değil.
+        var (rejoinToken, rejoinKey) = RejoinSecrets.New(random);
+        lobby.Value.AssignRejoinKey(host, rejoinKey);
+
         var added = await lobbies.TryAdd(lobby.Value, client, MaxOpenLobbiesPerClient, capacity.MaxOpenLobbies, ct);
         if (added != LobbyAddResult.Added)
             return Result<LobbyTicket>.Fail(added == LobbyAddResult.ServerFull ? ServerBusy : TooManyLobbies);
 
         var identity = new GuestIdentity(host, code, TeamSlot.A);
-        return Result<LobbyTicket>.Ok(new LobbyTicket(identity, tokens.Issue(identity)));
+        return Result<LobbyTicket>.Ok(new LobbyTicket(identity, tokens.Issue(identity), rejoinToken));
     }
 }

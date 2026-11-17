@@ -7,11 +7,12 @@ export type Role = 'top' | 'jungle' | 'mid' | 'bot' | 'support'
 
 export const ROLES: readonly Role[] = ['top', 'jungle', 'mid', 'bot', 'support']
 
-/** POST /api/lobbies ve /join cevabı: koltuk + misafir token'ı (2 saat). */
+/** POST /api/lobbies, /join ve /rejoin cevabı: koltuk + misafir token'ı (2 saat) + koltuk anahtarı (tek kullanımlık). */
 export interface Ticket {
   code: string
   seat: Seat
   token: string
+  rejoinToken: string
 }
 
 /** GET /api/champions: istemcinin bildiği her şey (gizli motor sayıları yok, §0). */

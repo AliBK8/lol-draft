@@ -168,6 +168,21 @@ public sealed class LobbyPresenceTests
         Assert.NotEqual(LobbyTick.Closed, Tick(lobby, T0 + Lobby.IdleCloseAfter));
     }
 
+    // Hareket olsa da açılıştan 2 saat sonra kapanır: her 20 dk'da bir hamle hareketsizlik sayacını sıfırlar
+    // ama ömür sayacını değil.
+    [Fact]
+    public void Aktif_lobi_de_acilistan_2_saat_sonra_kapanir()
+    {
+        var lobby = FullLobby();
+        lobby.Connect(_host, T0);
+        lobby.Connect(_guest, T0);
+        for (var at = T0 + Minutes(20); at < T0 + Lobby.MaxLifetime; at += Minutes(20))
+            lobby.Connect(_host, at);
+
+        Assert.NotEqual(LobbyTick.Closed, Tick(lobby, T0 + (Lobby.MaxLifetime - Seconds(1))));
+        Assert.Equal(LobbyTick.Closed, Tick(lobby, T0 + Lobby.MaxLifetime));
+    }
+
     // --- Seri ---
 
     [Fact]
@@ -205,6 +220,8 @@ public sealed class LobbyPresenceTests
     private static LobbyTick Tick(Lobby lobby, Instant now) => lobby.Advance(now, Random);
 
     private static TimeSpan Seconds(int value) => TimeSpan.FromSeconds(value);
+
+    private static TimeSpan Minutes(int value) => TimeSpan.FromMinutes(value);
 
     private static ActionId NewAction() => ActionId.Create(Guid.NewGuid()).Value;
 

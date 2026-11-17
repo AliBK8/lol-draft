@@ -14,6 +14,7 @@ internal static class ApiErrors
         [LobbyErrors.NotInLobby.Code] = StatusCodes.Status403Forbidden,
         [LobbyErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [LobbyErrors.Full.Code] = StatusCodes.Status409Conflict,
+        [LobbyErrors.RejoinRejected.Code] = StatusCodes.Status403Forbidden,
         [CreateLobby.TooManyLobbies.Code] = StatusCodes.Status429TooManyRequests,
         [CreateLobby.ServerBusy.Code] = StatusCodes.Status503ServiceUnavailable,
         [MatchErrors.NotFound.Code] = StatusCodes.Status404NotFound,

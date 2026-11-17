@@ -45,6 +45,22 @@ public sealed class LobbyFlowTests : IDisposable
         }
     }
 
+    // Token'ını kaybeden oyuncu: rejoin rotası token istemez (koltuk anahtarı kanıtlar); gelen yeni token gateway'den geçer.
+    [Fact]
+    public async Task Koltuk_anahtariyla_tokensiz_geri_donulur_ve_yeni_token_gecer()
+    {
+        var created = await _client.PostAsJsonAsync("/api/lobbies", new { format = "bo1", fearless = false });
+        var host = (await created.Content.ReadFromJsonAsync<Ticket>())!;
+
+        var rejoined = await _client.PostAsJsonAsync($"/api/lobbies/{host.Code}/rejoin", new { rejoinToken = host.RejoinToken });
+        Assert.Equal(HttpStatusCode.OK, rejoined.StatusCode);
+        var back = (await rejoined.Content.ReadFromJsonAsync<Ticket>())!;
+
+        var response = await Get(host.Code, back.Token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("A", (await response.Content.ReadFromJsonAsync<LobbyResponse>())!.YourSeat);
+    }
+
     [Fact]
     public async Task Tokensiz_lobi_istegi_gatewayde_durur()
     {
@@ -189,7 +205,7 @@ public sealed class LobbyFlowTests : IDisposable
         return _client.SendAsync(request);
     }
 
-    private sealed record Ticket(string Code, string Seat, string Token);
+    private sealed record Ticket(string Code, string Seat, string Token, string RejoinToken);
 
     private sealed record LobbyResponse(string YourSeat, LobbyState Lobby);
 

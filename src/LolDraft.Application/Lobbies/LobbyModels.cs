@@ -5,8 +5,11 @@ namespace LolDraft.Application.Lobbies;
 /// <summary>Token'ın taşıdığı kimlik: kim, hangi lobide, hangi koltukta.</summary>
 public sealed record GuestIdentity(PlayerId Player, LobbyCode Lobby, TeamSlot Seat);
 
-/// <summary>Lobiye giren oyuncuya verilen bilet: kimliği ve onu kanıtlayan token.</summary>
-public sealed record LobbyTicket(GuestIdentity Identity, string Token);
+/// <summary>
+/// Lobiye giren oyuncuya verilen bilet: kimliği, onu kanıtlayan token ve koltuk anahtarı
+/// (sekme kapanınca koltuğu geri almak için, tek kullanımlık; <see cref="RejoinLobby"/>).
+/// </summary>
+public sealed record LobbyTicket(GuestIdentity Identity, string Token, string RejoinToken);
 
 /// <summary>
 /// Lobinin o anki görüntüsü: iki oyuncuya da aynısı gider (kimin hangi koltukta olduğu token'da).

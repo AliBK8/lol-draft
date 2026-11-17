@@ -25,6 +25,7 @@ builder.Services.AddInfrastructure(settings.JwtSigningKey, settings.MatchStorage
 builder.Services.AddSingleton(LobbyCapacity.Default);
 builder.Services.AddSingleton<CreateLobby>();
 builder.Services.AddSingleton<JoinLobby>();
+builder.Services.AddSingleton<RejoinLobby>();
 builder.Services.AddSingleton<GetLobby>();
 builder.Services.AddSingleton<LobbyCommands>();
 builder.Services.AddSingleton<AdvanceLobbies>();

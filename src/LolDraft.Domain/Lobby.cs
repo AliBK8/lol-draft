@@ -19,6 +19,12 @@ public sealed class Lobby
     /// <summary>Bu kadar hareketsiz kalan lobi kapanır, bağlı oyuncu olsa da (DESIGN.md §8.6).</summary>
     public static readonly TimeSpan IdleCloseAfter = TimeSpan.FromMinutes(30);
 
+    /// <summary>
+    /// Lobinin en uzun ömrü: açılıştan bu kadar sonra kapanır, oyun sürse de (karar 2026-11-17; 2 saatte ~20 maç
+    /// oynanır, bo5'e fazlasıyla yeter). Misafir JWT'si de 2 saat: lobi token'dan önce kapanır, token lobi içinde dolmaz.
+    /// </summary>
+    public static readonly TimeSpan MaxLifetime = TimeSpan.FromHours(2);
+
     // Son 64 hamle kimliği hatırlanır: çift tıklama milisaniyeler içinde gelir, bir draft ~30 hamle.
     private const int RecentActionCapacity = 64;
 
@@ -32,12 +38,16 @@ public sealed class Lobby
     private readonly Dictionary<TeamSlot, int> _connections = [];
     private readonly Dictionary<TeamSlot, Instant> _absentSince = [];
 
+    // Koltuk anahtarlarının özeti (rejoin): her koltukta en fazla bir geçerli anahtar, kullanılınca yenisiyle değişir.
+    private readonly Dictionary<TeamSlot, RejoinKey> _rejoinKeys = [];
+
     private Lobby(LobbyCode code, Series series, PlayerId host, Instant now)
     {
         Code = code;
         Series = series;
         Seat(TeamSlot.A, host, now);
         LastActivity = now;
+        CreatedAt = now;
     }
 
     /// <summary>
@@ -59,6 +69,9 @@ public sealed class Lobby
     public Series Series { get; }
 
     public bool IsFull => _seats.Count == Enum.GetValues<TeamSlot>().Length;
+
+    /// <summary>Lobinin açıldığı an (<see cref="MaxLifetime"/> buna bakar; hamleler bunu değiştirmez).</summary>
+    public Instant CreatedAt { get; }
 
     /// <summary>Son hamle, katılma, bağlanma ya da kopma anı (hareketsizlik kapanışı buna bakar).</summary>
     public Instant LastActivity { get; private set; }
@@ -110,6 +123,39 @@ public sealed class Lobby
         }
 
         return Result<TeamSlot>.Fail(LobbyErrors.Full);
+    }
+
+    /// <summary>
+    /// Oturan oyuncunun koltuk anahtarını (özetini) kaydeder. Application oturtmayla aynı kilit içinde, hemen ardından
+    /// çağırır: dışarıdan bakan anahtarsız koltuk görmez. Önceki anahtar varsa geçersiz olur.
+    /// </summary>
+    public Result AssignRejoinKey(PlayerId player, RejoinKey key)
+    {
+        if (SeatOf(player) is not { } seat)
+            return Result.Fail(LobbyErrors.NotInLobby);
+
+        _rejoinKeys[seat] = key;
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Koltuk anahtarıyla koltuğu geri verir: eşleşen koltuğun oyuncusu döner (yeni token aynı oyuncuya verilir).
+    /// Anahtar tek kullanımlıktır: <paramref name="next"/> eskisinin yerine geçer, aynı anahtar ikinci kez çalışmaz.
+    /// Görünür durum değişmez (bağlanınca değişir); bu yüzden sürüm artmaz.
+    /// </summary>
+    public Result<(PlayerId Player, TeamSlot Seat)> Rejoin(RejoinKey presented, RejoinKey next, Instant now)
+    {
+        foreach (var (seat, key) in _rejoinKeys)
+        {
+            if (key != presented)
+                continue;
+
+            _rejoinKeys[seat] = next;
+            LastActivity = now;
+            return Result<(PlayerId, TeamSlot)>.Ok((_seats[seat], seat));
+        }
+
+        return Result<(PlayerId, TeamSlot)>.Fail(LobbyErrors.RejoinRejected);
     }
 
     /// <summary>Oyuncunun bir bağlantısı açıldı (hub). Birden fazla sekme ayrı ayrı sayılır.</summary>
@@ -224,7 +270,7 @@ public sealed class Lobby
 
     private bool ShouldClose(Instant now)
     {
-        if (now >= LastActivity + IdleCloseAfter)
+        if (now >= CreatedAt + MaxLifetime || now >= LastActivity + IdleCloseAfter)
             return true;
 
         // Kimse bağlı değil: en son çıkan da 5 dk'dır yok.

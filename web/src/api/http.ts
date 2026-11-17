@@ -52,6 +52,14 @@ export const api = {
   joinLobby: (code: string) =>
     request<Ticket>(`/api/lobbies/${encodeURIComponent(code)}/join`, { method: 'POST' }),
 
+  // Token yok, koltuk anahtarı var: aynı koltuğu geri al (§8.24). Anahtar gövdede (URL'de olsa loglara düşerdi).
+  rejoinLobby: (code: string, rejoinToken: string) =>
+    request<Ticket>(`/api/lobbies/${encodeURIComponent(code)}/rejoin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rejoinToken }),
+    }),
+
   getLobby: (code: string, token: string) =>
     request<LobbyResponse>(`/api/lobbies/${encodeURIComponent(code)}`, {
       headers: { Authorization: `Bearer ${token}` },
