@@ -43,7 +43,7 @@ public sealed class CatchTests
         for (var seed = 0u; seed < MatchCount; seed++)
         {
             var result = simulator.Simulate(TestTeams.Match(seed));
-            foreach (var kill in result.Events.OfType<KillEvent>().Where(k => k.Text.Contains("yakalandı") && k.Side == TeamSide.Red))
+            foreach (var kill in result.Events.OfType<KillEvent>().Where(k => IsCatch(k) && k.Side == TeamSide.Red))
                 killers[kill.KillerId] = killers.GetValueOrDefault(kill.KillerId) + 1;
         }
 
@@ -64,7 +64,7 @@ public sealed class CatchTests
                 var result = simulator.Simulate(input);
                 var objectiveMinutes = result.Events.OfType<ObjectiveEvent>().Select(o => (int)(o.T / 60)).ToHashSet();
 
-                foreach (var kill in result.Events.OfType<KillEvent>().Where(k => k.Text.Contains("yakalandı")))
+                foreach (var kill in result.Events.OfType<KillEvent>().Where(IsCatch))
                 {
                     catches++;
                     var minute = (int)(kill.T / 60);
@@ -85,4 +85,43 @@ public sealed class CatchTests
         Assert.True(catches > 300, $"Sadece {catches} yakalanma");
         Assert.True(victimAhead >= 0.95 * catches, $"{victimAhead}/{catches} yakalanmada kurbanın takımı önde");
     }
+
+    [Theory]
+    [InlineData(0, 0.0)]
+    [InlineData(-3, 0.0)]
+    [InlineData(5, 0.2)]
+    [InlineData(9, 0.25)]   // tavan
+    public void Objektif_oncesi_yakalama_pick_farkiyla_artar(int pickDifference, double expected)
+    {
+        Assert.Equal(expected, MatchRun.PreObjectiveCatchChance(pickDifference), 9);
+    }
+
+    // Objektif öncesi yakalama: bir objektif savaşından 8-25 sn önce, pick'i fazla olan taraf yapar (test takımlarında
+    // Mavi: erken comp pick 9). Eşit takımlarda pick 0: hiç olmaz. Yakalanan savaş anında ölü: savaşa girmez.
+    [Fact]
+    public void Objektif_oncesi_yakalama_savastan_once_ve_pick_ustun_tarafa()
+    {
+        var simulator = MatchEngine.CreateSimulator();
+        var count = 0;
+        for (var seed = 0u; seed < MatchCount; seed++)
+        {
+            Assert.DoesNotContain(simulator.Simulate(TestTeams.Even(seed)).Events.OfType<KillEvent>(), IsPreObjectiveCatch);
+
+            var result = simulator.Simulate(TestTeams.Match(seed));
+            var fights = result.Events.OfType<ObjectiveEvent>().Select(o => o.T).ToList();
+            foreach (var kill in result.Events.OfType<KillEvent>().Where(IsPreObjectiveCatch))
+            {
+                Assert.Equal(TeamSide.Blue, kill.Side);
+                Assert.Contains(fights, f => f - kill.T is >= 8 and <= 25);
+                count++;
+            }
+        }
+
+        Assert.True(count > 100, $"Sadece {count} objektif öncesi yakalama");
+    }
+
+    // İki tür yakalama metinle ayrılır: objektif öncesi "... öncesi pusu: ... yakalandı", diğeri sadece "yakalandı".
+    private static bool IsPreObjectiveCatch(KillEvent kill) => kill.Text.Contains("öncesi pusu");
+
+    private static bool IsCatch(KillEvent kill) => kill.Text.Contains("yakalandı") && !IsPreObjectiveCatch(kill);
 }

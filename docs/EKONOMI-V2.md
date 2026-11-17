@@ -154,6 +154,7 @@ p_Mavi = clamp(1 / (1 + e^(−d / bölen)), 0,1, 0,9)        bölen: takım sava
 - Bugünkü `0,2 × toplam puan` ve ayrıca eklenen `sinerji farkı` kalkar (sinerji iki kez sayılıyordu, §9). Üstünlük altın üzerinden `ΣG_eff`'e girer.
 - **Buff'lar (uygulandı):** ejder ruhu kalıcı d +2 · Baron buff'ı 3 dk kuşatma d +4 ve kuşatma eşiği yarıya · Elder buff'ı 2 dk tüm takım savaşlarında (objektif, kuşatma, son savaş) d +6. Buff takıma aittir (ölen üye kaybetmez; sadeleştirme).
 - **Geri dönüş:** ayrı ×1,25 çarpanı kalktı (uygulandı); yerini ödül (16.4) aldı: geride olan kazandığında önde olanları öldürür, ödül toplar.
+- **Katılımcılar (faz H3, kullanıcı kararı):** savaşta sadece o an yaşayanlar var; ölüler ve split'tekiler ne güçleriyle ne etiketleriyle savaşa girer (eskiden takım savaşında ölüler de sayılıyordu; çatışma zaten sadece gelenlere bakıyordu). Objektiften hemen önce ölen savaşı 5'e 4 yapar (16.9 objektif öncesi yakalama).
 
 ### 16.8 Kurallar (ilk set: 13 kural)
 Her kuralın adı, koşulu, etkili olduğu yer, ağırlığı ve karne metni var. Ağırlıklar JSON'da (kod değişmeden ayar), kurallar C#'ta test edilebilir küçük parçalar.
@@ -232,6 +233,13 @@ Bugünkü sinerji kuralları (frontline, engage, AP dengesi, kombo) K5, K10, K11
 - Önde olan için risk, geride olan için umut; son savaştan önce farkın kapanmasını sağlayan mekaniklerden.
 - Uygulama (`MatchRun.Pick.cs`): formül yukarıdaki gibi (adım 8'den beri `pick` ve `mob` gerçek). Katil: rakibin müsait oyuncuları içinde en yüksek `pick`'li; eşitlikte nehre yakınlık sırası (ormancı, support, mid, adc, top).
 - Ölçüm (5.000 maç, yakalanmalı / yakalanmasız): maç başı 0,6 yakalanma, ortalama ödül ~680. Eşit draft'ta 15. dk 5.000+ önde olan %79,4 / %81,3, erken vs scale'de %73,4 / %74,9 kazanıyor; büyük farkta ~2 puan geri dönüş.
+
+**Objektif öncesi yakalama (faz H3, kullanıcıyla; draft gücü, geri dönüş kapısı değil):** pick comp'un gerçek yolu "objektiften önce birini yakala, 5'e 4 savaş". Yukarıdaki yakalanma önde/geride farkına bakar; bu draft'a bakar.
+- Her objektif savaşından (ejder, Herald, Baron, Elder, son savaş) **8-25 sn önce rastgele bir anda**, `pick` toplamı fazla olan takım bir deneme yapar: `p = min(%4 × pick farkı, %25)`.
+- Kurban: rakibin koridorundakilerden (ölü/savaşta değil) rastgele biri; kaçma `0,2 + 0,1 × mob`. Katil: pick'i en yüksek müsait oyuncu (eşitlikte nehre yakınlık). Normal kill (altın, ödül, respawn).
+- Yeniden doğma 20-45 sn: yakalanan savaşa yetişmez, savaş 5'e 4 (16.7 katılımcılar). Log: "Baron öncesi pusu: Jinx alt koridorda yakalandı, kill Blitzcrank aldı".
+- Örnek: pick 9 vs 4 → %20; Baron'dan 15 sn önce adc yakalanırsa Baron savaşı 5'e 4.
+- Uygulama: `MatchRun.Pick.cs` (`PlayPreObjectiveCatch`), saniye `ScheduleObjective`'de seçilir. Ölçüm DENGE.md faz H3.
 
 ### 16.10 Kuşatma ve maç sonu
 - Şart: dk ≥ 16, o dakika objektif yok, **takım altın farkı ≥ eşik** (16. dk 7.000, dakikada −750, 20. dk'dan sonra 4.000; Baron buff'ı varken yarısı), en az bir koridorda dış ve iç kule yıkılmış, son kuşatmadan ≥ 3 dk. (Faz D: eskiden dk ≥ 20 ve sabit 4.000; önde olanlar birikip maçların %12'si tam 20. dk'da bitiyordu.)

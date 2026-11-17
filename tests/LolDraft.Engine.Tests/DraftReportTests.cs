@@ -9,10 +9,12 @@ public sealed class DraftReportTests
 {
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
-    // Leona + Draven kombosu her objektif ve son savaşta işler (K13 Mavi +2); karnede savaş sayısı kadar, Mavi lehine.
+    // Leona + Draven kombosu ikisi de yaşarken her objektif ve son savaşta işler (K13 Mavi +2), Mavi lehine.
+    // Savaşa sadece yaşayanlar girer (faz H3): biri ölüyse o savaşta kombo yok; yine de savaşların çoğunda var.
     [Fact]
     public void Kombo_her_objektif_savasinda_sayilir_ve_mavinin_lehine()
     {
+        var (allFights, allCombos) = (0, 0);
         for (var seed = 0u; seed < 50; seed++)
         {
             var result = _simulator.Simulate(TestTeams.Match(seed));
@@ -21,11 +23,14 @@ public sealed class DraftReportTests
                 .Where(r => r.Text == "Kombo: Leona + Draven" && r.Context is RuleContext.Objective or RuleContext.FinalFight)
                 .ToList();
 
-            Assert.Equal(fights, combo.Sum(r => r.Count));
+            Assert.InRange(combo.Sum(r => r.Count), 0, fights);
+            (allFights, allCombos) = (allFights + fights, allCombos + combo.Sum(r => r.Count));
             Assert.All(combo, r => Assert.Equal((TeamSide.Blue, "K13"), (r.Side, r.Rule)));
             // d +2 → kazanma şansı birkaç puan; %10/%90 sınırına yakın savaşta etki küçülür (sıfıra iner).
             Assert.All(combo, r => Assert.InRange(r.Impact, 0, 10));
         }
+
+        Assert.True(allCombos > 0.8 * allFights, $"kombo {allCombos} / {allFights} savaş");
     }
 
     // Koridor kuralının etkisi altın: eşit draft'ta Mavi üst range (karşısı mesafe kapatamayan melee) → K1 Mavi lehine

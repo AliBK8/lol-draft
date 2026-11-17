@@ -64,20 +64,12 @@ public sealed class LobbyEndpointsTests : IDisposable
     [InlineData("bo1", true)]
     [InlineData("bo3", true)]
     [InlineData("bo5", false)]
+    [InlineData("bo5", true)]   // 80'lik havuz: son maçtan önce 40 kilit, 40 kalır (≥ 20); 40'lık havuzda sığmıyordu
     public async Task Havuza_sigan_seri_ayarlariyla_lobi_acilir(string format, bool fearless)
     {
         var response = await PostCreate(format, fearless);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Fearless_bo5_40lik_havuza_sigmaz_lobi_acilmaz()
-    {
-        var response = await PostCreate("bo5", fearless: true);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("pool_too_small", await ErrorCode(response));
     }
 
     [Theory]

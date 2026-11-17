@@ -34,11 +34,17 @@ internal sealed partial class MatchRun
     private readonly int[] _dragons = new int[2];
     private TeamSide? _soul;
 
-    // Bu dakika objektif varsa 30. saniyeye kaydolur.
+    // Bu dakika objektif varsa 30. saniyeye kaydolur; ondan 8-25 sn önce objektif öncesi yakalama (MatchRun.Pick.cs).
+    // Zar sırası: yakalamanın saniyesi kayıtta.
     private void ScheduleObjective(int minute)
     {
-        if (_objectiveAt.TryGetValue(minute, out var objective))
-            At((minute - 1) * 60 + ObjectiveSecond, () => PlayObjective(minute, objective));
+        if (!_objectiveAt.TryGetValue(minute, out var objective))
+            return;
+
+        var fightT = (minute - 1) * 60 + ObjectiveSecond;
+        var catchT = fightT - PreCatchLeadSeconds(_rng.NextDouble());
+        At(catchT, () => PlayPreObjectiveCatch(catchT, objective));
+        At(fightT, () => PlayObjective(minute, objective));
     }
 
     // Objektifi ileri bir dakikaya planlar. O dakika doluysa bir sonrakine kayar; son savaşa (ve sonrasına) düşerse çıkmaz.
@@ -141,15 +147,16 @@ internal sealed partial class MatchRun
     // Bölen 15 eğrinin dikliği: d = 15 → ~%73. Altın üstünlüğü G_eff'in içinde; sonucu zar belirler.
     // Kurallar (K5-K11, K13) draft'ın kimliği: engage objektifte, poke kuşatmada, korunan taşıyıcı 25. dk'dan sonra...
     // Kırmızı için d'nin işareti çevrilir: p_Kırmızı = 1 − p_Mavi (clamp simetrik olduğu için aynı kalır).
-    // absent: savaşta olmayanlar (split); ne güçleri ne etiketleri savaşa girer.
+    // Savaşta sadece o an yaşayanlar var: ölüler ve absent (split) ne güçleriyle ne etiketleriyle savaşa girer.
+    // Faz H3: eskiden ölüler de sayılıyordu; objektif öncesi yakalanan oyuncu savaşı 5'e 4 yapmıyordu.
     // report: gerçek savaşsa karneye yazılacağı yer (split kararındaki "savaş olsa" hesabı yazılmaz).
     private double FightProbability(TeamSide side, int minute, double t, FightKind kind,
         IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null)
     {
         var siege = kind == FightKind.Siege;
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
-        var blue = _blue.Champions.Except(absent ?? []).ToList();
-        var red = _red.Champions.Except(absent ?? []).ToList();
+        var blue = AliveAt(TeamSide.Blue, t).Except(absent ?? []).ToList();
+        var red = AliveAt(TeamSide.Red, t).Except(absent ?? []).ToList();
         var rules = TeamRules.Effects(kind, blue, red, minute, c => EffectivePower(c, minute, t));
         // Kurallar net toplamda tavanlı (TeamRules.CappedTotal): uç draft'ların cezaları sonsuz birikmesin.
         var ruleSum = rules.Sum(e => e.Signed);

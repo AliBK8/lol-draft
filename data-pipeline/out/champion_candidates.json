@@ -1,0 +1,3339 @@
+{
+ "ddragonVersion": "16.22.1",
+ "matches": 500,
+ "champions": [
+  {
+   "id": "yone",
+   "name": "Yone",
+   "ddragonKey": "Yone",
+   "inPool": false,
+   "games": 109,
+   "roleGames": {
+    "mid": 58,
+    "top": 46,
+    "adc": 5
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "nautilus",
+   "name": "Nautilus",
+   "ddragonKey": "Nautilus",
+   "inPool": true,
+   "games": 102,
+   "roleGames": {
+    "sup": 102
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "sylas",
+   "name": "Sylas",
+   "ddragonKey": "Sylas",
+   "inPool": false,
+   "games": 96,
+   "roleGames": {
+    "mid": 44,
+    "jg": 34,
+    "sup": 11,
+    "top": 6,
+    "adc": 1
+   },
+   "roles": [
+    "mid",
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "mage",
+    "assassin"
+   ]
+  },
+  {
+   "id": "syndra",
+   "name": "Syndra",
+   "ddragonKey": "Syndra",
+   "inPool": true,
+   "games": 95,
+   "roleGames": {
+    "mid": 71,
+    "adc": 23,
+    "top": 1
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "jayce",
+   "name": "Jayce",
+   "ddragonKey": "Jayce",
+   "inPool": true,
+   "games": 92,
+   "roleGames": {
+    "top": 59,
+    "jg": 24,
+    "mid": 9
+   },
+   "roles": [
+    "top",
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "marksman"
+   ]
+  },
+  {
+   "id": "tristana",
+   "name": "Tristana",
+   "ddragonKey": "Tristana",
+   "inPool": false,
+   "games": 88,
+   "roleGames": {
+    "adc": 64,
+    "mid": 17,
+    "top": 7
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "thresh",
+   "name": "Thresh",
+   "ddragonKey": "Thresh",
+   "inPool": true,
+   "games": 83,
+   "roleGames": {
+    "sup": 83
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "tank"
+   ]
+  },
+  {
+   "id": "akali",
+   "name": "Akali",
+   "ddragonKey": "Akali",
+   "inPool": false,
+   "games": 79,
+   "roleGames": {
+    "mid": 54,
+    "top": 24,
+    "sup": 1
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "leesin",
+   "name": "Lee Sin",
+   "ddragonKey": "LeeSin",
+   "inPool": true,
+   "games": 77,
+   "roleGames": {
+    "jg": 75,
+    "top": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "yasuo",
+   "name": "Yasuo",
+   "ddragonKey": "Yasuo",
+   "inPool": true,
+   "games": 76,
+   "roleGames": {
+    "mid": 32,
+    "top": 23,
+    "adc": 21
+   },
+   "roles": [
+    "mid",
+    "top",
+    "adc"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "ezreal",
+   "name": "Ezreal",
+   "ddragonKey": "Ezreal",
+   "inPool": true,
+   "games": 75,
+   "roleGames": {
+    "adc": 75
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "kalista",
+   "name": "Kalista",
+   "ddragonKey": "Kalista",
+   "inPool": false,
+   "games": 73,
+   "roleGames": {
+    "adc": 64,
+    "top": 7,
+    "mid": 2
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "jhin",
+   "name": "Jhin",
+   "ddragonKey": "Jhin",
+   "inPool": false,
+   "games": 72,
+   "roleGames": {
+    "adc": 71,
+    "top": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "yunara",
+   "name": "Yunara",
+   "ddragonKey": "Yunara",
+   "inPool": false,
+   "games": 71,
+   "roleGames": {
+    "adc": 71
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "camille",
+   "name": "Camille",
+   "ddragonKey": "Camille",
+   "inPool": false,
+   "games": 67,
+   "roleGames": {
+    "top": 55,
+    "sup": 11,
+    "mid": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "ahri",
+   "name": "Ahri",
+   "ddragonKey": "Ahri",
+   "inPool": false,
+   "games": 65,
+   "roleGames": {
+    "mid": 58,
+    "adc": 3,
+    "top": 3,
+    "sup": 1
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "assassin"
+   ]
+  },
+  {
+   "id": "locke",
+   "name": "Locke",
+   "ddragonKey": "Locke",
+   "inPool": false,
+   "games": 63,
+   "roleGames": {
+    "mid": 43,
+    "jg": 13,
+    "top": 4,
+    "adc": 3
+   },
+   "roles": [
+    "mid",
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "elise",
+   "name": "Elise",
+   "ddragonKey": "Elise",
+   "inPool": true,
+   "games": 62,
+   "roleGames": {
+    "jg": 36,
+    "sup": 20,
+    "top": 5,
+    "mid": 1
+   },
+   "roles": [
+    "jg",
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "bard",
+   "name": "Bard",
+   "ddragonKey": "Bard",
+   "inPool": false,
+   "games": 61,
+   "roleGames": {
+    "sup": 61
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "kaisa",
+   "name": "Kai'Sa",
+   "ddragonKey": "Kaisa",
+   "inPool": true,
+   "games": 61,
+   "roleGames": {
+    "adc": 61
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "lulu",
+   "name": "Lulu",
+   "ddragonKey": "Lulu",
+   "inPool": true,
+   "games": 61,
+   "roleGames": {
+    "sup": 60,
+    "mid": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "khazix",
+   "name": "Kha'Zix",
+   "ddragonKey": "Khazix",
+   "inPool": true,
+   "games": 59,
+   "roleGames": {
+    "jg": 59
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "alistar",
+   "name": "Alistar",
+   "ddragonKey": "Alistar",
+   "inPool": true,
+   "games": 57,
+   "roleGames": {
+    "sup": 57
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "rell",
+   "name": "Rell",
+   "ddragonKey": "Rell",
+   "inPool": false,
+   "games": 56,
+   "roleGames": {
+    "sup": 56
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "ekko",
+   "name": "Ekko",
+   "ddragonKey": "Ekko",
+   "inPool": false,
+   "games": 55,
+   "roleGames": {
+    "jg": 22,
+    "mid": 19,
+    "adc": 12,
+    "top": 1,
+    "sup": 1
+   },
+   "roles": [
+    "jg",
+    "mid",
+    "adc"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "karma",
+   "name": "Karma",
+   "ddragonKey": "Karma",
+   "inPool": true,
+   "games": 53,
+   "roleGames": {
+    "sup": 50,
+    "mid": 1,
+    "adc": 1,
+    "top": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "qiyana",
+   "name": "Qiyana",
+   "ddragonKey": "Qiyana",
+   "inPool": false,
+   "games": 51,
+   "roleGames": {
+    "jg": 44,
+    "mid": 5,
+    "sup": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "aphelios",
+   "name": "Aphelios",
+   "ddragonKey": "Aphelios",
+   "inPool": false,
+   "games": 50,
+   "roleGames": {
+    "adc": 50
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "talon",
+   "name": "Talon",
+   "ddragonKey": "Talon",
+   "inPool": false,
+   "games": 49,
+   "roleGames": {
+    "jg": 47,
+    "mid": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "varus",
+   "name": "Varus",
+   "ddragonKey": "Varus",
+   "inPool": true,
+   "games": 47,
+   "roleGames": {
+    "adc": 33,
+    "top": 12,
+    "mid": 2
+   },
+   "roles": [
+    "adc",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "caitlyn",
+   "name": "Caitlyn",
+   "ddragonKey": "Caitlyn",
+   "inPool": true,
+   "games": 46,
+   "roleGames": {
+    "adc": 45,
+    "top": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "irelia",
+   "name": "Irelia",
+   "ddragonKey": "Irelia",
+   "inPool": false,
+   "games": 46,
+   "roleGames": {
+    "top": 30,
+    "mid": 16
+   },
+   "roles": [
+    "top",
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "galio",
+   "name": "Galio",
+   "ddragonKey": "Galio",
+   "inPool": false,
+   "games": 45,
+   "roleGames": {
+    "mid": 30,
+    "top": 7,
+    "sup": 7,
+    "adc": 1
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "mage"
+   ]
+  },
+  {
+   "id": "viktor",
+   "name": "Viktor",
+   "ddragonKey": "Viktor",
+   "inPool": true,
+   "games": 44,
+   "roleGames": {
+    "mid": 22,
+    "adc": 22
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "graves",
+   "name": "Graves",
+   "ddragonKey": "Graves",
+   "inPool": true,
+   "games": 43,
+   "roleGames": {
+    "jg": 43
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "leona",
+   "name": "Leona",
+   "ddragonKey": "Leona",
+   "inPool": true,
+   "games": 43,
+   "roleGames": {
+    "sup": 43
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "twistedfate",
+   "name": "Twisted Fate",
+   "ddragonKey": "TwistedFate",
+   "inPool": false,
+   "games": 43,
+   "roleGames": {
+    "mid": 31,
+    "top": 6,
+    "adc": 6
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "marksman"
+   ]
+  },
+  {
+   "id": "jarvaniv",
+   "name": "Jarvan IV",
+   "ddragonKey": "JarvanIV",
+   "inPool": false,
+   "games": 41,
+   "roleGames": {
+    "jg": 41
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "taliyah",
+   "name": "Taliyah",
+   "ddragonKey": "Taliyah",
+   "inPool": false,
+   "games": 41,
+   "roleGames": {
+    "mid": 22,
+    "jg": 13,
+    "sup": 4,
+    "adc": 1,
+    "top": 1
+   },
+   "roles": [
+    "mid",
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "aatrox",
+   "name": "Aatrox",
+   "ddragonKey": "Aatrox",
+   "inPool": false,
+   "games": 40,
+   "roleGames": {
+    "top": 25,
+    "jg": 15
+   },
+   "roles": [
+    "top",
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "leblanc",
+   "name": "LeBlanc",
+   "ddragonKey": "Leblanc",
+   "inPool": true,
+   "games": 40,
+   "roleGames": {
+    "mid": 35,
+    "top": 4,
+    "sup": 1
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "nidalee",
+   "name": "Nidalee",
+   "ddragonKey": "Nidalee",
+   "inPool": false,
+   "games": 40,
+   "roleGames": {
+    "jg": 37,
+    "sup": 2,
+    "mid": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "renataglasc",
+   "name": "Renata Glasc",
+   "ddragonKey": "Renata",
+   "inPool": false,
+   "games": 40,
+   "roleGames": {
+    "sup": 40
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "zed",
+   "name": "Zed",
+   "ddragonKey": "Zed",
+   "inPool": true,
+   "games": 40,
+   "roleGames": {
+    "mid": 29,
+    "jg": 5,
+    "top": 5,
+    "adc": 1
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "aurelionsol",
+   "name": "Aurelion Sol",
+   "ddragonKey": "AurelionSol",
+   "inPool": false,
+   "games": 39,
+   "roleGames": {
+    "adc": 28,
+    "mid": 7,
+    "top": 3,
+    "sup": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "vi",
+   "name": "Vi",
+   "ddragonKey": "Vi",
+   "inPool": true,
+   "games": 38,
+   "roleGames": {
+    "jg": 35,
+    "sup": 1,
+    "mid": 1,
+    "top": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "zeri",
+   "name": "Zeri",
+   "ddragonKey": "Zeri",
+   "inPool": false,
+   "games": 38,
+   "roleGames": {
+    "adc": 37,
+    "top": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "quinn",
+   "name": "Quinn",
+   "ddragonKey": "Quinn",
+   "inPool": false,
+   "games": 37,
+   "roleGames": {
+    "jg": 15,
+    "mid": 12,
+    "top": 8,
+    "adc": 2
+   },
+   "roles": [
+    "jg",
+    "mid",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "janna",
+   "name": "Janna",
+   "ddragonKey": "Janna",
+   "inPool": true,
+   "games": 36,
+   "roleGames": {
+    "sup": 34,
+    "top": 2
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "lucian",
+   "name": "Lucian",
+   "ddragonKey": "Lucian",
+   "inPool": false,
+   "games": 36,
+   "roleGames": {
+    "adc": 17,
+    "mid": 15,
+    "top": 4
+   },
+   "roles": [
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "ksante",
+   "name": "K'Sante",
+   "ddragonKey": "KSante",
+   "inPool": false,
+   "games": 35,
+   "roleGames": {
+    "top": 35
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "pantheon",
+   "name": "Pantheon",
+   "ddragonKey": "Pantheon",
+   "inPool": false,
+   "games": 35,
+   "roleGames": {
+    "top": 18,
+    "sup": 15,
+    "mid": 2
+   },
+   "roles": [
+    "top",
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "sion",
+   "name": "Sion",
+   "ddragonKey": "Sion",
+   "inPool": false,
+   "games": 35,
+   "roleGames": {
+    "top": 30,
+    "mid": 3,
+    "jg": 1,
+    "adc": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "braum",
+   "name": "Braum",
+   "ddragonKey": "Braum",
+   "inPool": false,
+   "games": 34,
+   "roleGames": {
+    "sup": 34
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "cassiopeia",
+   "name": "Cassiopeia",
+   "ddragonKey": "Cassiopeia",
+   "inPool": false,
+   "games": 34,
+   "roleGames": {
+    "mid": 20,
+    "top": 13,
+    "adc": 1
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "jax",
+   "name": "Jax",
+   "ddragonKey": "Jax",
+   "inPool": true,
+   "games": 34,
+   "roleGames": {
+    "top": 26,
+    "mid": 4,
+    "adc": 2,
+    "jg": 2
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "orianna",
+   "name": "Orianna",
+   "ddragonKey": "Orianna",
+   "inPool": true,
+   "games": 34,
+   "roleGames": {
+    "mid": 32,
+    "adc": 2
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "gragas",
+   "name": "Gragas",
+   "ddragonKey": "Gragas",
+   "inPool": false,
+   "games": 32,
+   "roleGames": {
+    "top": 28,
+    "mid": 3,
+    "sup": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "mage"
+   ]
+  },
+  {
+   "id": "viego",
+   "name": "Viego",
+   "ddragonKey": "Viego",
+   "inPool": false,
+   "games": 32,
+   "roleGames": {
+    "jg": 31,
+    "top": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "hecarim",
+   "name": "Hecarim",
+   "ddragonKey": "Hecarim",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "jg": 30
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "pyke",
+   "name": "Pyke",
+   "ddragonKey": "Pyke",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "sup": 30
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "enchanter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "rakan",
+   "name": "Rakan",
+   "ddragonKey": "Rakan",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "sup": 30
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter"
+   ]
+  },
+  {
+   "id": "rengar",
+   "name": "Rengar",
+   "ddragonKey": "Rengar",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "jg": 29,
+    "adc": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "fighter"
+   ]
+  },
+  {
+   "id": "zilean",
+   "name": "Zilean",
+   "ddragonKey": "Zilean",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "sup": 24,
+    "top": 4,
+    "adc": 1,
+    "mid": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "zoe",
+   "name": "Zoe",
+   "ddragonKey": "Zoe",
+   "inPool": false,
+   "games": 30,
+   "roleGames": {
+    "mid": 17,
+    "sup": 9,
+    "top": 2,
+    "adc": 2
+   },
+   "roles": [
+    "mid",
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "ambessa",
+   "name": "Ambessa",
+   "ddragonKey": "Ambessa",
+   "inPool": false,
+   "games": 29,
+   "roleGames": {
+    "top": 24,
+    "mid": 3,
+    "jg": 2
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "aurora",
+   "name": "Aurora",
+   "ddragonKey": "Aurora",
+   "inPool": false,
+   "games": 29,
+   "roleGames": {
+    "mid": 21,
+    "top": 7,
+    "adc": 1
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "assassin"
+   ]
+  },
+  {
+   "id": "renekton",
+   "name": "Renekton",
+   "ddragonKey": "Renekton",
+   "inPool": true,
+   "games": 29,
+   "roleGames": {
+    "top": 27,
+    "mid": 2
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "xayah",
+   "name": "Xayah",
+   "ddragonKey": "Xayah",
+   "inPool": false,
+   "games": 29,
+   "roleGames": {
+    "adc": 27,
+    "mid": 1,
+    "top": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "fiora",
+   "name": "Fiora",
+   "ddragonKey": "Fiora",
+   "inPool": true,
+   "games": 28,
+   "roleGames": {
+    "top": 28
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "ornn",
+   "name": "Ornn",
+   "ddragonKey": "Ornn",
+   "inPool": true,
+   "games": 28,
+   "roleGames": {
+    "top": 28
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank"
+   ]
+  },
+  {
+   "id": "ryze",
+   "name": "Ryze",
+   "ddragonKey": "Ryze",
+   "inPool": false,
+   "games": 28,
+   "roleGames": {
+    "mid": 26,
+    "top": 2
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "anivia",
+   "name": "Anivia",
+   "ddragonKey": "Anivia",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "mid": 17,
+    "top": 7,
+    "adc": 2,
+    "sup": 1
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "blitzcrank",
+   "name": "Blitzcrank",
+   "ddragonKey": "Blitzcrank",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "sup": 27
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "draven",
+   "name": "Draven",
+   "ddragonKey": "Draven",
+   "inPool": true,
+   "games": 27,
+   "roleGames": {
+    "adc": 26,
+    "top": 1
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "riven",
+   "name": "Riven",
+   "ddragonKey": "Riven",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "mid": 12,
+    "top": 8,
+    "jg": 5,
+    "sup": 2
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "senna",
+   "name": "Senna",
+   "ddragonKey": "Senna",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "sup": 27
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "marksman"
+   ]
+  },
+  {
+   "id": "shaco",
+   "name": "Shaco",
+   "ddragonKey": "Shaco",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "jg": 25,
+    "sup": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin"
+   ]
+  },
+  {
+   "id": "sona",
+   "name": "Sona",
+   "ddragonKey": "Sona",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "sup": 27
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "wukong",
+   "name": "Wukong",
+   "ddragonKey": "MonkeyKing",
+   "inPool": false,
+   "games": 27,
+   "roleGames": {
+    "jg": 27
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "jinx",
+   "name": "Jinx",
+   "ddragonKey": "Jinx",
+   "inPool": true,
+   "games": 26,
+   "roleGames": {
+    "adc": 26
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "diana",
+   "name": "Diana",
+   "ddragonKey": "Diana",
+   "inPool": false,
+   "games": 25,
+   "roleGames": {
+    "jg": 20,
+    "mid": 4,
+    "top": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "hwei",
+   "name": "Hwei",
+   "ddragonKey": "Hwei",
+   "inPool": false,
+   "games": 25,
+   "roleGames": {
+    "mid": 13,
+    "adc": 9,
+    "sup": 2,
+    "top": 1
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "karthus",
+   "name": "Karthus",
+   "ddragonKey": "Karthus",
+   "inPool": true,
+   "games": 25,
+   "roleGames": {
+    "adc": 17,
+    "jg": 6,
+    "top": 2
+   },
+   "roles": [
+    "adc",
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "naafiri",
+   "name": "Naafiri",
+   "ddragonKey": "Naafiri",
+   "inPool": false,
+   "games": 25,
+   "roleGames": {
+    "jg": 21,
+    "top": 4
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "fighter"
+   ]
+  },
+  {
+   "id": "olaf",
+   "name": "Olaf",
+   "ddragonKey": "Olaf",
+   "inPool": false,
+   "games": 25,
+   "roleGames": {
+    "top": 19,
+    "jg": 3,
+    "mid": 2,
+    "adc": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "xinzhao",
+   "name": "Xin Zhao",
+   "ddragonKey": "XinZhao",
+   "inPool": false,
+   "games": 25,
+   "roleGames": {
+    "jg": 24,
+    "mid": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "vladimir",
+   "name": "Vladimir",
+   "ddragonKey": "Vladimir",
+   "inPool": false,
+   "games": 24,
+   "roleGames": {
+    "top": 11,
+    "mid": 11,
+    "adc": 2
+   },
+   "roles": [
+    "top",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "fighter"
+   ]
+  },
+  {
+   "id": "gnar",
+   "name": "Gnar",
+   "ddragonKey": "Gnar",
+   "inPool": true,
+   "games": 23,
+   "roleGames": {
+    "top": 23
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "katarina",
+   "name": "Katarina",
+   "ddragonKey": "Katarina",
+   "inPool": false,
+   "games": 23,
+   "roleGames": {
+    "mid": 17,
+    "adc": 5,
+    "top": 1
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "kennen",
+   "name": "Kennen",
+   "ddragonKey": "Kennen",
+   "inPool": false,
+   "games": 23,
+   "roleGames": {
+    "top": 18,
+    "sup": 2,
+    "mid": 2,
+    "adc": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "reksai",
+   "name": "Rek'Sai",
+   "ddragonKey": "RekSai",
+   "inPool": false,
+   "games": 23,
+   "roleGames": {
+    "jg": 19,
+    "top": 2,
+    "mid": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "trundle",
+   "name": "Trundle",
+   "ddragonKey": "Trundle",
+   "inPool": false,
+   "games": 23,
+   "roleGames": {
+    "top": 13,
+    "jg": 7,
+    "sup": 2,
+    "mid": 1
+   },
+   "roles": [
+    "top",
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "lillia",
+   "name": "Lillia",
+   "ddragonKey": "Lillia",
+   "inPool": false,
+   "games": 22,
+   "roleGames": {
+    "jg": 22
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "fighter",
+    "mage"
+   ]
+  },
+  {
+   "id": "rumble",
+   "name": "Rumble",
+   "ddragonKey": "Rumble",
+   "inPool": false,
+   "games": 22,
+   "roleGames": {
+    "top": 22
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "mage"
+   ]
+  },
+  {
+   "id": "shen",
+   "name": "Shen",
+   "ddragonKey": "Shen",
+   "inPool": false,
+   "games": 22,
+   "roleGames": {
+    "top": 12,
+    "sup": 7,
+    "mid": 2,
+    "jg": 1
+   },
+   "roles": [
+    "top",
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank"
+   ]
+  },
+  {
+   "id": "garen",
+   "name": "Garen",
+   "ddragonKey": "Garen",
+   "inPool": false,
+   "games": 21,
+   "roleGames": {
+    "top": 17,
+    "mid": 3,
+    "adc": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "missfortune",
+   "name": "Miss Fortune",
+   "ddragonKey": "MissFortune",
+   "inPool": false,
+   "games": 20,
+   "roleGames": {
+    "adc": 20
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "neeko",
+   "name": "Neeko",
+   "ddragonKey": "Neeko",
+   "inPool": false,
+   "games": 20,
+   "roleGames": {
+    "sup": 11,
+    "mid": 7,
+    "adc": 2
+   },
+   "roles": [
+    "sup",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "sivir",
+   "name": "Sivir",
+   "ddragonKey": "Sivir",
+   "inPool": false,
+   "games": 20,
+   "roleGames": {
+    "adc": 20
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "vayne",
+   "name": "Vayne",
+   "ddragonKey": "Vayne",
+   "inPool": true,
+   "games": 20,
+   "roleGames": {
+    "top": 12,
+    "adc": 5,
+    "mid": 2,
+    "jg": 1
+   },
+   "roles": [
+    "top",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "velkoz",
+   "name": "Vel'Koz",
+   "ddragonKey": "Velkoz",
+   "inPool": false,
+   "games": 20,
+   "roleGames": {
+    "adc": 8,
+    "sup": 7,
+    "mid": 5
+   },
+   "roles": [
+    "adc",
+    "sup",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "corki",
+   "name": "Corki",
+   "ddragonKey": "Corki",
+   "inPool": false,
+   "games": 19,
+   "roleGames": {
+    "adc": 9,
+    "top": 6,
+    "mid": 4
+   },
+   "roles": [
+    "adc",
+    "top",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "lux",
+   "name": "Lux",
+   "ddragonKey": "Lux",
+   "inPool": false,
+   "games": 19,
+   "roleGames": {
+    "adc": 8,
+    "sup": 7,
+    "mid": 4
+   },
+   "roles": [
+    "adc",
+    "sup",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "chogath",
+   "name": "Cho'Gath",
+   "ddragonKey": "Chogath",
+   "inPool": false,
+   "games": 18,
+   "roleGames": {
+    "jg": 16,
+    "top": 2
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "mage"
+   ]
+  },
+  {
+   "id": "seraphine",
+   "name": "Seraphine",
+   "ddragonKey": "Seraphine",
+   "inPool": false,
+   "games": 17,
+   "roleGames": {
+    "sup": 11,
+    "adc": 3,
+    "mid": 2,
+    "top": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "ashe",
+   "name": "Ashe",
+   "ddragonKey": "Ashe",
+   "inPool": true,
+   "games": 16,
+   "roleGames": {
+    "adc": 16
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "gangplank",
+   "name": "Gangplank",
+   "ddragonKey": "Gangplank",
+   "inPool": false,
+   "games": 16,
+   "roleGames": {
+    "top": 16
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "ivern",
+   "name": "Ivern",
+   "ddragonKey": "Ivern",
+   "inPool": false,
+   "games": 16,
+   "roleGames": {
+    "jg": 16
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "poppy",
+   "name": "Poppy",
+   "ddragonKey": "Poppy",
+   "inPool": false,
+   "games": 16,
+   "roleGames": {
+    "sup": 12,
+    "jg": 2,
+    "mid": 1,
+    "top": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "singed",
+   "name": "Singed",
+   "ddragonKey": "Singed",
+   "inPool": false,
+   "games": 16,
+   "roleGames": {
+    "top": 13,
+    "mid": 3
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "mage"
+   ]
+  },
+  {
+   "id": "zaahen",
+   "name": "Zaahen",
+   "ddragonKey": "Zaahen",
+   "inPool": false,
+   "games": 16,
+   "roleGames": {
+    "top": 13,
+    "mid": 2,
+    "jg": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "fizz",
+   "name": "Fizz",
+   "ddragonKey": "Fizz",
+   "inPool": false,
+   "games": 15,
+   "roleGames": {
+    "mid": 10,
+    "top": 2,
+    "adc": 2,
+    "jg": 1
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "fighter"
+   ]
+  },
+  {
+   "id": "kogmaw",
+   "name": "Kog'Maw",
+   "ddragonKey": "KogMaw",
+   "inPool": false,
+   "games": 15,
+   "roleGames": {
+    "adc": 9,
+    "mid": 4,
+    "top": 2
+   },
+   "roles": [
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "lissandra",
+   "name": "Lissandra",
+   "ddragonKey": "Lissandra",
+   "inPool": false,
+   "games": 15,
+   "roleGames": {
+    "mid": 15
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "nocturne",
+   "name": "Nocturne",
+   "ddragonKey": "Nocturne",
+   "inPool": false,
+   "games": 15,
+   "roleGames": {
+    "jg": 15
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "nunuwillump",
+   "name": "Nunu & Willump",
+   "ddragonKey": "Nunu",
+   "inPool": false,
+   "games": 15,
+   "roleGames": {
+    "jg": 15
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "mage"
+   ]
+  },
+  {
+   "id": "sett",
+   "name": "Sett",
+   "ddragonKey": "Sett",
+   "inPool": false,
+   "games": 14,
+   "roleGames": {
+    "top": 12,
+    "mid": 2
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "tryndamere",
+   "name": "Tryndamere",
+   "ddragonKey": "Tryndamere",
+   "inPool": false,
+   "games": 14,
+   "roleGames": {
+    "top": 12,
+    "mid": 2
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "drmundo",
+   "name": "Dr. Mundo",
+   "ddragonKey": "DrMundo",
+   "inPool": false,
+   "games": 13,
+   "roleGames": {
+    "top": 12,
+    "jg": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "kayn",
+   "name": "Kayn",
+   "ddragonKey": "Kayn",
+   "inPool": false,
+   "games": 13,
+   "roleGames": {
+    "jg": 13
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "malphite",
+   "name": "Malphite",
+   "ddragonKey": "Malphite",
+   "inPool": true,
+   "games": 13,
+   "roleGames": {
+    "top": 12,
+    "mid": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "mage"
+   ]
+  },
+  {
+   "id": "teemo",
+   "name": "Teemo",
+   "ddragonKey": "Teemo",
+   "inPool": false,
+   "games": 13,
+   "roleGames": {
+    "top": 13
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "ziggs",
+   "name": "Ziggs",
+   "ddragonKey": "Ziggs",
+   "inPool": false,
+   "games": 13,
+   "roleGames": {
+    "adc": 13
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "zyra",
+   "name": "Zyra",
+   "ddragonKey": "Zyra",
+   "inPool": false,
+   "games": 13,
+   "roleGames": {
+    "jg": 11,
+    "adc": 1,
+    "sup": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "kindred",
+   "name": "Kindred",
+   "ddragonKey": "Kindred",
+   "inPool": false,
+   "games": 12,
+   "roleGames": {
+    "jg": 12
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman"
+   ]
+  },
+  {
+   "id": "nami",
+   "name": "Nami",
+   "ddragonKey": "Nami",
+   "inPool": false,
+   "games": 12,
+   "roleGames": {
+    "sup": 12
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "soraka",
+   "name": "Soraka",
+   "ddragonKey": "Soraka",
+   "inPool": false,
+   "games": 12,
+   "roleGames": {
+    "sup": 12
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "annie",
+   "name": "Annie",
+   "ddragonKey": "Annie",
+   "inPool": false,
+   "games": 11,
+   "roleGames": {
+    "mid": 7,
+    "sup": 2,
+    "top": 2
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "darius",
+   "name": "Darius",
+   "ddragonKey": "Darius",
+   "inPool": true,
+   "games": 11,
+   "roleGames": {
+    "top": 9,
+    "mid": 1,
+    "jg": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "gwen",
+   "name": "Gwen",
+   "ddragonKey": "Gwen",
+   "inPool": false,
+   "games": 11,
+   "roleGames": {
+    "top": 6,
+    "mid": 3,
+    "adc": 1,
+    "jg": 1
+   },
+   "roles": [
+    "top",
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "masteryi",
+   "name": "Master Yi",
+   "ddragonKey": "MasterYi",
+   "inPool": false,
+   "games": 11,
+   "roleGames": {
+    "jg": 11
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "skarner",
+   "name": "Skarner",
+   "ddragonKey": "Skarner",
+   "inPool": false,
+   "games": 11,
+   "roleGames": {
+    "jg": 10,
+    "sup": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "warwick",
+   "name": "Warwick",
+   "ddragonKey": "Warwick",
+   "inPool": false,
+   "games": 11,
+   "roleGames": {
+    "top": 11
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "mel",
+   "name": "Mel",
+   "ddragonKey": "Mel",
+   "inPool": false,
+   "games": 10,
+   "roleGames": {
+    "adc": 6,
+    "mid": 3,
+    "sup": 1
+   },
+   "roles": [
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "milio",
+   "name": "Milio",
+   "ddragonKey": "Milio",
+   "inPool": false,
+   "games": 10,
+   "roleGames": {
+    "sup": 10
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "shyvana",
+   "name": "Shyvana",
+   "ddragonKey": "Shyvana",
+   "inPool": false,
+   "games": 10,
+   "roleGames": {
+    "jg": 9,
+    "top": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "swain",
+   "name": "Swain",
+   "ddragonKey": "Swain",
+   "inPool": false,
+   "games": 10,
+   "roleGames": {
+    "adc": 5,
+    "mid": 2,
+    "top": 2,
+    "sup": 1
+   },
+   "roles": [
+    "adc",
+    "mid",
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "yorick",
+   "name": "Yorick",
+   "ddragonKey": "Yorick",
+   "inPool": false,
+   "games": 10,
+   "roleGames": {
+    "top": 10
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "akshan",
+   "name": "Akshan",
+   "ddragonKey": "Akshan",
+   "inPool": false,
+   "games": 9,
+   "roleGames": {
+    "mid": 9
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "vex",
+   "name": "Vex",
+   "ddragonKey": "Vex",
+   "inPool": false,
+   "games": 9,
+   "roleGames": {
+    "mid": 9
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "xerath",
+   "name": "Xerath",
+   "ddragonKey": "Xerath",
+   "inPool": false,
+   "games": 9,
+   "roleGames": {
+    "mid": 6,
+    "adc": 2,
+    "sup": 1
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "kassadin",
+   "name": "Kassadin",
+   "ddragonKey": "Kassadin",
+   "inPool": true,
+   "games": 8,
+   "roleGames": {
+    "mid": 8
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "nasus",
+   "name": "Nasus",
+   "ddragonKey": "Nasus",
+   "inPool": false,
+   "games": 8,
+   "roleGames": {
+    "mid": 5,
+    "top": 2,
+    "adc": 1
+   },
+   "roles": [
+    "mid",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "sejuani",
+   "name": "Sejuani",
+   "ddragonKey": "Sejuani",
+   "inPool": true,
+   "games": 8,
+   "roleGames": {
+    "jg": 5,
+    "top": 2,
+    "mid": 1
+   },
+   "roles": [
+    "jg",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank"
+   ]
+  },
+  {
+   "id": "heimerdinger",
+   "name": "Heimerdinger",
+   "ddragonKey": "Heimerdinger",
+   "inPool": false,
+   "games": 7,
+   "roleGames": {
+    "top": 6,
+    "mid": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "mordekaiser",
+   "name": "Mordekaiser",
+   "ddragonKey": "Mordekaiser",
+   "inPool": false,
+   "games": 7,
+   "roleGames": {
+    "top": 7
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "mage"
+   ]
+  },
+  {
+   "id": "veigar",
+   "name": "Veigar",
+   "ddragonKey": "Veigar",
+   "inPool": false,
+   "games": 7,
+   "roleGames": {
+    "mid": 3,
+    "adc": 3,
+    "sup": 1
+   },
+   "roles": [
+    "mid",
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "briar",
+   "name": "Briar",
+   "ddragonKey": "Briar",
+   "inPool": false,
+   "games": 6,
+   "roleGames": {
+    "jg": 6
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "kayle",
+   "name": "Kayle",
+   "ddragonKey": "Kayle",
+   "inPool": true,
+   "games": 6,
+   "roleGames": {
+    "top": 3,
+    "mid": 2,
+    "jg": 1
+   },
+   "roles": [
+    "top",
+    "mid"
+   ],
+   "range": "melee",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "nilah",
+   "name": "Nilah",
+   "ddragonKey": "Nilah",
+   "inPool": false,
+   "games": 6,
+   "roleGames": {
+    "adc": 6
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "assassin"
+   ]
+  },
+  {
+   "id": "twitch",
+   "name": "Twitch",
+   "ddragonKey": "Twitch",
+   "inPool": false,
+   "games": 6,
+   "roleGames": {
+    "adc": 3,
+    "mid": 3
+   },
+   "roles": [
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "udyr",
+   "name": "Udyr",
+   "ddragonKey": "Udyr",
+   "inPool": false,
+   "games": 6,
+   "roleGames": {
+    "jg": 4,
+    "top": 2
+   },
+   "roles": [
+    "jg",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "volibear",
+   "name": "Volibear",
+   "ddragonKey": "Volibear",
+   "inPool": false,
+   "games": 6,
+   "roleGames": {
+    "top": 5,
+    "jg": 1
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "kled",
+   "name": "Kled",
+   "ddragonKey": "Kled",
+   "inPool": false,
+   "games": 5,
+   "roleGames": {
+    "top": 3,
+    "adc": 2
+   },
+   "roles": [
+    "top",
+    "adc"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "malzahar",
+   "name": "Malzahar",
+   "ddragonKey": "Malzahar",
+   "inPool": false,
+   "games": 5,
+   "roleGames": {
+    "mid": 5
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage"
+   ]
+  },
+  {
+   "id": "samira",
+   "name": "Samira",
+   "ddragonKey": "Samira",
+   "inPool": false,
+   "games": 5,
+   "roleGames": {
+    "adc": 5
+   },
+   "roles": [
+    "adc"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "assassin"
+   ]
+  },
+  {
+   "id": "urgot",
+   "name": "Urgot",
+   "ddragonKey": "Urgot",
+   "inPool": false,
+   "games": 5,
+   "roleGames": {
+    "top": 5
+   },
+   "roles": [
+    "top"
+   ],
+   "range": "ranged",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  },
+  {
+   "id": "zac",
+   "name": "Zac",
+   "ddragonKey": "Zac",
+   "inPool": false,
+   "games": 5,
+   "roleGames": {
+    "jg": 5
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "fighter"
+   ]
+  },
+  {
+   "id": "brand",
+   "name": "Brand",
+   "ddragonKey": "Brand",
+   "inPool": true,
+   "games": 4,
+   "roleGames": {
+    "jg": 1,
+    "top": 1,
+    "adc": 1,
+    "mid": 1
+   },
+   "roles": [
+    "jg",
+    "top",
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "evelynn",
+   "name": "Evelynn",
+   "ddragonKey": "Evelynn",
+   "inPool": false,
+   "games": 4,
+   "roleGames": {
+    "jg": 4
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "assassin",
+    "mage"
+   ]
+  },
+  {
+   "id": "morgana",
+   "name": "Morgana",
+   "ddragonKey": "Morgana",
+   "inPool": false,
+   "games": 4,
+   "roleGames": {
+    "sup": 4
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "smolder",
+   "name": "Smolder",
+   "ddragonKey": "Smolder",
+   "inPool": false,
+   "games": 4,
+   "roleGames": {
+    "adc": 3,
+    "mid": 1
+   },
+   "roles": [
+    "adc",
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "marksman",
+    "mage"
+   ]
+  },
+  {
+   "id": "taric",
+   "name": "Taric",
+   "ddragonKey": "Taric",
+   "inPool": false,
+   "games": 4,
+   "roleGames": {
+    "sup": 4
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "enchanter",
+    "tank"
+   ]
+  },
+  {
+   "id": "azir",
+   "name": "Azir",
+   "ddragonKey": "Azir",
+   "inPool": false,
+   "games": 3,
+   "roleGames": {
+    "mid": 3
+   },
+   "roles": [
+    "mid"
+   ],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "marksman"
+   ]
+  },
+  {
+   "id": "maokai",
+   "name": "Maokai",
+   "ddragonKey": "Maokai",
+   "inPool": false,
+   "games": 3,
+   "roleGames": {
+    "sup": 2,
+    "top": 1
+   },
+   "roles": [
+    "sup",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "rammus",
+   "name": "Rammus",
+   "ddragonKey": "Rammus",
+   "inPool": false,
+   "games": 3,
+   "roleGames": {
+    "jg": 1,
+    "sup": 1,
+    "top": 1
+   },
+   "roles": [
+    "jg",
+    "sup",
+    "top"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank"
+   ]
+  },
+  {
+   "id": "tahmkench",
+   "name": "Tahm Kench",
+   "ddragonKey": "TahmKench",
+   "inPool": false,
+   "games": 3,
+   "roleGames": {
+    "sup": 3
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "yuumi",
+   "name": "Yuumi",
+   "ddragonKey": "Yuumi",
+   "inPool": false,
+   "games": 3,
+   "roleGames": {
+    "sup": 3
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "ranged",
+   "classes": [
+    "enchanter",
+    "mage"
+   ]
+  },
+  {
+   "id": "amumu",
+   "name": "Amumu",
+   "ddragonKey": "Amumu",
+   "inPool": true,
+   "games": 1,
+   "roleGames": {
+    "sup": 1
+   },
+   "roles": [
+    "sup"
+   ],
+   "range": "melee",
+   "classes": [
+    "tank",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "belveth",
+   "name": "Bel'Veth",
+   "ddragonKey": "Belveth",
+   "inPool": false,
+   "games": 1,
+   "roleGames": {
+    "jg": 1
+   },
+   "roles": [
+    "jg"
+   ],
+   "range": "melee",
+   "classes": [
+    "fighter"
+   ]
+  },
+  {
+   "id": "fiddlesticks",
+   "name": "Fiddlesticks",
+   "ddragonKey": "Fiddlesticks",
+   "inPool": false,
+   "games": 0,
+   "roleGames": {},
+   "roles": [],
+   "range": "ranged",
+   "classes": [
+    "mage",
+    "enchanter"
+   ]
+  },
+  {
+   "id": "illaoi",
+   "name": "Illaoi",
+   "ddragonKey": "Illaoi",
+   "inPool": false,
+   "games": 0,
+   "roleGames": {},
+   "roles": [],
+   "range": "melee",
+   "classes": [
+    "fighter",
+    "tank"
+   ]
+  }
+ ]
+}
