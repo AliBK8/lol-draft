@@ -43,3 +43,27 @@ for (const champion of champions) {
 // Hangi yamadan alındığı: Riot'un fan projesi politikası kaynağı belirtmeyi ister, güncellemede de işe yarar.
 await writeFile(join(out, 'SOURCE.txt'), `Riot Games Data Dragon ${version}\n${DDRAGON}\n`)
 console.log(`${champions.length} portre indirildi (Data Dragon ${version}).`)
+
+// Maç ekranının haritası: Summoner's Rift (map11), aynı yamadan → web/public/map/map11.png (DESIGN.md §7).
+const mapOut = join(root, 'web', 'public', 'map')
+await mkdir(mapOut, { recursive: true })
+const map = await fetch(`${DDRAGON}/cdn/${version}/img/map/map11.png`)
+if (!map.ok) throw new Error(`map11: ${map.status}`)
+await writeFile(join(mapOut, 'map11.png'), Buffer.from(await map.arrayBuffer()))
+
+// Kule ve nexus ikonları: oyunun minimap ikonları (gri; takım rengini SVG filtresi verir). Data Dragon'da yok,
+// CommunityDragon oyun dosyalarından çıkarıp yama klasörüyle yayınlar: aynı yamaya sabit (16.22.1 → 16.22).
+const CDRAGON = 'https://raw.communitydragon.org'
+const patch = version.split('.').slice(0, 2).join('.')
+for (const icon of ['tower.png', 'inhibitor.png', 'nexus.png']) {
+  const response = await fetch(`${CDRAGON}/${patch}/game/assets/ux/minimap/icons/${icon}`)
+  if (!response.ok) throw new Error(`${icon}: ${response.status}`)
+  await writeFile(join(mapOut, icon), Buffer.from(await response.arrayBuffer()))
+}
+
+await writeFile(
+  join(mapOut, 'SOURCE.txt'),
+  `map11.png: Riot Games Data Dragon ${version}\n${DDRAGON}\n` +
+    `tower.png, inhibitor.png, nexus.png: CommunityDragon ${patch} (game/assets/ux/minimap/icons)\n${CDRAGON}\n`,
+)
+console.log(`Harita, kule, inhibitör ve nexus ikonu indirildi (Data Dragon ${version}, CommunityDragon ${patch}).`)

@@ -1,11 +1,47 @@
 import type { Champion, Side } from '../api/types'
-import { BASE, LANE_PATH, PIT, RIVER_SPOT, TOWER_S, pathPoint } from './geometry'
+import { BASE, INHIBITORS, MAP_IMAGE, MAP_SIZE, PIT, RIVER_SPOT, TOWERS } from './geometry'
 import type { Placement } from './positions'
 import type { MatchState } from './timeline'
 import type { Lane, MatchEvent } from './types'
 
 const LANES: Lane[] = ['top', 'mid', 'bot']
 const SIDES: Side[] = ['blue', 'red']
+
+// Kule, inhibitör ve nexus: oyunun gri minimap ikonları (CommunityDragon, npm run icons), takım rengine filtreyle
+// boyanır. Boyutlar harita biriminde (şampiyon ikonu 26).
+const TOWER_ICON = '/map/tower.png'
+const INHIBITOR_ICON = '/map/inhibitor.png'
+const NEXUS_ICON = '/map/nexus.png'
+const TOWER_SIZE = 26
+const INHIBITOR_SIZE = 22
+const NEXUS_SIZE = 34
+
+/** Merkezi verilen kare ikon (kule, inhibitör, nexus); yıkılabilenin sınıfı `kind` (+ ` down`). */
+function Icon({ href, at, size, kind, down = false }: {
+  href: string
+  at: readonly [number, number]
+  size: number
+  kind?: string
+  down?: boolean
+}) {
+  return (
+    <image
+      href={href}
+      x={at[0] - size / 2}
+      y={at[1] - size / 2}
+      width={size}
+      height={size}
+      className={kind && `${kind}${down ? ' down' : ''}`}
+    />
+  )
+}
+
+// Renk matrisi: her kanal kendi çarpanıyla (gri × takım rengi). Siyah kenar siyah kalır, açık gri takım rengine döner.
+// İkonun açık grisi ~0,75: çarpanlar 1'in üstünde ki renk karanlık kalmasın (mavi ≈ #4a90e2, kırmızı ≈ #e2564a).
+const TINT: Record<Side, string> = {
+  blue: '0.45 0 0 0 0  0 0.85 0 0 0  0 0 1.35 0 0  0 0 0 1 0',
+  red: '1.35 0 0 0 0  0 0.5 0 0 0  0 0 0.45 0 0  0 0 0 1 0',
+}
 
 /** Olay işaretinin haritada kaldığı süre (oyun saniyesi). */
 const POP_SECONDS = 25
@@ -17,45 +53,48 @@ interface Props {
   champions: Map<string, Champion>
 }
 
-// SVG harita (DESIGN.md §7). Şampiyon konumları CSS geçişiyle yumuşar (transform), kare kare elle aradeğer yok.
+// SVG harita (DESIGN.md §7): Summoner's Rift görseli üstünde kuleler, ikonlar ve olay işaretleri.
+// Şampiyon konumları CSS geçişiyle yumuşar (transform), kare kare elle aradeğer yok.
 export function MapView({ state, events, placements, champions }: Props) {
   return (
-    <svg className="map" viewBox="0 0 600 600" role="img" aria-label="Maç haritası">
-      <rect width="600" height="600" className="map-bg" />
-      {/* Nehir: sol üstten sağ alta, çukurlardan geçer (mid'e dik). */}
-      <path d="M0 0 L600 600" className="map-river" />
-      {LANES.map((lane) => (
-        <polyline key={lane} points={LANE_PATH[lane].map((p) => p.join(',')).join(' ')} className="map-lane" />
-      ))}
-      <circle cx={PIT.dragon[0]} cy={PIT.dragon[1]} r="22" className="map-pit" />
-      <text x={PIT.dragon[0]} y={PIT.dragon[1] + 38} className="map-label">
-        Ejder
-      </text>
-      <circle cx={PIT.baron[0]} cy={PIT.baron[1]} r="22" className="map-pit" />
-      <text x={PIT.baron[0]} y={PIT.baron[1] - 30} className="map-label">
-        Baron / Herald
-      </text>
+    <svg className="map" viewBox={`0 0 ${MAP_SIZE} ${MAP_SIZE}`} role="img" aria-label="Maç haritası">
+      {/* Görsel yüklenemezse koyu zemin kalır; kuleler ve ikonlar yine görünür. */}
+      <rect width={MAP_SIZE} height={MAP_SIZE} className="map-bg" />
+      <image href={MAP_IMAGE} width={MAP_SIZE} height={MAP_SIZE} className="map-image" />
+
+      <defs>
+        {SIDES.map((side) => (
+          <filter key={side} id={`tint-${side}`} colorInterpolationFilters="sRGB">
+            <feColorMatrix type="matrix" values={TINT[side]} />
+          </filter>
+        ))}
+      </defs>
 
       {SIDES.map((side) => (
-        <g key={side}>
-          <rect x={BASE[side][0] - 26} y={BASE[side][1] - 26} width="52" height="52" rx="10" className={`map-base ${side}`} />
-          {LANES.map((lane) =>
-            TOWER_S[side].map((s, tier) => {
-              const [x, y] = pathPoint(lane, s)
-              const down = state.towers.lost[side][lane] > tier
-              return (
-                <rect
-                  key={`${lane}${tier}`}
-                  x={x - 6}
-                  y={y - 6}
-                  width="12"
-                  height="12"
-                  rx="2"
-                  className={`map-tower ${side}${down ? ' down' : ''}`}
+        <g key={side} filter={`url(#tint-${side})`}>
+          <Icon href={NEXUS_ICON} at={BASE[side]} size={NEXUS_SIZE} />
+          {LANES.map((lane) => (
+            <g key={lane}>
+              {/* Üçüncü kademe (üs kulesi + inhibitör) motorda tek yapı: düşünce ikisi birlikte yıkık. */}
+              <Icon
+                href={INHIBITOR_ICON}
+                at={INHIBITORS[side][lane]}
+                size={INHIBITOR_SIZE}
+                kind="map-inhibitor"
+                down={state.towers.lost[side][lane] > 2}
+              />
+              {TOWERS[side][lane].map((point, tier) => (
+                <Icon
+                  key={tier}
+                  href={TOWER_ICON}
+                  at={point}
+                  size={TOWER_SIZE}
+                  kind="map-tower"
+                  down={state.towers.lost[side][lane] > tier}
                 />
-              )
-            }),
-          )}
+              ))}
+            </g>
+          ))}
         </g>
       ))}
 

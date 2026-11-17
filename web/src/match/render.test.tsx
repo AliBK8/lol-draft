@@ -38,7 +38,11 @@ describe('oynatıcı çizimi', () => {
     const html = renderToString(<MapView state={state} events={replay.events} placements={placements} champions={champions} />)
 
     const lost = Object.values(state.towers.lost).flatMap((l) => Object.values(l)).reduce((a, b) => a + b, 0)
-    expect(html.match(/map-tower (blue|red) down/g) ?? []).toHaveLength(lost)
+    expect(html.match(/map-tower down/g) ?? []).toHaveLength(lost)
+    // İnhibitör, üçüncü kademe (üs kulesi) düşen koridorda yıkık: motorda ikisi tek yapı.
+    const inhibitorsDown = Object.values(state.towers.lost).flatMap((l) => Object.values(l)).filter((n) => n > 2).length
+    expect(html.match(/map-inhibitor down/g) ?? []).toHaveLength(inhibitorsDown)
+    expect(html.match(/map-inhibitor/g) ?? []).toHaveLength(6)
   })
 
   it('karne: kazanan, altın tablosu, kurallar; koltuğa göre "kazandın/kaybettin"', () => {

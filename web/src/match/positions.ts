@@ -73,17 +73,17 @@ export function placement(
             return at(x - o * 14 + spread * 6, y + o * 14)
           }
           if (e.lane) {
-            const [x, y] = pathPoint(e.lane, laneFront(state, e.lane) - o * 0.03)
-            return at(x + 6, y + 6)
+            // Koridor boyunca kendi tarafına biraz geride (yana kaydırmak şeridin kenarına iterdi).
+            return at(...pathPoint(e.lane, laneFront(state, e.lane) - o * 0.04))
           }
         }
         break
       case 'split':
         if ((e.splitter === champion || e.answerer === champion) && t >= e.t - 20 && t <= e.t + 4) {
           // Split: rakibin kulesine doğru baskı; cevap veren karşısında.
-          const s = TOWER_S[other(e.side)][0] + (e.side === 'blue' ? 0.04 : -0.04)
-          const [x, y] = pathPoint(e.lane, s)
-          return at(x + (e.splitter === champion ? 0 : 10), y + (e.splitter === champion ? 0 : 10))
+          const s = TOWER_S[other(e.side)][e.lane][0] + (e.side === 'blue' ? 0.04 : -0.04)
+          // Cevap veren splitçinin karşısında, koridor boyunca kendi tarafında (şeridin ortasında kalır).
+          return at(...pathPoint(e.lane, e.splitter === champion ? s : s - o * 0.012))
         }
         break
     }

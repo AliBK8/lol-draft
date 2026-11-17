@@ -400,52 +400,15 @@ a {
   fill: #13261c;
 }
 
-.map-river {
-  stroke: #1d3a52;
-  stroke-width: 60;
-  fill: none;
+/* Summoner's Rift görseli biraz karartılır: üstündeki ikonlar ve kuleler öne çıksın. */
+.map-image {
+  filter: brightness(0.8) saturate(0.9);
 }
 
-.map-lane {
-  stroke: #3b3a30;
-  stroke-width: 26;
-  fill: none;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.map-pit {
-  fill: none;
-  stroke: var(--muted);
-  stroke-dasharray: 3 4;
-}
-
-.map-label {
-  fill: var(--muted);
-  font-size: 11px;
-  text-anchor: middle;
-}
-
-.map-base.blue {
-  fill: rgb(74 144 226 / 0.18);
-  stroke: var(--blue);
-}
-
-.map-base.red {
-  fill: rgb(226 86 74 / 0.18);
-  stroke: var(--red);
-}
-
-.map-tower.blue {
-  fill: var(--blue);
-}
-
-.map-tower.red {
-  fill: var(--red);
-}
-
-.map-tower.down {
-  fill-opacity: 0.12;
+/* Kule, inhibitör ve nexus ikonları takım rengini SVG filtresinden alır (MapView TINT). Yıkılan: silik bir iz. */
+.map-tower.down,
+.map-inhibitor.down {
+  opacity: 0.25;
 }
 
 /* Konum her karede değişir; tarayıcı arada kalan yolu yumuşatır. */
