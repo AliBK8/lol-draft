@@ -244,3 +244,18 @@ Kalan: 6. adım (Docker + CI). Oynatıcıda geri sarma çubuğu ve gerçek harek
 Doğrulama (elle, 2026-11-13): üç imaj derlendi, dört konteyner ayakta; HTTP → 308 HTTPS; `/l/x` index.html + CSP + `no-cache`, `/assets/*.js` `immutable` + zstd, portre 200, olmayan dosya 404, beyaz liste dışı `/api/...` 404, tokensiz lobi 401, `Server`/`Via` yok; iç ağdan sırsız istek API'de 404; iç ağdan internete çıkış yok. İki geliştirme rakibi Caddy'nin TLS'i üzerinden bo1 oynadı (REST + WebSocket). `compose down` + `up` sonrası replay birebir aynı. Yedek: açılışta ve elle alındı, integrity ok, maç içinde; geri yükleme provası (veritabanı silinince 404, yedekten sonra 200); rotasyon (`BACKUP_KEEP=1`). CI adımları Linux konteynerlerinde: .NET 408 test, web lint + 31 test + build geçti. GitHub'da henüz koşmadı (ilk push'ta).
 
 Kalan: sunucuya kurulum (alan adı, `SITE_ADDRESS`, yedeklerin makine dışına kopyası), rejoin, tarayıcıda gözle deneme (harita ve hareket değişecek, sonraya).
+
+### 8.21 Uygulama: H4 (80'lik havuzun ürün tarafı)
+
+H1-H3 havuzu ve motoru 80 şampiyona taşıdı (DENGE.md faz H); H4 bunu oyuncuya ulaştırır.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Portreler | `web/public/champions/`, `npm run icons` | 40 yeni portre, Data Dragon 16.22.1. Eski 40'la aynı yama: betik hepsini yeniden indirdi ama eski dosyalar bayt bayt aynı, git'te sadece 40 yeni dosya. Kontrol: `champions.json`'daki 80 kimliğin hepsinin portresi var, fazla dosya yok. Yeni şampiyon eklenince aynı komut (eşleşmeyen ad olursa betik durur). |
+| Fearless bo5 | `web/src/pages/HomePage.tsx` | Ön yüzdeki `fearlessBlocked` kilidi ve "havuz yetmiyor" notu kalktı; her format fearless'la açılır. Sunucu değişmedi: `Series.Start` havuz kontrolü boyuttan hesaplıyor (80 − 4 × 10 = 40 ≥ 20, §8.3), `LobbyEndpointsTests` bo5 + fearless'ı zaten kabul ediyordu. Havuz bir gün küçülürse ön yüz seçtirir, sunucu `pool_too_small` ile reddeder; hata mesajı sayfada görünür. |
+| K13 kombo | `src/LolDraft.Engine/Simulation/TeamRules.cs` | Tablo 7 → 15 ikili (liste ve ölçüm DENGE.md faz H4). `Combos` `private` → `internal`: test tabloyu havuzla karşılaştırabilsin. |
+| Kombo testi | `TeamRulesTests.Kombo_tablosundaki_her_sampiyon_havuzda_var` | Kombo kimlikle eşleşir; yazım hatalı bir kimlik (ör. `"kaisa"` yerine `"kai'sa"`) hiç tetiklenmez ve kimse fark etmez. Test repo kökünü yukarı yürüyerek bulur, `data/champions.json`'daki kimlikleri okur; tablodaki her kimlik havuzda olmalı, ikili tekrarlanmamalı. |
+
+Doğrulama: .NET Domain 102, Engine 186 (+1 kombo testi), Api 82, Gateway 50; web lint + 31 test + build. Denge: 20.000 draft önce/sonra, genel göstergeler değişmedi (DENGE.md faz H4).
+
+Kalan: havuzun geri kalanı (~90), aynı yol (H1-H4).

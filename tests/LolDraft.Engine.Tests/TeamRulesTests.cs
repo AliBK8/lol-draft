@@ -162,6 +162,22 @@ public sealed class TeamRulesTests
         Assert.Equal(-2.0, effects.Sum(e => e.Signed), 9);
     }
 
+    // K13 tablosu kimlikle eşleşir: yazım hatası olan kombo hiç tetiklenmez ve sessizce kaybolur. Her kimlik havuzda olmalı.
+    [Fact]
+    public void Kombo_tablosundaki_her_sampiyon_havuzda_var()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "data", "champions.json")))
+            dir = dir.Parent;
+        Assert.NotNull(dir);
+
+        using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(dir.FullName, "data", "champions.json")));
+        var ids = json.RootElement.GetProperty("champions").EnumerateArray().Select(c => c.GetProperty("id").GetString()).ToHashSet();
+
+        Assert.All(TeamRules.Combos.SelectMany(c => new[] { c.A, c.B }), id => Assert.Contains(id, ids));
+        Assert.Equal(TeamRules.Combos.Length, TeamRules.Combos.Distinct().Count());
+    }
+
     // Test takımlarında son savaş, dk 30: K5 yok (koruma siler), K9 Kırmızı +2, K13 Mavi +2 / Kırmızı +4 → Kırmızı +4.
     // 20. dk objektif: K6 Kırmızı +1 (poke objektifi kurdu), K13 net Kırmızı +2 → Kırmızı +3.
     // Erken comp'un kuralı yok: avantajı güç eğrisinde (erken 9'lar) ve altında; scale comp'unki kurallarda.

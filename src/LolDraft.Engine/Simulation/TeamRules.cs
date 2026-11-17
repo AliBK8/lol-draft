@@ -86,7 +86,7 @@ internal static class TeamRules
     // K13 Kombo (takım savaşı): iki şampiyon aynı takımdaysa d +2. Havuz: data/champions.json.
     private const double ComboBonus = 2;
 
-    private static readonly (string A, string B)[] Combos =
+    internal static readonly (string A, string B)[] Combos =
     [
         ("kayle", "lulu"),      // Lulu koruması + hiper taşıyıcı
         ("jinx", "lulu"),
@@ -95,6 +95,15 @@ internal static class TeamRules
         ("yasuo", "malphite"),  // knock-up → Yasuo ultisi
         ("yasuo", "alistar"),
         ("orianna", "amumu"),   // Amumu ultisi + Orianna shockwave (wombo)
+        // Faz H4 (80'lik havuz):
+        ("xayah", "rakan"),     // birlikte tasarlanmış ikili: ortak geri çağırma, atılma
+        ("yasuo", "yone"),      // Yone Q3 knock-up → Yasuo ultisi (Yone'nin ultisi knock-up istemez)
+        ("yasuo", "wukong"),    // Wukong ultisi iki kez havaya kaldırır
+        ("missfortune", "amumu"), // Amumu sabitler, Bullet Time hepsini vurur (wombo)
+        ("kaisa", "nautilus"),  // Nautilus sabitler, Kai'Sa ultisiyle üstüne atlar
+        ("lucian", "braum"),    // Lucian'ın çift atışı Braum pasifini hızla doldurur
+        ("pyke", "draven"),     // kill odaklı bot lane (ikisi de bilinçli bandın altında, hafif destek)
+        ("kalista", "blitzcrank"), // Kalista ultisiyle fırlatılan Blitzcrank kancası
     ];
 
     /// <summary>

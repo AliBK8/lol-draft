@@ -12,14 +12,13 @@ export function HomePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fearless + bo5 40'lık havuza sığmıyor (sunucu reddeder, DESIGN.md §8.3); seçtirmeyiz.
-  const fearlessBlocked = format === 'bo5'
-
+  // Her format fearless'la açılabilir: 80'lik havuzda bo5'in son maçından önce 40 kilit olur,
+  // geriye 40 şampiyon kalır (en az 20 gerekir; sunucu da denetler, DESIGN.md §8.3).
   async function create() {
     setBusy(true)
     setError(null)
     try {
-      const ticket = await api.createLobby(format, fearless && !fearlessBlocked)
+      const ticket = await api.createLobby(format, fearless)
       saveSession(ticket)
       navigate(`/l/${ticket.code}`)
     } catch (e) {
@@ -46,13 +45,11 @@ export function HomePage() {
       <label className="check">
         <input
           type="checkbox"
-          checked={fearless && !fearlessBlocked}
-          disabled={fearlessBlocked}
+          checked={fearless}
           onChange={(e) => setFearless(e.target.checked)}
         />
         Fearless (seçilen şampiyon serinin geri kalanında iki takıma da kapanır)
       </label>
-      {fearlessBlocked && <p className="muted small">BO5 fearless için havuz yetmiyor (40 şampiyon).</p>}
 
       <button className="primary" disabled={busy} onClick={create}>
         {busy ? 'Açılıyor…' : 'Lobi aç'}

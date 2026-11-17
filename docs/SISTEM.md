@@ -121,7 +121,7 @@ Dışarıdan `Phase` ya da `Turn` set edilemez; geçersiz hamle `Result.Fail` d�
 - Akış: `StartDraft(timings, now)` → draft oynanır → simülasyon → `RecordGame(kazanan renk)`. Seri kazanan rengi o maçta o renkteki takıma çevirir, skoru takıma yazar. Bitiş: bo1 → 1, bo3 → 2, bo5 → 3 galibiyet.
 - Seri o anki draft'ın sahibidir (`CurrentDraft`): maç sürerken ikinci draft başlamaz (`game_in_progress`), draft bitmeden sonuç yazılmaz (`draft_not_completed`), biten seride ikisi de `series_finished`. Aynı maç iki kez yazılamaz.
 - Fearless kilitleri: biten maçların bütün pick'leri (maç başına 10); ban'lar taşınmaz.
-- Havuz kontrolü seri başlarken, en uzun hâle göre: `havuz − (maç sayısı − 1) × 10 ≥ 20`. 40'lık havuz: fearless bo3 tam sığar (3. maçta 20 kilit, 20 kalır), fearless bo5 sığmaz (4. maçta 30 kilit, 10 kalır) → `pool_too_small`. Kural havuz boyutundan hesaplandığı için havuz 60'a çıkınca bo5 kendiliğinden açılır.
+- Havuz kontrolü seri başlarken, en uzun hâle göre: `havuz − (maç sayısı − 1) × 10 ≥ 20`. 40'lık havuz: fearless bo3 tam sığar (3. maçta 20 kilit, 20 kalır), fearless bo5 sığmaz (4. maçta 30 kilit, 10 kalır) → `pool_too_small`. Kural havuz boyutundan hesaplandığı için havuz 80'e çıkınca bo5 kendiliğinden açıldı (5. maçta 40 kilit, 40 kalır); ön yüz de artık her formatta fearless'ı seçtiriyor (§8.21).
 
 **Application portları:**
 ```csharp
@@ -225,7 +225,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | POST | `/api/lobbies/{code}/join` | yok | Boş koltuğa katıl, JWT döner |
 | POST | `/api/lobbies/{code}/rejoin` | rejoinToken | Koltuğu geri al (ertelendi; gateway rotası hazır, API'de uç nokta yok) |
 | GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
-| GET | `/api/champions` | yok | 40 şampiyon: `id`, `name`, `roles`, `offRole` (yuva → rol dışı ceza); gizli motor sayıları yok (§8.17) |
+| GET | `/api/champions` | yok | Havuzdaki şampiyonlar (şu an 80): `id`, `name`, `roles`, `offRole` (yuva → rol dışı ceza); gizli motor sayıları yok (§8.17) |
 | GET | `/api/matches/{id}` | yok (paylaşım linki; kimlik 128 bit) | Oynanmış maç: olaylar, dakika kareleri, karne (§8.15); diskteki dondurulmuş belge, `MatchReady` ile aynı (§8.16) |
 | WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow` + `revision` + `games`; saniyelik `TimerTick` yok, karar 2026-11-10), `MatchReady` (draft bitince oynanan maç, §8.15), `LobbyClosed` |
 
