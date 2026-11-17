@@ -12,8 +12,8 @@ export function HomePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Her format fearless'la açılabilir: 125'lik havuzda bo5'in son maçından önce 40 kilit olur,
-  // geriye 85 şampiyon kalır (en az 20 gerekir; sunucu da denetler, DESIGN.md §8.3).
+  // Her format fearless'la açılabilir: 170'lik havuzda bo5'in son maçından önce 40 kilit olur,
+  // geriye 130 şampiyon kalır (en az 20 gerekir; sunucu da denetler, DESIGN.md §8.3).
   async function create() {
     setBusy(true)
     setError(null)

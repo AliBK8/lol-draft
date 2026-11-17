@@ -275,3 +275,19 @@ Yol H1-H4'le aynı, sırası değişti: taslak önce **geçici havuz dosyasında
 Doğrulama: .NET Domain 102, Engine 186, Api 82, Gateway 50; web lint + 31 test + build; `--check` 2 bilinçli uyarı (Kayle, Nilah).
 
 Kalan: parti 2 (~45: Locke, Zaahen, Yunara için kit bilgisi kullanıcıdan; Ambessa, Pantheon, Zoe, Hwei, Aurora, Ryze, Rek'Sai…).
+
+### 8.23 Uygulama: havuz parti 2 (125 → 170)
+
+Yol §8.22'yle aynı (taslak geçici havuzda ölçülür, onaydan sonra yazılır). Farklar:
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Kapsam | `data/champions.json` | Kalan 45'in hepsi; Locke, Zaahen, Yunara dışarıda (kullanıcı kararı, DESIGN.md §1). Not satırı artık "gerçek oyundakilerin hepsi, üçü hariç" diyor. Bu partide adc grubuna kayıt eklenmedi (saf nişancı kalmadı), yazma betiği boş grubu atlar. |
+| Ölçüm hassasiyeti | denge aracı | 170'lik havuzda 30.000 draft şampiyon başına ±2,0 veriyordu: bandın kenarındaki %55,3'ler gürültüden ayrılmıyor. Ölçüm 60.000 draft'a çıktı (±1,0-1,4). |
+| Portreler | `npm run icons` | İlk çalıştırma ağ hatasıyla yarıda kesildi (yeni dosya yazılmadı, eskilere dokunulmadı); ikinci çalıştırma 170'in hepsini indirdi. Kontrol: 170 kimlik = 170 portre, eskiler bayt bayt aynı, şüpheli küçük dosya yok. Betik zaten "eşleşmeyen olursa dur" diye yazılı; ağ hatasında da durur, yarım dosya bırakmaz. |
+| K13 | `TeamRules.cs` | +1 ikili (Zeri + Yuumi) → 18. |
+| Sayıya bağlı test ve yorumlar | `ChampionEndpointsTests`, `LobbyEndpointsTests`, `HomePage.tsx` | 125 → 170 (bo5 fearless: 40 kilit, 130 kalır). |
+
+Doğrulama: .NET Domain 102, Engine 186, Api 82, Gateway 50; web lint + 31 test + build; `--check` 2 bilinçli uyarı (Kayle, Nilah). Denge DENGE.md parti 2.
+
+Kalan: Locke, Zaahen, Yunara (kit bilgisiyle); bant dışındakiler için denge turu (DENGE.md parti 2 sonu).

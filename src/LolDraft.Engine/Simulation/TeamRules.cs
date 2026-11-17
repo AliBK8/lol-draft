@@ -107,6 +107,8 @@ internal static class TeamRules
         // Faz H parti 1 (125'lik havuz):
         ("lucian", "nami"),     // Nami'nin E'si Lucian'ın çift atışına işler
         ("kogmaw", "lulu"),     // Lulu koruması + hiper taşıyıcı
+        // Faz H parti 2 (170'lik havuz):
+        ("zeri", "yuumi"),      // Yuumi koruması + hiper taşıyıcı (2022'nin bilinen ikilisi)
     ];
 
     /// <summary>

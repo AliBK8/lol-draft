@@ -64,7 +64,7 @@ public sealed class LobbyEndpointsTests : IDisposable
     [InlineData("bo1", true)]
     [InlineData("bo3", true)]
     [InlineData("bo5", false)]
-    [InlineData("bo5", true)]   // 125'lik havuz: son maçtan önce 40 kilit, 85 kalır (≥ 20); 40'lık havuzda sığmıyordu
+    [InlineData("bo5", true)]   // 170'lik havuz: son maçtan önce 40 kilit, 130 kalır (≥ 20); 40'lık havuzda sığmıyordu
     public async Task Havuza_sigan_seri_ayarlariyla_lobi_acilir(string format, bool fearless)
     {
         var response = await PostCreate(format, fearless);

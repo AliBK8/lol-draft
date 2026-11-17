@@ -45,7 +45,7 @@ Temel ilkeler:
 | Rol dışı oynama | Serbest ama cezalı ve kumarlı: rol mesafesine göre güç −%22…−%60, lane fazında oynak koridor, karnede "kumar tuttu / tutmadı" (§16.8). (2026-11-10, güncellendi 2026-11-12; faz D tur 4'te sertleştirildi, 2026-11-17) | Reddedildi: swap'ta yasak (fearless 3. maçta uygun şampiyon kalmayabilir). Reddedildi: cezasız bırakmak (motor rolü bilmiyor, istismar açılır). |
 | TLS | Gateway'in önünde Caddy: sertifikayı (localhost'ta iç CA, alan adında Let's Encrypt) alır, yeniler, HTTP→HTTPS yönlendirir. Gateway düz HTTP konuşur, `X-Forwarded-*`'a sadece Caddy'nin sabit IP'sinden güvenir (§8.20). (2026-11-13) | Reddedildi: sertifikayı gateway'de (.NET içinde ACME) yönetmek; ek kod, yenileme ve bakım. Bedeli ek bir konteyner. |
 | Şampiyon görselleri | Riot Data Dragon portreleri, betikle bir kez indirilir ve gateway'den sunulur; sayfa altında Riot'un fan projesi notu. (2026-11-12) | Reddedildi: tarayıcının doğrudan Riot'tan çekmesi (CSP'ye dış adres, oyuncunun IP'si Riot'a gider, yama sürümü kayar). Kısaltmalı daireler yerine gerçek portre: draft ekranında tanımak çok daha kolay. |
-| Şampiyon havuzu | Aşamalı büyür: 40 → 80 (rol başına 16, faz H) → 125 (rol başına 25, parti 1) → gerçek oyundaki ~170. Etiket taslağı Data Dragon / CommunityDragon'dan Claude çıkarır, güç eğrisi veri hattından, onay kullanıcıda; her aşamadan sonra `--check` ve denge ölçümü. K13 kombo tablosu her aşamada yeni ikililerle büyür. (2026-11-17) | Reddedildi: ~170'i bir kerede eklemek (yüzlerce etiket birden ölçülemez, sorunlu şampiyon gürültüde kaybolur). |
+| Şampiyon havuzu | Aşamalı büyür: 40 → 80 (rol başına 16, faz H) → 125 (rol başına 25, parti 1) → 170 (parti 2: gerçek oyundaki hepsi, Locke, Zaahen ve Yunara hariç; kitleri bilinmeden etiketlenmez). Etiket taslağı Data Dragon / CommunityDragon'dan Claude çıkarır, güç eğrisi veri hattından, onay kullanıcıda; her aşamadan sonra `--check` ve denge ölçümü. K13 kombo tablosu her aşamada yeni ikililerle büyür. (2026-11-17) | Reddedildi: ~170'i bir kerede eklemek (yüzlerce etiket birden ölçülemez, sorunlu şampiyon gürültüde kaybolur). |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
 ---
@@ -86,7 +86,7 @@ Temel ilkeler:
 }
 ```
 
-- MVP **40 şampiyonla** başladı, elle etiketlendi. Şimdi **125** (rol başına 25, faz H ve parti 1, `data/champions.json`); hedef gerçek oyundaki ~170 (§1 "Şampiyon havuzu").
+- MVP **40 şampiyonla** başladı, elle etiketlendi. Şimdi **170**: gerçek oyundaki şampiyonların hepsi, Locke, Zaahen ve Yunara hariç (faz H, parti 1-2, `data/champions.json`; §1 "Şampiyon havuzu"). Koridor sayıları gerçek oyundaki gibi eşit değil: Bot'ta 27 şampiyon oynayabilir, diğerlerinde 38-51.
 - Kullanılan etiketler (şu an motorda): `fl` (frontline), `en` (engage), `ap`. Diğerleri ileride kompozisyon kimliği için (Engage, Pick, Poke, Koruma, Split).
 - **Matchup tablosu (ileride, veriden):** Aynı koridordaki iki şampiyonun kazanma oranı, %50'ye doğru çekilerek: `(wr × n + 0.5 × 200) / (n + 200)`. Örnek: 520 maçta %53 → %52,2.
 - **Güç eğrisi (ileride, veriden):** Maç süresine göre kazanma oranı (<25 dk vs >35 dk) → erken/geç değerleri otomatik çıkar ve her yamada güncellenir.
