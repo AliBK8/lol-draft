@@ -1,4 +1,4 @@
 map11.png: Riot Games Data Dragon 16.22.1
 https://ddragon.leagueoflegends.com
-tower.png, inhibitor.png, nexus.png: CommunityDragon 16.22 (game/assets/ux/minimap/icons)
+tower.png, inhibitor.png, nexus.png, dragon.png, dragon_elder.png, riftherald.png, baron.png: CommunityDragon 16.22 (game/assets/ux/minimap/icons)
 https://raw.communitydragon.org

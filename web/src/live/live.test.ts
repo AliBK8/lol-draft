@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Champion, DraftState, LobbyState } from '../api/types'
 import { clockOffset, remainingMs, secondsLeft } from './clock'
-import { DRAFT_ORDER, isMyTurn, lineup, mySide, offRolePenalty, unavailable } from './draft'
+import { DRAFT_ORDER, isMyTurn, latestBan, lineup, mySide, offRolePenalty, unavailable } from './draft'
 import { newer } from './revision'
 
 const lobby = (revision: number, extra: Partial<LobbyState> = {}): LobbyState => ({
@@ -74,6 +74,22 @@ describe('draft', () => {
     })
 
     expect([...unavailable(d)].sort()).toEqual(['jinx', 'zed'])
+  })
+
+  it('ban animasyonu: sadece görülenlerden sonraki ban; boş geçen ban ve pick sayılmaz', () => {
+    const actions = [
+      { step: 0, side: 'blue' as const, kind: 'ban' as const, champion: 'zed', byTimeout: false },
+      { step: 1, side: 'red' as const, kind: 'ban' as const, champion: null, byTimeout: true },
+      { step: 2, side: 'blue' as const, kind: 'ban' as const, champion: 'ahri', byTimeout: false },
+      { step: 3, side: 'red' as const, kind: 'pick' as const, champion: 'jinx', byTimeout: false },
+    ]
+
+    // Sayfa açılınca 2 hamle görülmüştü: yeni gelenlerin son ban'ı Ahri (sonraki pick ban değil).
+    expect(latestBan(actions, 2)?.champion).toBe('ahri')
+    // Rejoin: hepsi görülmüş sayılır, eski ban'lar yeniden oynamaz.
+    expect(latestBan(actions, 4)).toBeNull()
+    // Yeni gelen tek hamle süresi dolmuş boş ban: animasyon yok.
+    expect(latestBan(actions.slice(0, 2), 1)).toBeNull()
   })
 
   it('pick sırası yuva sırası; swap fazında sunucunun dizilimi', () => {

@@ -378,24 +378,11 @@ a {
   align-items: center;
 }
 
-.hud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: baseline;
-  margin-bottom: 8px;
-}
-
-.hud .clock {
-  font-variant-numeric: tabular-nums;
-  font-size: 1.3rem;
-  font-weight: 700;
-}
-
 .player-main {
   display: grid;
-  grid-template-columns: minmax(0, 600px) 1fr;
-  gap: 16px;
+  grid-template-columns: 180px minmax(0, 600px) 180px;
+  justify-content: center;
+  gap: 12px;
 }
 
 .map {
@@ -458,23 +445,6 @@ a {
   fill: var(--red);
 }
 
-.log {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 600px;
-  overflow-y: auto;
-  font-size: 0.88rem;
-}
-
-.log li {
-  padding: 3px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.log li.big {
-  font-weight: 600;
-}
 
 .controls {
   display: flex;
@@ -948,5 +918,567 @@ a {
   .ban-strip .champ {
     width: 28px !important;
     height: 28px !important;
+  }
+}
+
+/* Ban anı (§8.27): 2 sn, havuzun üstünde. Bitince görünmez kalır (forwards); tıklama altına geçer. */
+.pool {
+  position: relative;
+}
+
+.ban-flash {
+  position: absolute;
+  z-index: 5;
+  top: 48px;
+  left: 50%;
+  width: min(100%, 520px);
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--error);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  animation: ban-flash 2s ease-out forwards;
+}
+
+.ban-flash-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: ban-flash-grey 2s ease-out forwards;
+}
+
+/* Kırmızı çizgi: görselin ortasından eğik geçer (dış kutu merkezden döner), soldan sağa çekilir (iç çizgi uzar). */
+.ban-flash-slash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 120%;
+  height: 10px;
+  transform: translate(-50%, -50%) rotate(-18deg);
+}
+
+.ban-flash-slash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--error);
+  box-shadow: 0 0 18px var(--error);
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: ban-flash-slash 2s ease-out forwards;
+}
+
+.ban-flash-text {
+  position: absolute;
+  inset: auto 0 14px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-shadow: 0 2px 6px #000;
+  animation: ban-flash-stamp 2s ease-out forwards;
+}
+
+.ban-flash-text strong {
+  padding: 2px 14px;
+  border: 3px solid var(--error);
+  border-radius: 6px;
+  color: var(--error);
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  transform: rotate(-6deg);
+  background: rgba(10, 12, 16, 0.55);
+}
+
+.ban-flash-text span {
+  font-weight: 700;
+}
+
+.ban-flash.blue .ban-flash-text span {
+  color: var(--blue);
+}
+
+.ban-flash.red .ban-flash-text span {
+  color: var(--red);
+}
+
+@keyframes ban-flash {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.92);
+  }
+  10% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.03);
+    visibility: hidden;
+  }
+}
+
+@keyframes ban-flash-grey {
+  0%,
+  25% {
+    filter: none;
+  }
+  45%,
+  100% {
+    filter: grayscale(1) brightness(0.55);
+  }
+}
+
+@keyframes ban-flash-slash {
+  0%,
+  25% {
+    transform: scaleX(0);
+  }
+  45%,
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ban-flash-stamp {
+  0%,
+  40% {
+    opacity: 0;
+    transform: scale(2);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Hareket hassasiyeti: sadece belirip söner; içerik baştan gri, çizgili ve damgalı. */
+@media (prefers-reduced-motion: reduce) {
+  .ban-flash {
+    animation-name: ban-flash-fade;
+  }
+
+  .ban-flash-art,
+  .ban-flash-slash::after,
+  .ban-flash-text {
+    animation: none;
+  }
+
+  .ban-flash-art {
+    filter: grayscale(1) brightness(0.55);
+  }
+
+  .ban-flash-slash::after {
+    transform: none;
+  }
+}
+
+@keyframes ban-flash-fade {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* --- Maç oynatıcısı (§8.28): yayın skor bandı, kadrolar, log kartları --- */
+.score-band {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto 1fr;
+  grid-template-areas:
+    'bteam bkills clock rkills rteam'
+    'bstats bar bar bar rstats';
+  align-items: center;
+  gap: 6px 18px;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(90deg, rgba(74, 144, 226, 0.14), var(--panel) 30%, var(--panel) 70%, rgba(226, 86, 74, 0.14));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.score-team {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.score-team small {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.score-team.blue {
+  grid-area: bteam;
+  color: var(--blue);
+}
+
+.score-team.red {
+  grid-area: rteam;
+  color: var(--red);
+  text-align: right;
+}
+
+.score-kills {
+  font-size: 2rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.score-kills.blue {
+  grid-area: bkills;
+  color: var(--blue);
+}
+
+.score-kills.red {
+  grid-area: rkills;
+  color: var(--red);
+}
+
+.score-clock {
+  grid-area: clock;
+  min-width: 5ch;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.team-stats {
+  display: flex;
+  gap: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.team-stats.blue {
+  grid-area: bstats;
+}
+
+.team-stats.red {
+  grid-area: rstats;
+  justify-content: flex-end;
+}
+
+.team-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Altın çubuğu: ortadan önde olan tarafa doğru dolar (yarım çubuk = 10.000 altın). */
+.gold-bar {
+  grid-area: bar;
+  position: relative;
+  height: 20px;
+  min-width: 240px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.gold-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: width 0.3s linear;
+}
+
+.gold-fill.blue {
+  right: 50%;
+  background: linear-gradient(270deg, var(--blue), rgba(74, 144, 226, 0.4));
+}
+
+.gold-fill.red {
+  left: 50%;
+  background: linear-gradient(90deg, var(--red), rgba(226, 86, 74, 0.4));
+}
+
+.gold-label {
+  position: relative;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+}
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roster li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.roster.blue li {
+  border-left: 3px solid var(--blue);
+}
+
+.roster.red li {
+  flex-direction: row-reverse;
+  border-right: 3px solid var(--red);
+  text-align: right;
+}
+
+.roster-portrait {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+}
+
+.roster-portrait img {
+  border-radius: 6px;
+}
+
+/* Ölü: gri portre ve üstünde yeniden doğma sayacı. */
+.roster li.dead .roster-portrait img {
+  filter: grayscale(1) brightness(0.45);
+}
+
+.respawn {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px #000;
+}
+
+.roster-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.roster-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Uzun ad dar ekranda "…" ile kısalır (esnek kutudaki düz metne uygulanmıyordu). */
+.roster-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roster.red .roster-name {
+  flex-direction: row-reverse;
+}
+
+.roster-stats {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.roster.red .roster-stats {
+  flex-direction: row-reverse;
+}
+
+.roster li.dead .roster-name {
+  color: var(--muted);
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 0.88rem;
+}
+
+.log-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  background: var(--panel);
+  border-left: 3px solid var(--line);
+  border-radius: 4px;
+  animation: log-in 0.35s ease-out;
+}
+
+/* Takım rengi soldaki şeritte; yazı sadece büyük olaylarda takım renginde (hepsi renkli okunmuyordu). */
+.log-card.blue {
+  border-left-color: var(--blue);
+  color: var(--fg);
+}
+
+.log-card.red {
+  border-left-color: var(--red);
+  color: var(--fg);
+}
+
+.log-card.big.blue {
+  color: var(--blue);
+}
+
+.log-card.big.red {
+  color: var(--red);
+}
+
+.log-card.big {
+  font-weight: 600;
+}
+
+.log-card.big.blue {
+  background: linear-gradient(90deg, rgba(74, 144, 226, 0.18), var(--panel) 60%);
+}
+
+.log-card.big.red {
+  background: linear-gradient(90deg, rgba(226, 86, 74, 0.18), var(--panel) 60%);
+}
+
+.log-time {
+  flex: none;
+  width: 5ch;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.log-kill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.log-portrait {
+  border-radius: 4px;
+}
+
+.log-swords {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.log-icon,
+.log-glyph {
+  flex: none;
+  width: 22px;
+  text-align: center;
+}
+
+.log-glyph {
+  font-weight: 800;
+}
+
+.log-text {
+  min-width: 0;
+}
+
+@keyframes log-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-card {
+    animation: none;
+  }
+}
+
+/* Orta ekran: kadrolar haritanın üstünde yan yana. Telefon: skor bandı sıkışır. */
+@media (max-width: 980px) {
+  .player-main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .player-main .map {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 560px) {
+  /* İkonlar ve altın çubuğu yan yana sığmaz: çubuk kendi satırına iner. */
+  .score-band {
+    grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'bteam bkills clock rkills rteam'
+      'bstats bstats . rstats rstats'
+      'bar bar bar bar bar';
+    gap: 6px 8px;
+    padding: 8px;
+  }
+
+  .score-team small {
+    display: none;
+  }
+
+  .score-team {
+    font-size: 0.8rem;
+  }
+
+  .score-kills {
+    font-size: 1.4rem;
+  }
+
+  .gold-bar {
+    min-width: 0;
+  }
+
+  .team-stats {
+    gap: 4px;
+    font-size: 0.8rem;
+  }
+
+  .team-stat img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .roster-portrait img {
+    width: 32px;
+    height: 32px;
   }
 }

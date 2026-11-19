@@ -83,11 +83,13 @@ const map = await fetch(`${DDRAGON}/cdn/${version}/img/map/map11.png`)
 if (!map.ok) throw new Error(`map11: ${map.status}`)
 await writeFile(join(mapOut, 'map11.png'), Buffer.from(await map.arrayBuffer()))
 
-// Kule ve nexus ikonları: oyunun minimap ikonları (gri; takım rengini SVG filtresi verir). Data Dragon'da yok,
+// Kule, nexus ve canavar ikonları: oyunun minimap ikonları (kule/nexus gri, takım rengini SVG filtresi verir; ejder,
+// Elder, Herald, Baron maç oynatıcısının skor bandı ve log'u için, renkli). Data Dragon'da yok,
 // CommunityDragon oyun dosyalarından çıkarıp yama klasörüyle yayınlar: aynı yamaya sabit (16.22.1 → 16.22).
 const CDRAGON = 'https://raw.communitydragon.org'
 const patch = version.split('.').slice(0, 2).join('.')
-for (const icon of ['tower.png', 'inhibitor.png', 'nexus.png']) {
+const MAP_ICONS = ['tower.png', 'inhibitor.png', 'nexus.png', 'dragon.png', 'dragon_elder.png', 'riftherald.png', 'baron.png']
+for (const icon of MAP_ICONS) {
   const response = await fetch(`${CDRAGON}/${patch}/game/assets/ux/minimap/icons/${icon}`)
   if (!response.ok) throw new Error(`${icon}: ${response.status}`)
   await writeFile(join(mapOut, icon), Buffer.from(await response.arrayBuffer()))
@@ -96,9 +98,9 @@ for (const icon of ['tower.png', 'inhibitor.png', 'nexus.png']) {
 await writeFile(
   join(mapOut, 'SOURCE.txt'),
   `map11.png: Riot Games Data Dragon ${version}\n${DDRAGON}\n` +
-    `tower.png, inhibitor.png, nexus.png: CommunityDragon ${patch} (game/assets/ux/minimap/icons)\n${CDRAGON}\n`,
+    `${MAP_ICONS.join(', ')}: CommunityDragon ${patch} (game/assets/ux/minimap/icons)\n${CDRAGON}\n`,
 )
-console.log(`Harita, kule, inhibitör ve nexus ikonu indirildi (Data Dragon ${version}, CommunityDragon ${patch}).`)
+console.log(`Harita ve minimap ikonları indirildi (Data Dragon ${version}, CommunityDragon ${patch}).`)
 
 // Rol ikonları (draft ekranı: filtreler ve yuvalar): istemcinin pozisyon ikonları, CommunityDragon, aynı yama.
 // Bizim rol adımız → oyunun adı (mid = middle, bot = bottom, support = utility).

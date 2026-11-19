@@ -3,7 +3,7 @@ import type { Champion, DraftState, Role, Side } from '../api/types'
 import { ROLES } from '../api/types'
 import { ChampionIcon } from '../components/ChampionIcon'
 import { remainingMs } from '../live/clock'
-import { bans, DRAFT_ORDER, isMyTurn, lineup, ROLE_TR, unavailable } from '../live/draft'
+import { bans, DRAFT_ORDER, isMyTurn, latestBan, lineup, ROLE_TR, unavailable } from '../live/draft'
 import type { ActionResult, HubMethod } from '../live/useLobbyConnection'
 
 const PHASE_TR: Record<string, string> = { ban1: 'Ban 1', pick1: 'Pick 1', ban2: 'Ban 2', pick2: 'Pick 2' }
@@ -19,10 +19,13 @@ interface Props {
   act: (method: HubMethod, ...args: string[]) => Promise<ActionResult>
 }
 
-// Ban/pick (DESIGN.md §2, görünüm §8.27): turnuva yayını gibi. Üstte süre ve sıra şeridi, iki yanda takımların pick
-// kartları ve ban'ları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme), onayla. Kurallar
-// sunucuda; burada tıklanamayanlar sadece görüntü.
+// Ban/pick (DESIGN.md §2, görünüm §8.27): turnuva yayını gibi. Üstte süre ve ban şeridi, iki yanda takımların pick
+// kartları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme), onayla. Kurallar sunucuda; burada
+// tıklanamayanlar sadece görüntü. Maç başına bir kez takılır (LobbyScreen'de anahtar = maç numarası).
 export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
+  // Ekran açıldığında görülen hamleler: ban animasyonu sadece bundan sonrakiler için (rejoin'de eskiler oynamaz).
+  const [seenAtOpen] = useState(() => draft.actions.length)
+  const flash = latestBan(draft.actions, seenAtOpen)
   const [role, setRole] = useState<Role | 'all'>('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
@@ -82,6 +85,14 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
         <TeamColumn side="blue" draft={draft} champions={champions} preview={me === 'blue' && myTurn ? choice : null} />
 
         <div className="pool">
+          {flash?.champion && (
+            <BanFlash
+              key={flash.step}
+              champion={flash.champion}
+              name={champions.get(flash.champion)?.name ?? flash.champion}
+              side={flash.side}
+            />
+          )}
           <div className="pool-filters">
             <button className={role === 'all' ? 'on' : ''} onClick={() => setRole('all')}>
               Hepsi
@@ -130,6 +141,26 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
         </div>
 
         <TeamColumn side="red" draft={draft} champions={champions} preview={me === 'red' && myTurn ? choice : null} />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Ban anı (2 sn, havuzun üstünde, tıklamayı engellemez): splash renkli belirir, griye döner, kırmızı çizgi çekilir,
+ * "BANLANDI" damgası basılır, söner. Zamanlayıcı yok: her yeni ban yeni anahtarla takılır, CSS animasyonu bir kez
+ * oynar ve görünmez kalır (sonraki ban'a kadar). Durum iki oyuncuya aynı anda geldiği için ikisi de aynı anı görür.
+ */
+function BanFlash({ champion, name, side }: { champion: string; name: string; side: Side }) {
+  return (
+    <div className={`ban-flash ${side}`} role="status">
+      <img className="ban-flash-art" src={`/champions/splash/${champion}.jpg`} alt="" />
+      <span className="ban-flash-slash" />
+      <div className="ban-flash-text">
+        <strong>BANLANDI</strong>
+        <span>
+          {name} · {SIDE_TR[side]}
+        </span>
       </div>
     </div>
   )

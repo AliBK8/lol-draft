@@ -1,6 +1,6 @@
 // Draft'ın istemci görünümü: sunucunun durumundan türetilir, kural koymaz (kurallar Domain'de, DESIGN.md §8.3).
 // Burada sadece ekranın sorduğu sorular: hangi taraf benim, sıra bende mi, hangi şampiyon tıklanamaz, yuvalar.
-import type { Champion, DraftState, LobbyState, Role, Seat, Side } from '../api/types'
+import type { Champion, DraftAction, DraftState, LobbyState, Role, Seat, Side } from '../api/types'
 import { ROLES } from '../api/types'
 
 /** Turnuva sırası (Domain/DraftOrder.cs ile aynı): 6 ban, 6 pick, 4 ban, 4 pick. */
@@ -61,6 +61,18 @@ export function isLocked(draft: DraftState, side: Side): boolean {
 export function offRolePenalty(champions: Map<string, Champion>, champion: string | null, slot: Role): number {
   if (!champion) return 0
   return champions.get(champion)?.offRole[slot] ?? 0
+}
+
+/**
+ * İlk `seen` hamleden sonra gelen en son ban (ban animasyonu, §8.27). Sayfa açıldığında görülen hamleler sayılmaz:
+ * rejoin'de eski ban'lar yeniden oynamaz. Süre dolup boş geçen ban (şampiyonsuz) animasyon değil.
+ */
+export function latestBan(actions: readonly DraftAction[], seen: number): DraftAction | null {
+  for (let i = actions.length - 1; i >= seen; i--) {
+    const action = actions[i]
+    if (action.kind === 'ban' && action.champion) return action
+  }
+  return null
 }
 
 /** Kalan adım sayısı (ilerleme göstergesi). */

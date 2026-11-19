@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Champion, Seat, Side } from '../api/types'
+import { EventLog } from './EventLog'
 import { MapView } from './MapView'
 import { MatchReport } from './MatchReport'
 import { buildTracks, poseAt, type Pose } from './movement'
-import { clock, endTime, GAME_SECONDS_PER_SECOND, roster, stateAt } from './timeline'
-import type { Replay } from './types'
+import { scoreboard } from './scoreboard'
+import { ScoreBand, TeamRoster } from './ScoreBand'
+import { endTime, GAME_SECONDS_PER_SECOND, roster, stateAt } from './timeline'
+import type { MatchEvent, Replay } from './types'
 
-const SIDE_TR: Record<Side, string> = { blue: 'Mavi', red: 'Kırmızı' }
 const SPEEDS = [1, 2, 4] as const
 
 interface Props {
@@ -63,41 +65,19 @@ export function MatchPlayer({ replay, champions, you, onFinished }: Props) {
     return map
   }, [players, tracks, t])
 
+  // Skor bandı ve kadrolar her karede T'den (scoreboard.ts); log kartlarının anahtarı olayın belgedeki sırası.
+  const board = useMemo(() => scoreboard(replay, state), [replay, state])
+  const order = useMemo(() => new Map<MatchEvent, number>(replay.events.map((e, i) => [e, i])), [replay])
   const youSide: Side | null = you ? (replay.blueTeam === you ? 'blue' : 'red') : null
-  const gold = Math.round(state.goldDiff / 100) * 100
 
   return (
     <div className="player">
-      <div className="hud">
-        <span className="blue">
-          {SIDE_TR.blue}
-          {youSide === 'blue' && ' (sen)'} <b>{state.kills.blue}</b>
-        </span>
-        <span className="clock">{clock(t)}</span>
-        <span className="red">
-          <b>{state.kills.red}</b> {SIDE_TR.red}
-          {youSide === 'red' && ' (sen)'}
-        </span>
-        <span className="muted small">
-          Altın:{' '}
-          {gold === 0 ? 'eşit' : <b className={gold > 0 ? 'blue' : 'red'}>{`${gold > 0 ? 'Mavi' : 'Kırmızı'} +${Math.abs(gold).toLocaleString('tr-TR')}`}</b>}
-          {' · '}Ejder {state.dragons.blue} / {state.dragons.red}
-          {' · '}Kule {towersDown(state, 'red')} / {towersDown(state, 'blue')}
-        </span>
-      </div>
+      <ScoreBand board={board} t={t} you={youSide} />
 
       <div className="player-main">
+        <TeamRoster lines={board.champions.filter((c) => c.side === 'blue')} side="blue" champions={champions} />
         <MapView state={state} events={replay.events} placements={placements} champions={champions} />
-        <ol className="log">
-          {state.log.map((e, i) => (
-            <li key={`${e.t}-${i}`} className={`${'side' in e ? e.side : ''}${big(e.type) ? ' big' : ''}`}>
-              <span className="muted">{clock(e.t)}</span> {e.text}
-              {showMath && 'probability' in e && typeof e.probability === 'number' && (
-                <span className="muted small"> %{Math.round(e.probability * 100)}</span>
-              )}
-            </li>
-          ))}
-        </ol>
+        <TeamRoster lines={board.champions.filter((c) => c.side === 'red')} side="red" champions={champions} />
       </div>
 
       <div className="controls">
@@ -127,15 +107,9 @@ export function MatchPlayer({ replay, champions, you, onFinished }: Props) {
         </label>
       </div>
 
+      <EventLog log={state.log} order={order} champions={champions} showMath={showMath} />
+
       {state.finished && <MatchReport replay={replay} champions={champions} you={you} />}
     </div>
   )
 }
-
-// HUD'daki kule sayısı: o tarafın yıktığı = rakibin kaybettiği.
-function towersDown(state: ReturnType<typeof stateAt>, loser: Side): number {
-  const lost = state.towers.lost[loser]
-  return lost.top + lost.mid + lost.bot
-}
-
-const big = (type: string) => ['objective', 'nexus', 'tower', 'throw', 'skirmish', 'dragonSoul'].includes(type)

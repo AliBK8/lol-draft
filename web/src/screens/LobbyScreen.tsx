@@ -65,7 +65,7 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
       {!lobby.isFull && <Invite code={code} />}
 
       {draft && draft.phase !== 'swap' && draft.phase !== 'completed' && (
-        <DraftBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
+        <DraftBoard key={lobby.gameNumber} draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
       )}
       {draft?.phase === 'swap' && (
         <SwapBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
