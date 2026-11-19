@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Champion, Seat, Side } from '../api/types'
 import { MapView } from './MapView'
 import { MatchReport } from './MatchReport'
-import { placement, type Placement } from './positions'
+import { buildTracks, poseAt, type Pose } from './movement'
 import { clock, endTime, GAME_SECONDS_PER_SECOND, roster, stateAt } from './timeline'
 import type { Replay } from './types'
 
@@ -52,13 +52,16 @@ export function MatchPlayer({ replay, champions, you, onFinished }: Props) {
     }
   }, [state.finished, onFinished])
 
+  // Güzergâhlar maç başına bir kez (movement.ts: hedeflere yürüyüş); her karede sadece T'nin noktası okunur.
+  const tracks = useMemo(() => buildTracks(replay), [replay])
   const placements = useMemo(() => {
-    const map = new Map<string, { side: Side; placement: Placement }>()
+    const map = new Map<string, { side: Side; placement: Pose }>()
     for (const [id, c] of players) {
-      map.set(id, { side: c.side, placement: placement(replay.events, state, id, c.side, c.role, c.slot) })
+      const track = tracks.get(id)
+      if (track) map.set(id, { side: c.side, placement: poseAt(track, t) })
     }
     return map
-  }, [players, replay.events, state])
+  }, [players, tracks, t])
 
   const youSide: Side | null = you ? (replay.blueTeam === you ? 'blue' : 'red') : null
   const gold = Math.round(state.goldDiff / 100) * 100

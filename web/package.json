@@ -10,6 +10,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "icons": "node scripts/fetch-champion-icons.mjs",
+    "navgrid": "node scripts/build-navgrid.mjs",
     "rakip": "node scripts/rakip.mjs"
   },
   "dependencies": {

@@ -109,7 +109,12 @@ export function pathPoint(lane: Lane, s: number): Point {
 }
 
 /** Noktanın koridor üzerindeki s değeri: yolun ona en yakın noktası (izdüşüm). */
-function sOf(lane: Lane, point: Point): number {
+export function sOf(lane: Lane, point: Point): number {
+  return nearestOnLane(lane, point).s
+}
+
+/** Koridor yolunun noktaya en yakın yeri: s değeri ve yola uzaklık. */
+export function nearestOnLane(lane: Lane, point: Point): { s: number; distance: number } {
   const path = LANE_PATH[lane]
   const segments = lengths(path)
   const total = segments.reduce((a, b) => a + b, 0)
@@ -124,7 +129,22 @@ function sOf(lane: Lane, point: Point): number {
     if (distance < best.distance) best = { distance, s: (walked + f * segments[i]) / total }
     walked += segments[i]
   }
-  return best.s
+  return best
+}
+
+/** Koridor yolunun s0'dan s1'e parçası (iki yöne de): uçlar dahil köşe noktaları. */
+export function laneSlice(lane: Lane, s0: number, s1: number): Point[] {
+  const path = LANE_PATH[lane]
+  const segments = lengths(path)
+  const total = segments.reduce((a, b) => a + b, 0)
+  // Köşe noktalarının s değerleri; aradakiler parçaya girer.
+  const corners: number[] = [0]
+  for (const length of segments) corners.push(corners[corners.length - 1] + length / total)
+  const lo = Math.min(s0, s1)
+  const hi = Math.max(s0, s1)
+  const inner = path.filter((_, i) => corners[i] > lo && corners[i] < hi)
+  const points = [pathPoint(lane, lo), ...inner, pathPoint(lane, hi)]
+  return s0 <= s1 ? points : points.reverse()
 }
 
 type Tiers = readonly [number, number, number]

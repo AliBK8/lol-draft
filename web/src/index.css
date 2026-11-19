@@ -411,9 +411,9 @@ a {
   opacity: 0.25;
 }
 
-/* Konum her karede değişir; tarayıcı arada kalan yolu yumuşatır. */
+/* Konum her karede güzergâhtan gelir (movement.ts); geçiş sadece ölünce solmada. */
 .map-champ {
-  transition: transform 0.3s linear;
+  transition: opacity 0.4s;
 }
 
 .map-champ.dead {

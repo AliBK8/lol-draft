@@ -1,14 +1,21 @@
-// Şampiyonların haritadaki yeri (DESIGN.md §7, §8.19). Belgede koordinat yok: konum olaylardan ve rolden türetilir
-// (prototipin kuralları). Öncelik sırası: ölü → üs; objektif → çukur; kuşatma → üs önü; hareket/split → koridor ya da
-// nehir; recall → üs; yoksa rolün yeri. Saf fonksiyon: aynı T aynı konum (geri sarma tutarlı).
+// Şampiyonların haritadaki hedef yeri (DESIGN.md §7, §8.19): "şu an nerede olmalı". Oraya yürüyüş movement.ts'de
+// (§8.26). Belgede koordinat yok: hedef olaylardan ve rolden türetilir (prototipin kuralları). Öncelik sırası:
+// ölü → üs; objektif → çukur; kuşatma → üs önü; hareket/split → koridor ya da nehir; recall → üs; yoksa rolün yeri.
+// Saf fonksiyon: aynı T aynı hedef (geri sarma tutarlı).
 import type { Role, Side } from '../api/types'
 import { BASE, CAMPS, pathPoint, PIT, RIVER_SPOT, TOWER_S, type Point } from './geometry'
 import type { MatchState } from './timeline'
 import type { Lane, MatchEvent } from './types'
 
+/** Konumun nedeni: hareket katmanı (movement.ts) buna göre yürür, bekler ya da ışınlanır. */
+export type PlacementKind = 'dead' | 'event' | 'recall' | 'idle'
+
 export interface Placement {
   point: Point
   dead: boolean
+  kind: PlacementKind
+  /** Olay hedefinde en geç varış anı (olayın saniyesi); yetişemeyen hızlanır. */
+  deadline?: number
 }
 
 const other = (side: Side): Side => (side === 'blue' ? 'red' : 'blue')
@@ -44,7 +51,7 @@ export function placement(
 
   if (state.dead.has(champion)) {
     const [x, y] = BASE[side]
-    return { point: [x + (slot % 3 - 1) * 14, y + (slot < 3 ? -8 : 10)], dead: true }
+    return { point: [x + (slot % 3 - 1) * 14, y + (slot < 3 ? -8 : 10)], dead: true, kind: 'dead' }
   }
 
   for (const e of events) {
@@ -53,7 +60,7 @@ export function placement(
       case 'objective':
         if (t >= e.t - 22 && t <= e.t + 5) {
           const [x, y] = PIT[e.objective]
-          return at(x - o * 22 + spread * 7, y + o * 22 - spread * 7)
+          return event(e.t, x - o * 22 + spread * 7, y + o * 22 - spread * 7)
         }
         break
       case 'siege':
@@ -63,18 +70,18 @@ export function placement(
           const [bx, by] = BASE[defender]
           const d = defender === 'blue' ? 1 : -1
           const out = side === e.side ? 18 : -18
-          return at(bx + d * (95 + out) + spread * 8, by - d * (95 + out) + spread * 6)
+          return event(e.t, bx + d * (95 + out) + spread * 8, by - d * (95 + out) + spread * 6)
         }
         break
       case 'move':
         if (e.participants.includes(champion) && t >= e.t - e.lead && t <= e.t + e.tail) {
           if (e.river) {
             const [x, y] = RIVER_SPOT[e.river]
-            return at(x - o * 14 + spread * 6, y + o * 14)
+            return event(e.t, x - o * 14 + spread * 6, y + o * 14)
           }
           if (e.lane) {
             // Koridor boyunca kendi tarafına biraz geride (yana kaydırmak şeridin kenarına iterdi).
-            return at(...pathPoint(e.lane, laneFront(state, e.lane) - o * 0.04))
+            return event(e.t, ...pathPoint(e.lane, laneFront(state, e.lane) - o * 0.04))
           }
         }
         break
@@ -83,7 +90,7 @@ export function placement(
           // Split: rakibin kulesine doğru baskı; cevap veren karşısında.
           const s = TOWER_S[other(e.side)][e.lane][0] + (e.side === 'blue' ? 0.04 : -0.04)
           // Cevap veren splitçinin karşısında, koridor boyunca kendi tarafında (şeridin ortasında kalır).
-          return at(...pathPoint(e.lane, e.splitter === champion ? s : s - o * 0.012))
+          return event(e.t, ...pathPoint(e.lane, e.splitter === champion ? s : s - o * 0.012))
         }
         break
     }
@@ -93,7 +100,7 @@ export function placement(
   const offset = 60 * slot + (side === 'red' ? 25 : 0) + 90
   if (t > offset && (t - offset) % 270 < 14) {
     const [x, y] = BASE[side]
-    return at(x + spread * 9, y - o * 4)
+    return { point: [x + spread * 9, y - o * 4], dead: false, kind: 'recall' }
   }
 
   const minute = t / 60
@@ -113,4 +120,5 @@ export function placement(
   return at(x + perp, y + perp)
 }
 
-const at = (x: number, y: number): Placement => ({ point: [x, y], dead: false })
+const at = (x: number, y: number): Placement => ({ point: [x, y], dead: false, kind: 'idle' })
+const event = (deadline: number, x: number, y: number): Placement => ({ point: [x, y], dead: false, kind: 'event', deadline })

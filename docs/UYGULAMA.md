@@ -334,3 +334,36 @@ Doğrulama: Domain 110 (+1 ömür, +7 rejoin), Api 92 (+10: anahtar biçimi ve a
 | Kule, inhibitör ve nexus ikonu | `web/public/map/tower.png`, `inhibitor.png`, `nexus.png`; `MapView` `TINT` | Oyunun minimap ikonları (64×64, gri). Data Dragon'da yok: CommunityDragon `game/assets/ux/minimap/icons`, Data Dragon sürümünden türetilen yama klasörüne sabit (16.22.1 → `16.22`; `latest` her yamada değişir). Takım rengi SVG renk matrisiyle (gri × takım rengi; siyah kenar korunur, renkler 1'in üstünde çarpanla açılır). Boyutlar (harita birimi): kule 26 (şampiyon ikonuyla aynı; ilk 20 küçük kaldı), inhibitör 22, nexus 34 üs noktasında; yıkılan kule ve inhibitör %25 opak (`map-tower down`, `map-inhibitor down`; render testi ikisini ayrı sayar). Not: bu makinede Windows curl'ü (schannel) CommunityDragon'da TLS hatası verir; betik Node `fetch` kullanır, etkilenmez. |
 
 Doğrulama: noktalar görselin üstüne çizilip gözle kontrol edildi (çukurlar çukurda, kuleler koridorda, kamplar açıklıkta); web 35 test + lint + build. Örnek maç geliştirme rakipleriyle oynatıldı (`/m/{id}`).
+
+### 8.26 Uygulama: şampiyonlar yürür (hareket katmanı)
+
+**Sorun:** şampiyonlar kavgalara ışınlanıyordu. Konum her an `placement()`'tan "şu an nerede olmalı" diye anında geliyordu (ör. ejderden 22 sn önce herkes çukurda). Tek yumuşatma 0,3 sn'lik CSS geçişiydi, 1x'te 20 oyun sn/gerçek sn akarken bu ~6 oyun sn'de haritayı yarılamak demekti; geçiş de düz çizgideydi, duvarların içinden.
+
+**Kavram:** `placement()` artık **hedef**; şampiyon hedefine haritada, duvardan geçmeyen yoldan, oyun hızında **yürür**. Güzergâh maç başına bir kez hesaplanır; ekrandaki konum o güzergâhın T anındaki noktası (saf: geri sarma, hız değişimi bedava).
+
+```
+placement() her saniye  ──▶  duraklar (aynı hedef sürdükçe tek durak: [başlangıç, bitiş], nokta, tür, en geç varış)
+                                  │
+                                  ▼
+                  durak durak yürüyüş planı (nav.ts: ızgarada yol, 13,8 birim/sn)
+                  olay durağı: başlangıç − yol süresi'nde yola çık; yetişemezse ≤ 2 kat hızlan
+                                  │
+                                  ▼
+                  poseAt(güzergâh, T) → nokta, ölü mü (+ beklerken hafif kıpırdanma)
+```
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Yürünebilir ızgara | `web/scripts/build-navgrid.mjs` (`npm run navgrid`) → `web/src/match/navgrid.json` | Görselde duvar siyah, gerisi (koridor, orman yolu, nehir, üs) yürünebilir: parlaklık eşiği (en büyük kanal > 30). 5 birimlik hücre, 120×120 (koridor ~7-8 hücre); yürünebilir %65,7. PNG bağımlılıksız çözülür (Node `zlib`). Satırlar `.`/`#` metin: diff'te okunur. Görsel değişirse betik yeniden koşar. |
+| Yol bulma | `web/src/match/nav.ts` `route()` | İki nokta aynı koridorun orta çizgisine ≤ 8 birimse yol koridorun kendisi (`laneSlice`: şeridin tam ortası, köşede yay). Değilse A*: adım bedeli uzunluk × (1 + 2 / duvara uzaklık) (mesafe dönüşümü; duvar dibi ortadan ~2 kat pahalı → yol ortadan geçer), çapraz adım iki duvar arasından kayamaz, tahmin kuş uçuşu × 1,5 (aramayı daraltır; ilk hesap 444 → ~300 ms). Sonra Chaikin yumuşatma + Douglas-Peucker. Hücre çiftine göre önbellek (kamp turları, üsse dönüşler tekrar eder). |
+| Durak noktası | `settle()` | Hedef noktaların bir kısmı (çukur çevresi dizilim, kuşatma noktası) duvara düşüyordu (örneklerin ~%2'si): durak, duvara en az 2 hücre uzak en yakın yere oturur. Beklerken kıpırdanma da böylece duvara taşmaz. |
+| Hız | `movement.ts` `WALK_SPEED`, `MAX_BOOST` | LoL ~345 birim/sn → 13,8 harita birimi/oyun sn (üsten top dış kulesine ~30 sn). Olaya yetişemeyen en fazla 2 kat hızlanır (kullanıcı kararı; koşma/hayalet/iksir yerine). Örnek maçta objektif anında yaşayan 90/90 şampiyon çukurda. |
+| Zamanında yola çıkma | `buildTrack` | Olay durağı (`kind: 'event'`, `deadline` = olayın saniyesi) için çıkış = durak başlangıcı − yol süresi: şampiyon kendi koridorundan erken ayrılır, nehirden gelir (rotasyon). Boşta durağına (koridor, kamp) başlangıcında çıkılır; yolda yeni hedef gelirse yürüyüş orada kesilip yeni hedefe dönülür. Olay sürerken (`floor`) ayrılmaz. |
+| Ölüm | | Öldüğü yerde silik kalır (eskiden üsse ışınlanırdı); yeniden doğunca üste belirir, yürüyerek döner. |
+| Recall | `RECALL_CHANNEL` | 8 sn yerinde kanal, sonra üsse ışınlanır (oyundaki gibi), sonra yürür. Ölüm recall'u keser. Güzergâhta tek "sıçrama" türü: recall ve doğma, ikisi de kendi üssüne (test). |
+| Beklerken | `poseAt`, `IDLE_SWAY` | Hedefte dikilen ikon cansız duruyordu: 3,5 birimlik yavaş salınım, şampiyona göre evreli; varınca ve çıkmadan 3 sn önce söner (yürüyüşe atlamaz). |
+| Hedef türleri | `positions.ts` `PlacementKind`, `deadline` | `placement()` mantığı aynı (öncelik sırası, pencereler); sadece her hedefe tür (`dead`, `event`, `recall`, `idle`) ve olaysa en geç varış eklendi. |
+| Çizim | `MatchPlayer.tsx`, `MapView.tsx`, `index.css` | Güzergâhlar `useMemo` ile maç başına bir kez (~0,2-0,3 sn, maç açılırken); her karede `poseAt`. CSS `transform` geçişi kalktı (konum zaten her karede doğru; geçiş ikonu geride bırakırdı), sadece ölünce solma. |
+| Karar anlarıyla uyum | | Güzergâh sadece bilinen olaylardan kurulur, hareket katmanı olay türlerini bilmez (sadece hedef + tür + en geç varış). Maç içi karar anları gelince (DESIGN §4.10) yeni olaylar eklenir, güzergâh yeniden kurulur; motorun sonucu karardan en az yürüme süresi kadar sonraya koyması yeter. |
+
+Doğrulama: `movement.test.ts`: yol boyunca her birim yürünebilir; maç boyunca hiçbir an duvarda değil; ardışık 0,5 sn arası koşma hızını aşan tek sıçrama kendi üssüne; objektif anında yaşayanlar çukurda; ölen öldüğü yerde, doğunca üste; saflık. İki maçta güzergâhlar haritaya çizilip gözle kontrol edildi (orman yolları, nehirden rotasyon, koridor ortası). Web 41 test + tsc + lint + build.

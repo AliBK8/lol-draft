@@ -35,10 +35,10 @@ Temel ilkeler:
 
 | Konu | Karar | Neden / reddedilen alternatif |
 |---|---|---|
-| Maç içi oyuncu etkisi | Maç tamamen motor tarafından oynanır. Oyuncunun girdisi draft (+ ileride maç öncesi koç direktifi). | Reddedildi: oyuncunun her fazda puan dağıttığı "Koç Masası" sistemi ("bütün güçleri ben seçiyorum, olmaz"). Reddedildi: maç içi kart sistemi (kafaya yatmadı). Reddedildi: tamamen zar. |
+| Maç içi oyuncu etkisi | Maç motor tarafından oynanır; oyuncunun girdisi draft. 2026-11-19 yön: ileride maç öncesi oyun planı + maç içi 3-5 karar anı (eşzamanlı gizli seçim, plan varsayılan cevap; §4.10, henüz uygulanmadı). Savaş için yapay zeka modeli yok: gerçek veri katsayıları ayarlar, sonuç kurallarla çalışır. | Reddedildi: oyuncunun her fazda puan dağıttığı "Koç Masası" sistemi ("bütün güçleri ben seçiyorum, olmaz"). Reddedildi: maç içi kart sistemi (kafaya yatmadı). Reddedildi: tamamen zar. |
 | Kazanma mantığı | Gizli takım puanı + puandan etkilenen savaş olasılıkları. Maçı son savaşı / kuşatmayı kazanan bitirir. | v1 prototipte "puanı yüksek olan kazanır" vardı; savaşı kaybedenin oyunu bitirmesi mantıksızdı, değiştirildi. |
 | Görselleştirme | Hesap motoru + Anlatıcı (olay bütçesi) + zamanlı olay listesi; front sadece oynatır. | Football Manager maç motoru mantığı. |
-| Hareket | Şimdilik senaryo kuralları (v2 prototip). Hedef: gerçek maç timeline'larından bölge geçiş olasılıkları (Markov tablosu). ML yok. | ML gereksiz; dakikalık konum verisiyle Markov yeterli ve basit. |
+| Hareket | Senaryo kuralları (v2 prototip) hedefi verir; şampiyon hedefine haritada yürür (2026-11-19, §8.26: ızgara + A*, oyun hızı, olaya erken çıkış). Hedef: boşta hareket gerçek timeline'lardan bölge geçiş olasılıkları (Markov tablosu). ML yok. | ML gereksiz; dakikalık konum verisiyle Markov yeterli ve basit. |
 | Stack | ASP.NET Core + SignalR (tek API uygulaması) önünde YARP gateway, React + TypeScript, SQLite ile başla. Veri hattı Python. | Gateway; tek giriş noktası, rate limiting, TLS ve auth için sonradan eklendi. Mikroservis, Redis, Hangfire MVP için gereksiz. Node/TS alternatifi değerlendirildi; motor paylaşımına gerek olmadığı ve Monte Carlo ağır olduğu için .NET. |
 | Güvenlik | Sunucu otoriter, kayıtsız misafir JWT, iki katmanlı rate limiting (gateway + hub), katmanlı mimari ve sıkı kapsülleme. | §8 |
 | Seri: taraf ve fearless | Takım kimliği sabit koltuk (`TeamSlot` A/B), renk maçlık: ilk mavi rastgele, sonra renkler her maç değişir. Fearless tek tür: seçilen şampiyon iki takıma da kilitlenir. Fearless + bo5 havuz yetene kadar kapalıydı (40'lık havuza sığmıyordu); havuz 80'e çıkınca açıldı (2026-11-17). (2026-11-10) | Reddedildi: "kaybeden taraf seçer" (ek bir seçim ekranı, otomatik değişim daha basit). Reddedildi: Host/Guest koltuk adı (2v2 ve turnuva modunda anlamsız). Reddedildi: soft fearless. |
@@ -235,24 +235,54 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 
 `text` boş olan olaylar log'a yazılmaz, sadece hareketi yönlendirir.
 
-### 4.10 Koç direktifi (ileride, maç öncesi)
+### 4.10 Oyun planı ve maç içi karar anları (ileride; tasarım 2026-11-19, uygulanmadı)
 
-| Direktif | Etki | Bedel |
+Oyuncunun maça etkisi draft'la bitmesin: maç öncesi bir **oyun planı**, maç içinde birkaç **karar anı**. Plan, karar anlarının varsayılan cevabıdır (cevap vermeyen, geliştirme botu ve denge aracı planına göre seçer).
+
+```
+Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
+   → maç oynar → ② karar anı (maç başı 3-5): oynatma iki tarafta durur, iki taraf gizli seçer (~15 sn),
+                    seçmeyene planın varsayılanı → maç kaldığı yerden sürer → … → bitiş
+```
+
+**① Oyun planı** motorun ayar düğmelerini çevirir (her kazancın bir bedeli var; tanımlar veri dosyasında, ör. `tactics.json`: yeni plan çoğu zaman kod değil veri işi):
+
+| Plan | Kazanç | Bedel |
 |---|---|---|
+| Ejder odaklı, late'e götür | Ejder savaşlarında bonus, geç güç biraz artar | Herald ve erken kuleler kolay verilir |
+| Erken baskı | Gank sıklığı ve erken savaş bonusu | 20. dk'dan sonra güç biraz düşer |
 | Bot lane baskısı | Gank'lar bot'a daha sık | Top yalnız kalır |
 | Ormancı istilası | 3-4. dk'da ekstra istila olayı | Kaybedilirse ormancı geride |
-| Objektif odaklı | Objektif savaşlarında küçük bonus | Koridor akışı biraz düşer |
-| Split | Yan koridor kule olayları artar | Takım savaşlarında 1 kişi eksik sayılır |
-| Scale oyna | Lane'de büyük kayıp ihtimali düşer | Erken objektifler daha kolay verilir |
+| Split | Yan koridor kule olayları artar | Takım savaşlarında 1 kişi geç gelir |
 | Hızlı bitir | Kuşatma eşiği düşer (45 → 35) | Throw cezası artar |
 
-Draft'a uymayan direktif küçük bir ceza alır.
+- Draft'a uyum: draft'a uymayan plan küçük ceza, uyan küçük bonus (Kayle'li takımda "erken baskı" cezalı).
+- Taş-kâğıt-makas: her planın karşıtı var; denge aracı plan × plan matrisini ölçer, **baskın plan olmamalı**.
+
+**② Karar anı** küçük bir iki kişilik oyun; sonuç iki seçimin kesişimi. Örnek, ejder:
+
+| Mavi ↓ / Kırmızı → | Savaş | Bırak, takas yap |
+|---|---|---|
+| **Savaş** | Takım savaşı | Mavi ejderi alır, Kırmızı karşıda kule alır |
+| **Bırak, takas yap** | Tersi | İkisi de bir şey alır, sakin |
+
+- Doğru seçim duruma bağlı (altın farkı, kim hayatta, kim hangi fazda güçlü); karar ekranında gösterilir: şans değil okuma (pokerdeki karar kalitesi).
+- Karar tipleri: ejder/Baron (savaş / bırak-takas / beklet), ace sonrası (bitir / reset), kazanılan savaş sonrası (kovala / objektife dön), geç oyun (split / grupla).
+- Kural sınırları aynen: ihtimaller %10-90, geride olanın şansı, her olayın motorda karşılığı.
+
+**Mimari:** maç artık tek seferde simüle edilmez. `simulate(draft, seed, planlar, kararlar[]) → olaylar + bekleyen karar`: sunucu ilk cevapsız karar anına kadar simüle eder; seçimler listeye eklenince maç **baştan, aynı seed ve yeni listeyle** yeniden simüle edilir (milisaniyeler; ara durum saklanmaz, aynı girdi aynı maç). Her alt sistemin kendi zar akışı olur: karar, ilgisiz zarları kaydırmaz; **karardan önceki olaylar birebir aynı kalır** (test). Ön yüz karar işaretinde durur, seçimi hub'a gönderir; hızlı izleyen yavaşı bekler; replay'de kararlar açık görünür.
+
+**Hareketle uyum (§5, §8.26):** hareket katmanı olay türlerini bilmez, sadece "şu saniyede şurada ol" hedeflerine yürür ve yalnız bilinen olaylara bakar. Kararlar yeni olay üretir, güzergâh yeniden kurulur. Tek şart: motor kararın sonucunu karar anından en az yürüme süresi kadar sonraya koyar (ör. karar 4:30, ejder savaşı 5:30); karar anında şampiyonlar yerinde durur, seçimden sonra yürür.
+
+**Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
 
 ---
 
 ## 5. Hareket sistemi
 
 ### 5.1 Şu anki kurallar (prototip v2)
+Bu kurallar **hedefi** verir; şampiyon hedefine haritada yürür (2026-11-19, §8.26): duvardan geçmeyen yol (görselden çıkan ızgara, A*; koridorda koridorun orta çizgisi), ~345 birim/sn; olaya zamanında varmak için erken yola çıkar, yetişemezse en fazla 2 kat hızlanır. Ölen öldüğü yerde silik kalır, üste doğar; recall 8 sn kanal + üsse ışınlanma; ikisinden sonra yürüyerek döner.
+
 Öncelik sırası (ilk eşleşen kazanır):
 
 1. **Ölü** → kendi base'i.
@@ -265,7 +295,7 @@ Draft'a uymayan direktif küçük bir ceza alır.
    - 14-25 dk: bot duo mid'e geçer; top kendi koridorunda; ormancı nehir ile kamplar arasında gidip gelir.
    - ≥25 dk: top yan koridorda split, diğer dördü mid'de grup.
 
-İkonlar hedefe yumuşak geçişle (lerp) ilerler.
+İkonlar hedefe yürür (bkz. bölüm başı, §8.26); eskiden anında hedefe atlayıp 0,3 sn CSS geçişiyle yumuşuyordu (kavgalara ışınlanma).
 
 ### 5.2 Hedef sistem: veri tabanlı bölge geçişleri (Markov)
 1. **Bölgeler:** Harita (~15.000 × 15.000 birim) 15×15 ızgaraya bölünür. Her hücre elle 23 bölgeden birine atanır: top/mid/bot × dış/iç kule × mavi/kırmızı, nehir üst/alt, ormanlar (mavi/kırmızı × üst/alt), ejder/baron çukuru, base'ler ve `mid_center` (`data-pipeline/out/zones.json`, araç: `data-pipeline/tools/zone-painter.html`). Boyama 180° simetriktir (mavi↔kırmızı, üst↔alt, baron↔ejder). Merkez hücre kendi kendisinin simetriği olduğu için iki tarafa da ait olmayan `mid_center` bölgesidir; böylece kendi/rakip çevirisinde iki taraf eşit kalır.
@@ -320,7 +350,7 @@ Klasör: `data-pipeline/`. Anahtar ortam değişkeninde: `RIOT_API_KEY`. Develop
   - Kule, inhibitör ve nexus oyunun minimap ikonlarıyla (CommunityDragon, yama klasörüne sabit), takım rengine boyanır, koridor şeridinin ortasında; yıkılan silik. İnhibitör üs kulesinin arkasında; motorda üs kulesiyle tek kademe (tier 2), birlikte düşer.
   - Ejder çukuru (399, 419), Baron/Herald (203, 182): canavar kesilme konumlarının medyanı.
   - Eskiden kendi çizimimizdi (düz zemin, çapraz nehir, köşeli koridorlar).
-- **İkonlar:** Riot Data Dragon portreleri, takım rengi çerçeveyle; bir kez indirilip kendi sunucumuzdan sunulur (`web/public/champions`, §8.17). Ölü ikon %30 opak, base'te.
+- **İkonlar:** Riot Data Dragon portreleri, takım rengi çerçeveyle; bir kez indirilip kendi sunucumuzdan sunulur (`web/public/champions`, §8.17). Ölü ikon %30 opak, öldüğü yerde; doğunca üste belirir, yürüyerek döner (§8.26).
 - **Oynatma:** 1x = 20 oyun saniyesi / gerçek saniye (1 dk = 3 sn), 2x, 4x, sona atla. Olay zamanı gelince log'a yazılır, haritada kısa bir işaret çıkar (✕, "Ejder", "Çatışma", "Throw!").
 - **HUD:** Kill skoru, saat, altın farkı (`goldFrames`'ten, dakikalar arası doğrusal, 100'e yuvarlanmış), ejder sayısı, yıkılan kule sayısı, kule ikonları (§8.19).
 - **Geliştirici modu ("Matematiği göster"):** Canlı toplam ve koridor puanları, log'da olay ihtimalleri.
@@ -345,7 +375,7 @@ Güncel iş sırası `CLAUDE.md` "Sıradaki işler"de tutulur.
 |---|---|
 | Draft kalitesi ve "ne olurdu?" | Maç sonu aynı draft 1000 kez; alternatif pick'lerle karşılaştırma ("Kayle yerine Jax %57"). |
 | Koç kimlikleri | Seri başında pasif yetenekli koç (rakip direktifini görme, gerideyken fazla shutdown vb.). |
-| Maç içi karar anları | Baron/bitirme anında iki oyuncuya eşzamanlı gizli seçim. Şu anki "tam simülasyon" yönünde açık soru. |
+| Maç içi karar anları | Tasarlandı (2026-11-19): §4.10 (oyun planı + karar anları, parça parça simülasyon). |
 | Paylaşım kartı + tekrar linki | Üç kritik an + skor; link kayıtlı olay listesini oynatır (seed'le yeniden simüle etmez: denge ayarı ve platform farkı eski maçı değiştirirdi; karar 2026-11-11). |
 | Turnuva modu | 4/8 kişilik bracket, fearless bo3. |
 | Arkadaşın hayaleti | Arkadaşın geçmiş draft'larından öğrenen bota karşı oynama. |

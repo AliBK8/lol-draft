@@ -1,6 +1,6 @@
 import type { Champion, Side } from '../api/types'
 import { BASE, INHIBITORS, MAP_IMAGE, MAP_SIZE, PIT, RIVER_SPOT, TOWERS } from './geometry'
-import type { Placement } from './positions'
+import type { Pose } from './movement'
 import type { MatchState } from './timeline'
 import type { Lane, MatchEvent } from './types'
 
@@ -49,12 +49,12 @@ const POP_SECONDS = 25
 interface Props {
   state: MatchState
   events: readonly MatchEvent[]
-  placements: Map<string, { side: Side; placement: Placement }>
+  placements: Map<string, { side: Side; placement: Pose }>
   champions: Map<string, Champion>
 }
 
 // SVG harita (DESIGN.md §7): Summoner's Rift görseli üstünde kuleler, ikonlar ve olay işaretleri.
-// Şampiyon konumları CSS geçişiyle yumuşar (transform), kare kare elle aradeğer yok.
+// Şampiyon konumları her karede güzergâhtan gelir (movement.ts); CSS geçişi yok, yoksa ikon geride kalırdı.
 export function MapView({ state, events, placements, champions }: Props) {
   return (
     <svg className="map" viewBox={`0 0 ${MAP_SIZE} ${MAP_SIZE}`} role="img" aria-label="Maç haritası">
@@ -140,7 +140,7 @@ function Pops({ state, events, placements }: Pick<Props, 'state' | 'events' | 'p
 function popOf(e: MatchEvent, placements: Props['placements']) {
   switch (e.type) {
     case 'kill': {
-      // Kurban o anda ölü sayılıp üsse taşınır; işaret kavganın olduğu yerde, yani öldürenin yanında.
+      // İşaret kavganın olduğu yerde, öldürenin yanında.
       const p = placements.get(e.killer)?.placement.point
       return p ? { x: p[0] + 10, y: p[1], text: '✕', side: e.side } : null
     }
