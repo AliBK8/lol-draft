@@ -402,3 +402,17 @@ Doğrulama: draft'ın iki anı (pick 1'de sıra mavide 14 sn; ban 1'de 3 sn) bil
 
 Doğrulama: `scoreboard.test.ts` (kill/ölüm toplamı olaylarla, takım altın farkı HUD ile ±10, doğma sayacı, canavar ve kule sayıları, kısa altın); maçın 17. ve 22. dakikası bileşenlerle çizilip başsız Edge'le ekran görüntüsü alındı (1200, 760 ve 375 px); web 46 test + tsc + lint + build.
 
+### 8.29 Uygulama: maç oynatıcısı, adım 2 (büyük an bandı, zaman çizelgesi)
+
+**Kavram:** büyük anlar kaçmasın, maçta istenen ana gidilebilsin. İkisi de T'den (ve oynatma hızından) türetilir, zamanlayıcı yok: geri sarınca, atlayınca doğru.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Hangi anlar | `web/src/match/highlights.ts` `announcementAt` | İlk kan (log metni "İlk kan!" ile başlayan kill), ejder, Herald, Baron, Elder, ejder ruhu, throw, son takım savaşı, nexus. Sıradan kill, kule ve çatışma duyurulmaz (log'da ve çizelgede zaten var; her biri bant olsa bant hiç inmezdi). |
+| Süre | `BANNER_SECONDS` | Bant ~2 gerçek saniye: pencere = 2 × 20 × hız oyun saniyesi (1x'te 40, 4x'te 160). Pencerede birden çok an varsa en yenisi. Bant olayın sırasıyla anahtarlanır, CSS animasyonu bir kez oynar ve görünmez kalır (ban anıyla aynı yöntem). "Sona atla" → "NEXUS DÜŞTÜ". |
+| Bant | `AnnounceBanner.tsx` | Haritanın en üstünde (top koridor hizası): ilk denemede %14'teydi, Baron çukurundaki kavgayı örtüyordu. Oyun ikonu, takım renginde büyük başlık, altında log metni (ilk denemede "Mavi · Mavi Baron'u aldı" tekrar ediyordu; takım başlığın renginden okunur). Tıklamayı engellemez; hareket hassasiyetinde sadece belirip söner. |
+| Zaman çizelgesi | `Scrubber.tsx`, `timelineMarkers` | Haritanın altında maçın tamamı: kill'ler takım renginde ince çizgi, canavar, kule ve nexus oyun ikonlarıyla (altında alan takımın rengi). Altında gerçek bir `input range` (görünmez iz, altın dikey tutamaç): fare, dokunma ve klavye; `aria-valuetext` saat. Atlamak bedava: konum (`poseAt`), skor, log hepsi T'den. Bitmiş maçta geri sarınca karne gizlenir, sona gelince yine açılır (izlendi bildirimi bir kez). |
+| Dosya adları | | `Timeline.tsx` / `Highlights.tsx` olamazdı: Windows'ta `timeline.ts` / `highlights.ts` ile büyük/küçük harf çakışması (§8.28'deki gibi). |
+
+Doğrulama: `highlights.test.ts` (ilk kan penceresi içinde var, dışında yok; sıradan kill duyurulmaz; ejder alan takımla; maç sonunda nexus; her kill/canavar/kule/nexus için 0-1 arası bir işaret). Baron anında (22:35) bant animasyonun 0,8. saniyesinde durdurulup başsız Edge'le ekran görüntüsü alındı (1200 ve 375 px; taşma yok). Web 50 test + tsc + lint + build.
+

@@ -1433,7 +1433,7 @@ a {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .player-main .map {
+  .player-main .map-stage {
     grid-column: 1 / -1;
     grid-row: 2;
   }
@@ -1478,6 +1478,243 @@ a {
   }
 
   .roster-portrait img {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* --- Maç oynatıcısı adım 2 (§8.29): büyük an bandı, zaman çizelgesi --- */
+.map-stage {
+  position: relative;
+  min-width: 0;
+}
+
+/* Büyük an: haritanın en üstünde (top koridor hizası; kavgaların üstünü kapatmasın) 2 sn (highlights.ts
+   BANNER_SECONDS ile aynı); bitince görünmez, tıklama altına geçer. */
+.announce {
+  position: absolute;
+  z-index: 5;
+  top: 2%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  max-width: 92%;
+  padding: 10px 22px;
+  border-radius: 8px;
+  background: rgba(10, 12, 16, 0.88);
+  border-top: 3px solid;
+  border-bottom: 3px solid;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  animation: announce 2s ease-out forwards;
+}
+
+.announce.blue {
+  border-color: var(--blue);
+}
+
+.announce.red {
+  border-color: var(--red);
+}
+
+.announce-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.announce-text strong {
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+}
+
+.announce.blue .announce-text strong {
+  color: var(--blue);
+}
+
+.announce.red .announce-text strong {
+  color: var(--red);
+}
+
+.announce-text span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@keyframes announce {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scaleX(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(-50%) scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%);
+    visibility: hidden;
+  }
+}
+
+.scrubber {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.scrubber-time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+/* İşaretler çubuğun üstünde (ikonlar) ve içinde (kill çizgileri); kaydırıcı en üstte, görünmez ama tıklanır. */
+.scrubber-track {
+  position: relative;
+  flex: 1;
+  height: 40px;
+}
+
+.scrubber-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.scrubber-fill {
+  position: absolute;
+  left: 0;
+  bottom: 6px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.scrubber-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.mark-kill {
+  position: absolute;
+  bottom: 4px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  border-radius: 1px;
+}
+
+.mark-kill.blue {
+  background: var(--blue);
+}
+
+.mark-kill.red {
+  background: var(--red);
+}
+
+.mark-icon {
+  position: absolute;
+  bottom: 16px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50%;
+  border-bottom: 2px solid;
+}
+
+.mark-icon.blue {
+  border-color: var(--blue);
+}
+
+.mark-icon.red {
+  border-color: var(--red);
+}
+
+.scrubber input[type='range'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.scrubber input[type='range']::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
+.scrubber input[type='range']::-moz-range-track {
+  background: transparent;
+}
+
+/* Tutamaç: çubuğun üstünde altın bir dikey çizgi. */
+.scrubber input[type='range']::-webkit-slider-thumb {
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  appearance: none;
+}
+
+.scrubber input[type='range']::-moz-range-thumb {
+  width: 4px;
+  height: 40px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.scrubber input[type='range']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announce {
+    animation-name: announce-fade;
+  }
+}
+
+@keyframes announce-fade {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (max-width: 560px) {
+  .announce-text strong {
+    font-size: 1.1rem;
+  }
+
+  .announce-icon {
     width: 32px;
     height: 32px;
   }

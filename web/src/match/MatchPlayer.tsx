@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Champion, Seat, Side } from '../api/types'
+import { AnnounceBanner } from './AnnounceBanner'
 import { EventLog } from './EventLog'
+import { announcementAt, BANNER_SECONDS, timelineMarkers } from './highlights'
 import { MapView } from './MapView'
 import { MatchReport } from './MatchReport'
 import { buildTracks, poseAt, type Pose } from './movement'
 import { scoreboard } from './scoreboard'
 import { ScoreBand, TeamRoster } from './ScoreBand'
+import { Scrubber } from './Scrubber'
 import { endTime, GAME_SECONDS_PER_SECOND, roster, stateAt } from './timeline'
 import type { MatchEvent, Replay } from './types'
 
@@ -70,15 +73,27 @@ export function MatchPlayer({ replay, champions, you, onFinished }: Props) {
   const order = useMemo(() => new Map<MatchEvent, number>(replay.events.map((e, i) => [e, i])), [replay])
   const youSide: Side | null = you ? (replay.blueTeam === you ? 'blue' : 'red') : null
 
+  // Büyük an bandı: son ~2 gerçek saniyenin (bu hızda kaç oyun saniyesiyse) en yeni büyük anı (highlights.ts).
+  const announcement = useMemo(
+    () => announcementAt(replay.events, t, BANNER_SECONDS * GAME_SECONDS_PER_SECOND * speed),
+    [replay, t, speed],
+  )
+  const markers = useMemo(() => timelineMarkers(replay.events, end), [replay, end])
+
   return (
     <div className="player">
       <ScoreBand board={board} t={t} you={youSide} />
 
       <div className="player-main">
         <TeamRoster lines={board.champions.filter((c) => c.side === 'blue')} side="blue" champions={champions} />
-        <MapView state={state} events={replay.events} placements={placements} champions={champions} />
+        <div className="map-stage">
+          <MapView state={state} events={replay.events} placements={placements} champions={champions} />
+          {announcement && <AnnounceBanner key={announcement.index} announcement={announcement} />}
+        </div>
         <TeamRoster lines={board.champions.filter((c) => c.side === 'red')} side="red" champions={champions} />
       </div>
+
+      <Scrubber t={t} end={end} markers={markers} onSeek={setT} />
 
       <div className="controls">
         {!state.finished ? (
