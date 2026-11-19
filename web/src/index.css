@@ -1719,3 +1719,326 @@ a {
     height: 32px;
   }
 }
+
+/* --- Karne (§8.30): kazanan bandı, altın farkı grafiği, karşılıklı çubuklar --- */
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.report-hero {
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.report-hero.blue {
+  background: linear-gradient(120deg, rgba(74, 144, 226, 0.28), var(--panel) 55%);
+  border-left: 5px solid var(--blue);
+}
+
+.report-hero.red {
+  background: linear-gradient(120deg, rgba(226, 86, 74, 0.28), var(--panel) 55%);
+  border-left: 5px solid var(--red);
+}
+
+.report-hero h2 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.report-hero.blue h2 {
+  color: var(--blue);
+}
+
+.report-hero.red h2 {
+  color: var(--red);
+}
+
+.report-hero p {
+  margin: 4px 0 14px;
+}
+
+.final-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+}
+
+.final-stats dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.final-stats dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-grid {
+  gap: 16px;
+}
+
+.report-card {
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.report-card h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.gold-chart {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.gold-chart-plot {
+  position: relative;
+}
+
+.gold-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gc-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.gc-zero {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.gc-axis {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Alan: seri renginde hafif bir tül; çizgi 2 px, yuvarlak uç. */
+.gc-area.blue {
+  fill: var(--blue);
+  fill-opacity: 0.14;
+}
+
+.gc-area.red {
+  fill: var(--red);
+  fill-opacity: 0.14;
+}
+
+.gc-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gc-line.blue {
+  stroke: var(--blue);
+}
+
+.gc-line.red {
+  stroke: var(--red);
+}
+
+.gc-moment {
+  stroke-width: 1;
+  stroke-opacity: 0.35;
+}
+
+.gc-moment.blue {
+  stroke: var(--blue);
+}
+
+.gc-moment.red {
+  stroke: var(--red);
+}
+
+.gc-cross {
+  stroke: var(--fg);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+
+/* Nokta: seri renginde, yüzey renginde 2 px halka. */
+.gc-dot {
+  stroke: var(--bg);
+  stroke-width: 2;
+}
+
+.gc-dot.blue {
+  fill: var(--blue);
+}
+
+.gc-dot.red {
+  fill: var(--red);
+}
+
+.gc-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.gc-tip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.gc-tip strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gc-tip span {
+  color: var(--muted);
+}
+
+.gc-table {
+  margin-top: 6px;
+}
+
+.gc-table table {
+  max-width: 320px;
+  margin-top: 6px;
+}
+
+/* Karşılıklı çubuklar: değer | mavi yarı (sağa yaslı) | kalem | kırmızı yarı | değer. */
+.versus {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.versus-row {
+  display: grid;
+  grid-template-columns: 4.5em minmax(0, 1fr) 9.5em minmax(0, 1fr) 4.5em;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.versus-row.total {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 800;
+}
+
+.versus-row > .versus-value:first-child {
+  text-align: right;
+}
+
+.versus-label {
+  color: var(--muted);
+  text-align: center;
+}
+
+.versus-row.total .versus-label {
+  color: var(--fg);
+}
+
+.versus-half {
+  display: flex;
+  height: 10px;
+}
+
+.versus-half.blue {
+  justify-content: flex-end;
+}
+
+.versus-bar {
+  height: 100%;
+}
+
+/* Uç yuvarlak, taban (ortaya bakan) düz. */
+.versus-bar.blue {
+  background: var(--blue);
+  border-radius: 4px 0 0 4px;
+}
+
+.versus-bar.red {
+  background: var(--red);
+  border-radius: 0 4px 4px 0;
+}
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 8px;
+  border-left: 3px solid var(--line);
+  color: var(--fg);
+}
+
+.report-list li.blue {
+  border-left-color: var(--blue);
+}
+
+.report-list li.red {
+  border-left-color: var(--red);
+}
+
+.report-list img {
+  flex: none;
+  border-radius: 6px;
+}
+
+@media (max-width: 760px) {
+  .report-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .versus-row {
+    grid-template-columns: 3.8em minmax(0, 1fr) 7em minmax(0, 1fr) 3.8em;
+    font-size: 0.78rem;
+  }
+
+  .report-hero h2 {
+    font-size: 1.5rem;
+  }
+
+  /* SVG ekranla küçülür, yazısı da: dar ekranda eksen yazısı viewBox biriminde büyür (~10 px kalır). */
+  .gc-axis {
+    font-size: 20px;
+  }
+}

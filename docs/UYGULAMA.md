@@ -416,3 +416,17 @@ Doğrulama: `scoreboard.test.ts` (kill/ölüm toplamı olaylarla, takım altın 
 
 Doğrulama: `highlights.test.ts` (ilk kan penceresi içinde var, dışında yok; sıradan kill duyurulmaz; ejder alan takımla; maç sonunda nexus; her kill/canavar/kule/nexus için 0-1 arası bir işaret). Baron anında (22:35) bant animasyonun 0,8. saniyesinde durdurulup başsız Edge'le ekran görüntüsü alındı (1200 ve 375 px; taşma yok). Web 50 test + tsc + lint + build.
 
+### 8.30 Uygulama: maç oynatıcısı, adım 3 (karne)
+
+**Kavram:** karne "neden kazandın?" sorusunu bir bakışta cevaplasın: sonuç, maçın akışı (altın kimdeydi, ne zaman döndü), sonra ayrıntı. İçerik aynı (§16.11), sunuş değişti; sunucu değişmedi.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Kazanan bandı | `MatchReport.tsx` | Kazananın renginde büyük başlık ("Kazandın!" / "Kaybettin." / "Mavi kazandı"), dakika, bitiş türü, son savaşın ihtimali; altında maç sonu özeti (kill, altın, kule, ejder, Baron; `scoreboard` maç sonu durumuyla). |
+| Altın farkı grafiği | `GoldChart.tsx` | Tek seri, iki yönlü: dakika başına mavi − kırmızı altın (`goldFrames`). Çizgi 2 px, alan seri renginde %14 tül; sıfırın üstü mavi, altı kırmızı (aynı yol iki kez çizilir, sıfır çizgisinden kırpılır). Tek eksen, üst sınır farkı kapsayan yuvarlak sayı (en az 1.000), ızgara saç teli (±sınır ve yarısı), eksen yazısı kısa ("+5k": dar ekranda büyüyen yazı sol boşluğa sığsın). Üstte canavar ve nexus anları oyun ikonlarıyla, çizim alanında alan takımın renginde ince çizgi. Tek seri: lejant yok, başlık ne çizildiğini ve yönü söyler. Renk: takım renkleri koyu zeminde (#181d26) dataviz doğrulayıcısından geçti (renk körlüğü ΔE 22,6, normal 29,4, kontrast ≥ 3:1). |
+| İmleç | | Çizim alanının tamamı hedef: dikey çizgi en yakın dakikaya oturur, noktada yüzey renginde halka; kutuda fark (önde), kim önde, saat ve o dakikanın canavar anları. Dokunmatikte dokununca da açılır (`pointerdown`). Erişilebilirlik: "Tablo olarak göster" açılır kutusu (dakika, fark, önde). |
+| Altın kaynakları | `GoldSources` | Düz tablo yerine karşılıklı çubuklar: değer, mavi yarı (ortaya yaslı), kalem, kırmızı yarı, değer; ölçek bütün kalemlerde ortak (kalemler birbiriyle de karşılaştırılır); en üstte toplam. Değerler yazıyla, renk sadece çubukta. |
+| Kartlar | `.report-card`, `.report-list` | Draft kuralları aynı (etkiye göre çubuklar). Hiper taşıyıcılar ve rol dışı kumarlar portreli satırlar, takım renginde şerit. ≤ 760 px tek sütun. |
+
+Doğrulama: render testi (kazandın/kaybettin/nötr, altın kaynakları, toplam, draft kuralları) geçiyor. Karne Vite'ta geçici bir sayfada gerçek React'le çizildi; grafiğe yapay fare hareketi gönderilip imleç kutusu görüldü (22. ve 14. dakika: "+3.055, Mavi önde · 14:00, Herald (Mavi)"); 1150 ve 500 px ekran görüntüleri (ilk denemede x eksenindeki "dk" 35 ile çakışıyordu, telefonda "+5.000" sol kenara sığmıyordu; ikisi düzeltildi). Web 50 test + tsc + lint + build.
+
