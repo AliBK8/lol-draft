@@ -1,12 +1,14 @@
 // Şampiyon portrelerini Riot Data Dragon'dan bir kez indirir: web/public/champions/{id}.png (DESIGN.md §8.17).
 // Kendi sunucumuzdan sunulur: oyuncunun tarayıcısı Riot'a istek atmaz, CSP değişmez, sürüm sabit kalır.
-// Çalıştırma: npm run icons  (şampiyon listesi değişince; sonuç repoya girer)
+// Çalıştırma: npm run icons  (şampiyon listesi değişince; sonuç repoya girer). Yama sabitlemek için:
+// npm run icons -- 16.22.1 (verilmezse en son yama; mevcut dosyaları yeni yamaya taşımadan ekleme yapmak için).
 //
 // Eşleştirme: bizim kimliğimiz (renekton) ile Data Dragon anahtarı (Renekton, MonkeyKing...) her zaman aynı değil;
 // ada göre eşleşir (harf dışı karakterler atılır: "Kai'Sa" = "kaisa"). Eşleşmeyen olursa betik durur, sessizce atlamaz.
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const out = join(root, 'web', 'public', 'champions')
@@ -20,8 +22,23 @@ async function json(url) {
   return response.json()
 }
 
+/** Ağ kopmasında (ECONNRESET vb.) 3 kez daha dener; HTTP hatası (403, 404) denenmez, çağırana döner. */
+async function fetchRetry(url) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(url)
+    } catch (error) {
+      if (attempt >= 4) throw error
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+    }
+  }
+}
+
+/** Splash dosya adı anahtardan farklı olanlar (Data Dragon tutarsızlığı: centered/Fiddlesticks_0.jpg 403). */
+const SPLASH_KEY = { Fiddlesticks: 'FiddleSticks' }
+
 const { champions } = JSON.parse(await readFile(join(root, 'data', 'champions.json'), 'utf8'))
-const [version] = await json(`${DDRAGON}/api/versions.json`)
+const version = process.argv[2] ?? (await json(`${DDRAGON}/api/versions.json`))[0]
 const { data } = await json(`${DDRAGON}/cdn/${version}/data/en_US/champion.json`)
 
 // Data Dragon: ad → anahtar (resim dosyasının adı anahtardan gelir).
@@ -32,17 +49,32 @@ if (missing.length > 0) {
   throw new Error(`Data Dragon'da bulunamadı: ${missing.map((c) => c.id).join(', ')}`)
 }
 
-await mkdir(out, { recursive: true })
+// Draft ekranının pick kartları: yatay "centered" splash (1280×720; karakter ortada, geniş karta tamamı sığar;
+// dikey yükleme görselinden yatay şerit kesince karakterin sadece gövdesi kalıyordu) → champions/splash/{id}.jpg.
+// Data Dragon'da sürümsüz adreste (temel kostüm, _0).
+const splashOut = join(out, 'splash')
+await mkdir(splashOut, { recursive: true })
 for (const champion of champions) {
   const key = byName.get(normalize(champion.name)) ?? byName.get(normalize(champion.id))
-  const response = await fetch(`${DDRAGON}/cdn/${version}/img/champion/${key}.png`)
+  const response = await fetchRetry(`${DDRAGON}/cdn/${version}/img/champion/${key}.png`)
   if (!response.ok) throw new Error(`${champion.id} (${key}): ${response.status}`)
   await writeFile(join(out, `${champion.id}.png`), Buffer.from(await response.arrayBuffer()))
+  const splash = await fetchRetry(`${DDRAGON}/cdn/img/champion/centered/${SPLASH_KEY[key] ?? key}_0.jpg`)
+  if (!splash.ok) throw new Error(`${champion.id} (${key}) splash: ${splash.status}`)
+  // Kart en fazla ~240×76 (2x ekranda 480 genişlik): 640×360 yeter. Tam boy 170 tane 18 MB, küçülmüş ~5-7 MB.
+  const small = await sharp(Buffer.from(await splash.arrayBuffer()))
+    .resize(640, 360)
+    .jpeg({ quality: 82, mozjpeg: true })
+    .toBuffer()
+  await writeFile(join(splashOut, `${champion.id}.jpg`), small)
 }
 
 // Hangi yamadan alındığı: Riot'un fan projesi politikası kaynağı belirtmeyi ister, güncellemede de işe yarar.
-await writeFile(join(out, 'SOURCE.txt'), `Riot Games Data Dragon ${version}\n${DDRAGON}\n`)
-console.log(`${champions.length} portre indirildi (Data Dragon ${version}).`)
+await writeFile(
+  join(out, 'SOURCE.txt'),
+  `Riot Games Data Dragon ${version}\n${DDRAGON}\nsplash/: ${DDRAGON}/cdn/img/champion/centered/{key}_0.jpg\n`,
+)
+console.log(`${champions.length} portre ve splash indirildi (Data Dragon ${version}).`)
 
 // Maç ekranının haritası: Summoner's Rift (map11), aynı yamadan → web/public/map/map11.png (DESIGN.md §7).
 const mapOut = join(root, 'web', 'public', 'map')
@@ -67,3 +99,20 @@ await writeFile(
     `tower.png, inhibitor.png, nexus.png: CommunityDragon ${patch} (game/assets/ux/minimap/icons)\n${CDRAGON}\n`,
 )
 console.log(`Harita, kule, inhibitör ve nexus ikonu indirildi (Data Dragon ${version}, CommunityDragon ${patch}).`)
+
+// Rol ikonları (draft ekranı: filtreler ve yuvalar): istemcinin pozisyon ikonları, CommunityDragon, aynı yama.
+// Bizim rol adımız → oyunun adı (mid = middle, bot = bottom, support = utility).
+const rolesOut = join(root, 'web', 'public', 'roles')
+await mkdir(rolesOut, { recursive: true })
+const POSITIONS = { top: 'top', jungle: 'jungle', mid: 'middle', bot: 'bottom', support: 'utility' }
+for (const [role, position] of Object.entries(POSITIONS)) {
+  const url = `${CDRAGON}/${patch}/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-${position}.png`
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`${role} ikonu: ${response.status}`)
+  await writeFile(join(rolesOut, `${role}.png`), Buffer.from(await response.arrayBuffer()))
+}
+await writeFile(
+  join(rolesOut, 'SOURCE.txt'),
+  `CommunityDragon ${patch} (plugins/rcp-fe-lol-clash/.../position-selector/positions)\n${CDRAGON}\n`,
+)
+console.log(`Rol ikonları indirildi (CommunityDragon ${patch}).`)

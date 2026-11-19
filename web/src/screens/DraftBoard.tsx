@@ -1,13 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { Champion, DraftState, Role, Side } from '../api/types'
 import { ROLES } from '../api/types'
 import { ChampionIcon } from '../components/ChampionIcon'
-import { Countdown } from '../components/Countdown'
+import { remainingMs } from '../live/clock'
 import { bans, DRAFT_ORDER, isMyTurn, lineup, ROLE_TR, unavailable } from '../live/draft'
 import type { ActionResult, HubMethod } from '../live/useLobbyConnection'
 
 const PHASE_TR: Record<string, string> = { ban1: 'Ban 1', pick1: 'Pick 1', ban2: 'Ban 2', pick2: 'Pick 2' }
 const SIDE_TR: Record<Side, string> = { blue: 'Mavi', red: 'Kırmızı' }
+/** Bir adımın süresi (Domain DraftTimings.Default): süre çubuğu bunun ne kadarının kaldığını gösterir. */
+const STEP_SECONDS = 30
 
 interface Props {
   draft: DraftState
@@ -17,7 +19,9 @@ interface Props {
   act: (method: HubMethod, ...args: string[]) => Promise<ActionResult>
 }
 
-// Ban/pick (DESIGN.md §2): sıra sendeyse havuzdan seç, onayla. Kurallar sunucuda; burada tıklanamayanlar sadece görüntü.
+// Ban/pick (DESIGN.md §2, görünüm §8.27): turnuva yayını gibi. Üstte süre ve sıra şeridi, iki yanda takımların pick
+// kartları ve ban'ları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme), onayla. Kurallar
+// sunucuda; burada tıklanamayanlar sadece görüntü.
 export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
   const [role, setRole] = useState<Role | 'all'>('all')
   const [search, setSearch] = useState('')
@@ -54,17 +58,28 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
   const next = DRAFT_ORDER[draft.actions.length]
   return (
     <div className="draft">
-      <div className="draft-bar">
-        <span>{PHASE_TR[draft.phase] ?? draft.phase}</span>
-        <span className={`turn ${draft.turn ?? ''}`}>
-          {myTurn ? 'Sıra sende' : `Sıra ${draft.turn ? SIDE_TR[draft.turn] : ''}`}: {next?.kind === 'ban' ? 'ban' : 'pick'}
+      <div className={`draft-head ${draft.turn ?? ''}`}>
+        <span className={`draft-team blue${draft.turn === 'blue' ? ' active' : ''}`}>
+          {SIDE_TR.blue}
+          {me === 'blue' && <small> (sen)</small>}
         </span>
-        <Countdown deadline={draft.deadline} offsetMs={offsetMs} />
-        <span className="muted small">Adım {draft.actions.length + 1}/20 · Sen {SIDE_TR[me]}sin</span>
+        <div className="draft-status">
+          <span className="draft-phase">{PHASE_TR[draft.phase] ?? draft.phase}</span>
+          <span className={`draft-turn ${draft.turn ?? ''}`}>
+            {myTurn ? 'Sıra sende' : `Sıra ${draft.turn ? SIDE_TR[draft.turn] : ''}`}: {next?.kind === 'ban' ? 'BAN' : 'PICK'}
+          </span>
+        </div>
+        <span className={`draft-team red${draft.turn === 'red' ? ' active' : ''}`}>
+          {me === 'red' && <small>(sen) </small>}
+          {SIDE_TR.red}
+        </span>
+        <StepTimer deadline={draft.deadline} offsetMs={offsetMs} side={draft.turn} />
       </div>
 
+      <BanStrip draft={draft} champions={champions} me={me} preview={myTurn && draft.step === 'ban' ? choice : null} />
+
       <div className="draft-main">
-        <TeamColumn side="blue" draft={draft} champions={champions} mine={me === 'blue'} />
+        <TeamColumn side="blue" draft={draft} champions={champions} preview={me === 'blue' && myTurn ? choice : null} />
 
         <div className="pool">
           <div className="pool-filters">
@@ -72,8 +87,14 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
               Hepsi
             </button>
             {ROLES.map((r) => (
-              <button key={r} className={role === r ? 'on' : ''} onClick={() => setRole(r)}>
-                {ROLE_TR[r]}
+              <button
+                key={r}
+                className={`role-filter${role === r ? ' on' : ''}`}
+                onClick={() => setRole(r)}
+                title={ROLE_TR[r]}
+                aria-label={ROLE_TR[r]}
+              >
+                <img src={`/roles/${r}.png`} alt="" width={20} height={20} />
               </button>
             ))}
             <input placeholder="Ara" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -90,50 +111,125 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
                   onClick={() => setSelected(c.id)}
                   title={locked ? `${c.name} (fearless kilidi)` : c.name}
                 >
-                  <ChampionIcon id={c.id} name={c.name} size={56} dim={out} />
+                  <span className="pool-portrait">
+                    <ChampionIcon id={c.id} name={c.name} size={60} dim={out} />
+                    {locked && <span className="lock-badge" aria-label="fearless kilidi">🔒</span>}
+                  </span>
                   <span>{c.name}</span>
                 </button>
               )
             })}
           </div>
           <div className="pool-confirm">
-            <button className="primary" disabled={!myTurn || !choice || busy} onClick={confirm}>
-              {draft.step === 'ban' ? 'Banla' : 'Seç'}
+            <button className={`primary lock-in ${draft.step ?? ''}`} disabled={!myTurn || !choice || busy} onClick={confirm}>
+              {draft.step === 'ban' ? 'Banla' : 'Kilitle'}
               {choice ? `: ${champions.get(choice)?.name}` : ''}
             </button>
             {error && <span className="error">{error}</span>}
           </div>
         </div>
 
-        <TeamColumn side="red" draft={draft} champions={champions} mine={me === 'red'} />
+        <TeamColumn side="red" draft={draft} champions={champions} preview={me === 'red' && myTurn ? choice : null} />
       </div>
     </div>
   )
 }
 
-function TeamColumn(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; mine: boolean }) {
-  const { side, draft, champions, mine } = props
+/** Kalan süre: büyük sayı ve sıradakinin renginde boşalan çubuk (son 5 sn kırmızı, nabız). */
+function StepTimer({ deadline, offsetMs, side }: { deadline: string | null; offsetMs: number; side: Side | null }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!deadline) return
+    const timer = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(timer)
+  }, [deadline])
+
+  const ms = remainingMs(deadline, offsetMs, now)
+  if (ms === null) return null
+  const seconds = Math.ceil(ms / 1000)
+  const urgent = seconds <= 5
+  const fraction = Math.max(0, Math.min(1, ms / (STEP_SECONDS * 1000)))
+  return (
+    <>
+      <span className={`draft-clock${urgent ? ' urgent' : ''}`}>{seconds}</span>
+      <div className="draft-bar-track">
+        <div className={`draft-bar-fill ${side ?? ''}${urgent ? ' urgent' : ''}`} style={{ width: `${fraction * 100}%` }} />
+      </div>
+    </>
+  )
+}
+
+/**
+ * Ban şeridi (bandın altı): mavinin 5 ban'ı solda, mavinin üstünde; kırmızınınki sağda, ayna gibi (ilk ban en sağda).
+ * Sıradaki ban yuvası parlar; sıra bendeyse seçtiğim orada yarı saydam görünür.
+ */
+function BanStrip(props: { draft: DraftState; champions: Map<string, Champion>; me: Side; preview: string | null }) {
+  return (
+    <div className="ban-strip">
+      {(['blue', 'red'] as const).map((side) => (
+        <BanRow key={side} side={side} {...props} preview={props.me === side ? props.preview : null} />
+      ))}
+    </div>
+  )
+}
+
+function BanRow(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
+  const { side, draft, champions, preview } = props
+  const teamBans = bans(draft, side)
+  const next = draft.step ? DRAFT_ORDER[draft.actions.length] : undefined
+  const active = next?.side === side && next.kind === 'ban' ? teamBans.length : -1
+  return (
+    <div className={`ban-row ${side}`} aria-label={`${SIDE_TR[side]} ban'ları`}>
+      {Array.from({ length: 5 }, (_, i) => {
+        const ban = teamBans[i] ?? (i === active ? preview : null)
+        const state = teamBans[i] ? 'filled' : i === active ? (preview ? 'active preview' : 'active') : ''
+        return (
+          <span key={`${i}-${ban ?? ''}-${state}`} className={`ban-slot ${state}`}>
+            <ChampionIcon id={ban} name={ban ? champions.get(ban)?.name : undefined} size={40} dim={state === 'filled'} />
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Takım: 5 pick kartı. Sıradaki yuva parlar; sıra bendeyse seçtiğim orada yarı saydam görünür. */
+function TeamColumn(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
+  const { side, draft, champions, preview } = props
   const picks = lineup(draft, side)
+  const next = draft.step ? DRAFT_ORDER[draft.actions.length] : undefined
+  const activePick = next?.side === side && next.kind === 'pick' ? picks.filter(Boolean).length : -1
+
   return (
     <div className={`team ${side}`}>
-      <h3>
-        {SIDE_TR[side]} {mine && <span className="muted small">(sen)</span>}
-      </h3>
-      <div className="bans">
-        {Array.from({ length: 5 }, (_, i) => {
-          const ban = bans(draft, side)[i]
-          return <ChampionIcon key={i} id={ban ?? null} name={ban ? champions.get(ban)?.name : undefined} size={32} dim />
-        })}
+      {ROLES.map((role, i) => {
+        const champion = picks[i] ?? (i === activePick ? preview : null)
+        const state = picks[i] ? 'filled' : i === activePick ? (preview ? 'active preview' : 'active') : ''
+        return (
+          <PickCard
+            key={`${role}-${champion ?? ''}-${state}`}
+            side={side}
+            role={role}
+            champion={champion}
+            name={champion ? champions.get(champion)?.name : undefined}
+            state={state}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+/** Pick kartı: yatay splash (karakter ortada, tamamı görünür), rol ikonu ve ad. */
+function PickCard(props: { side: Side; role: Role; champion: string | null; name?: string; state: string }) {
+  const { side, role, champion, name, state } = props
+  return (
+    <div className={`pick-card ${side} ${state}`}>
+      {champion && <img className="pick-art" src={`/champions/splash/${champion}.jpg`} alt="" loading="lazy" />}
+      <div className="pick-info">
+        <img className="pick-role" src={`/roles/${role}.png`} alt={ROLE_TR[role]} title={ROLE_TR[role]} width={18} height={18} />
+        <span className="pick-name">{name ?? (state.startsWith('active') ? 'seçiyor…' : '')}</span>
       </div>
-      {ROLES.map((role, i) => (
-        <div key={role} className="slot">
-          <ChampionIcon id={picks[i]} name={picks[i] ? champions.get(picks[i])?.name : undefined} side={side} size={44} />
-          <div>
-            <div className="muted small">{ROLE_TR[role]}</div>
-            <div>{picks[i] ? champions.get(picks[i])?.name : '—'}</div>
-          </div>
-        </div>
-      ))}
     </div>
   )
 }

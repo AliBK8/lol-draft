@@ -351,6 +351,7 @@ Klasör: `data-pipeline/`. Anahtar ortam değişkeninde: `RIOT_API_KEY`. Develop
   - Ejder çukuru (399, 419), Baron/Herald (203, 182): canavar kesilme konumlarının medyanı.
   - Eskiden kendi çizimimizdi (düz zemin, çapraz nehir, köşeli koridorlar).
 - **İkonlar:** Riot Data Dragon portreleri, takım rengi çerçeveyle; bir kez indirilip kendi sunucumuzdan sunulur (`web/public/champions`, §8.17). Ölü ikon %30 opak, öldüğü yerde; doğunca üste belirir, yürüyerek döner (§8.26).
+- **Draft ekranı (2026-11-19, §8.27):** turnuva yayını görünümü. Üstte takım adları, evre, büyük sayaç ve sıradakinin renginde boşalan süre çubuğu; altında ban şeridi (mavinin ban'ları solda, kırmızınınki sağda; gri + çapraz çizgi). İki yanda 5 pick kartı (Data Dragon yatay splash, karakter bütün; rol ikonu, ad); sıradaki yuva parlar, seçim onaylanmadan kendi yuvada yarı saydam ön izlenir (sadece kendi ekranında). Ortada havuz: rol ikonlu filtreler, fearless kilidi rozeti.
 - **Oynatma:** 1x = 20 oyun saniyesi / gerçek saniye (1 dk = 3 sn), 2x, 4x, sona atla. Olay zamanı gelince log'a yazılır, haritada kısa bir işaret çıkar (✕, "Ejder", "Çatışma", "Throw!").
 - **HUD:** Kill skoru, saat, altın farkı (`goldFrames`'ten, dakikalar arası doğrusal, 100'e yuvarlanmış), ejder sayısı, yıkılan kule sayısı, kule ikonları (§8.19).
 - **Geliştirici modu ("Matematiği göster"):** Canlı toplam ve koridor puanları, log'da olay ihtimalleri.
