@@ -4,9 +4,16 @@ export function Layout() {
   return (
     <div className="app">
       <header className="top">
-        <Link to="/" className="brand">
-          LoL Draft
-        </Link>
+        <div className="top-inner">
+          <Link to="/" className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              LD
+            </span>
+            <span className="brand-name">
+              LoL <span>Draft</span>
+            </span>
+          </Link>
+        </div>
       </header>
       <main>
         <Outlet />

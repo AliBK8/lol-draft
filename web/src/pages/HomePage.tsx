@@ -2,7 +2,22 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/http'
 import type { Format } from '../api/types'
+import { WINS_TO_TAKE } from '../live/series'
 import { saveSession } from '../session'
+import { HomeBackdrop } from './HomeBackdrop'
+
+const FORMATS: { id: Format; label: string }[] = [
+  { id: 'bo1', label: 'Tek maç' },
+  { id: 'bo3', label: `İlk ${WINS_TO_TAKE.bo3} galibiyet` },
+  { id: 'bo5', label: `İlk ${WINS_TO_TAKE.bo5} galibiyet` },
+]
+
+const STEPS: [string, string][] = [
+  ['Lobiyi aç', 'Formatı seç, tek tıkla açılır. Kayıt yok.'],
+  ['Linki at', 'Linki açan arkadaşın rakip koltuğa oturur.'],
+  ['Draft yap', 'Turnuva sırası: ban, pick, swap. Her adım 30 sn.'],
+  ['Maçı izle', 'Motor maçı oynar, siz haritada izlersiniz.'],
+]
 
 // Lobi aç: format + fearless → token → davet linkinin sayfasına (açan A koltuğunda).
 export function HomePage() {
@@ -28,33 +43,74 @@ export function HomePage() {
   }
 
   return (
-    <section className="card narrow">
-      <h1>Yeni seri</h1>
-      <p className="muted">Lobiyi aç, linki arkadaşına at. Draft'ı siz yaparsınız, maçı motor oynar.</p>
+    <div className="home">
+      <HomeBackdrop />
 
-      <fieldset className="choices">
-        <legend>Format</legend>
-        {(['bo1', 'bo3', 'bo5'] as const).map((f) => (
-          <label key={f} className={format === f ? 'choice on' : 'choice'}>
-            <input type="radio" name="format" value={f} checked={format === f} onChange={() => setFormat(f)} />
-            {f.toUpperCase()}
-          </label>
-        ))}
-      </fieldset>
+      <section className="home-hero">
+        <span className="eyebrow">Turnuva draft'ı · arkadaşınla</span>
+        <h1>
+          Draft'ı siz yapın,
+          <br />
+          <span className="grad">maçı motor oynasın.</span>
+        </h1>
+        <p className="lead">
+          Ban, pick, bo1/bo3/bo5 ve fearless. Draft bitince maç simüle edilir; şampiyonları haritada, olayları akışta
+          izlersiniz. Sonunda "neden kazandın?" karnesi.
+        </p>
+        <ol className="steps">
+          {STEPS.map(([title, text], i) => (
+            <li key={title}>
+              <span className="step-no">{i + 1}</span>
+              <span>
+                <strong>{title}</strong>
+                <small>{text}</small>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={fearless}
-          onChange={(e) => setFearless(e.target.checked)}
-        />
-        Fearless (seçilen şampiyon serinin geri kalanında iki takıma da kapanır)
-      </label>
+      <section className="card create">
+        <h2>Yeni seri</h2>
 
-      <button className="primary" disabled={busy} onClick={create}>
-        {busy ? 'Açılıyor…' : 'Lobi aç'}
-      </button>
-      {error && <p className="error">{error}</p>}
-    </section>
+        <fieldset className="formats">
+          <legend>Format</legend>
+          {FORMATS.map((f) => (
+            <label key={f.id} className={format === f.id ? 'format on' : 'format'}>
+              <input
+                className="sr-only"
+                type="radio"
+                name="format"
+                value={f.id}
+                checked={format === f.id}
+                onChange={() => setFormat(f.id)}
+              />
+              <strong>{f.id.toUpperCase()}</strong>
+              <small>{f.label}</small>
+            </label>
+          ))}
+        </fieldset>
+
+        <label className={fearless ? 'toggle-card on' : 'toggle-card'}>
+          <input
+            className="sr-only"
+            type="checkbox"
+            checked={fearless}
+            onChange={(e) => setFearless(e.target.checked)}
+          />
+          <span className="toggle-text">
+            <strong>Fearless</strong>
+            <small>Seçilen şampiyon serinin geri kalanında iki takıma da kapanır.</small>
+          </span>
+          <span className="switch" aria-hidden="true" />
+        </label>
+
+        <button className="primary big" disabled={busy} onClick={create}>
+          {busy ? 'Açılıyor…' : 'Lobi aç'}
+        </button>
+        <p className="muted small hint">Açan A koltuğuna oturur. Lobi en fazla 2 saat açık kalır.</p>
+        {error && <p className="error">{error}</p>}
+      </section>
+    </div>
   )
 }

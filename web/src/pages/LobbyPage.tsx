@@ -66,19 +66,24 @@ export function LobbyPage() {
   if (session) return <LobbyScreen code={code} session={session} />
 
   return (
-    <section className="card narrow">
-      <h1>Seriye davet</h1>
+    <section className="card narrow join">
+      <span className="eyebrow">Lobi {code}</span>
       {hasRejoin ? (
         <>
-          <p className="muted">Bu lobide bir koltuğun var.</p>
-          <button className="primary" disabled={busy} onClick={() => void rejoin()}>
+          <h1>Tekrar hoş geldin</h1>
+          <p className="muted">Bu lobide bir koltuğun var; kaldığın yerden devam edersin.</p>
+          <button className="primary big" disabled={busy} onClick={() => void rejoin()}>
             {busy ? 'Koltuğuna dönülüyor…' : 'Koltuğuna dön'}
           </button>
         </>
       ) : (
         <>
-          <p className="muted">Bir arkadaşın seni LoL draft'ına çağırıyor.</p>
-          <button className="primary" disabled={busy} onClick={join}>
+          <h1>Seriye çağrıldın</h1>
+          <p className="muted">
+            Bir arkadaşın seni LoL draft'ına çağırıyor. Katılınca rakip koltuğa oturursun; draft'ı siz yaparsınız,
+            maçı motor oynar.
+          </p>
+          <button className="primary big" disabled={busy} onClick={join}>
             {busy ? 'Katılıyor…' : 'Katıl'}
           </button>
         </>

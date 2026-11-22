@@ -1,16 +1,25 @@
-/* Çirkin ama çalışan (5. adım): sade, koyu tema. Renkler tek yerde; takım renkleri haritada da aynı. */
+/* Tema (§8.31): koyu lacivert zemin, mor-lacivert paneller, lavanta vurgu; yumuşak köşeler. Renkler tek yerde.
+   Takım renkleri (mavi/kırmızı) oyunun dili: temadan bağımsız, haritada da aynı. */
 :root {
-  --bg: #0f1218;
-  --panel: #181d26;
-  --line: #2a3140;
-  --fg: #e6e9ef;
-  --muted: #8b93a5;
+  --bg: #0a0c1d;
+  --panel: #141735;
+  --panel-2: #1c2047;
+  --line: #2b2f5e;
+  --fg: #e9e8fb;
+  --muted: #9b9cc8;
   --blue: #4a90e2;
   --red: #e2564a;
-  --accent: #c8aa6e;
-  --error: #ff7b72;
+  --accent: #a78bfa;
+  --accent-2: #6366f1;
+  --accent-grad: linear-gradient(135deg, #6366f1, #a855f7);
+  --ok: #4ade80;
+  --error: #ff7b8a;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: 0 12px 32px rgba(3, 4, 20, 0.45);
+  --font: 'Outfit Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
   color-scheme: dark;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font);
   line-height: 1.45;
 }
 
@@ -18,9 +27,14 @@
   box-sizing: border-box;
 }
 
+/* Zeminde iki hafif ışık lekesi (sol üst çivit, sağ mor): düz lacivert tek başına ölü duruyordu. */
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    radial-gradient(900px 600px at 0% 0%, rgba(99, 102, 241, 0.16), transparent 70%),
+    radial-gradient(800px 600px at 100% 10%, rgba(168, 85, 247, 0.12), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--fg);
 }
 
@@ -31,14 +45,50 @@ body {
 }
 
 .top {
-  padding: 12px 16px;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
+  background: rgba(10, 12, 29, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.top-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* Ana sayfada içerik sola 40 px'e kadar taşar (.home); logo da aynı formülle kayar, hizalı kalsın.
+   Diğer sayfalarda (lobi, draft, maç) logo içerik alanının kenarında. */
+.app:has(.home) .brand {
+  margin-left: calc(-1 * clamp(0px, (100vw - 1180px) / 2, 40px));
 }
 
 .brand {
-  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fg);
   font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
   text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-grad);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(124, 92, 246, 0.45);
+}
+
+.brand-name span {
+  color: var(--accent);
 }
 
 main {
@@ -59,8 +109,9 @@ main {
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 20px;
+  box-shadow: var(--shadow);
 }
 
 .narrow {
@@ -88,11 +139,24 @@ h1 {
 button {
   font: inherit;
   color: var(--fg);
-  background: var(--line);
+  background: var(--panel-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 8px 14px;
   cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    filter 0.15s;
+}
+
+button:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 button:disabled {
@@ -101,10 +165,16 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent);
-  color: #111;
-  border-color: var(--accent);
+  background: var(--accent-grad);
+  color: #fff;
+  border-color: transparent;
   font-weight: 600;
+  box-shadow: 0 6px 20px rgba(124, 92, 246, 0.35);
+}
+
+button.primary:not(:disabled):hover {
+  border-color: transparent;
+  filter: brightness(1.12);
 }
 
 input[type='text'],
@@ -113,8 +183,13 @@ input:not([type]) {
   color: var(--fg);
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .row {
@@ -127,34 +202,10 @@ input:not([type]) {
   min-width: 0;
 }
 
-.choices {
-  display: flex;
-  gap: 8px;
-  border: 0;
-  padding: 0;
-  margin: 16px 0;
-}
 
-.choices legend {
-  margin-bottom: 6px;
-  color: var(--muted);
-}
 
-.choice {
-  padding: 8px 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  cursor: pointer;
-}
 
-.choice.on {
-  border-color: var(--accent);
-  color: var(--accent);
-}
 
-.choice input {
-  display: none;
-}
 
 .check {
   display: flex;
@@ -163,9 +214,6 @@ input:not([type]) {
   margin-bottom: 16px;
 }
 
-.invite {
-  margin: 16px 0;
-}
 
 /* --- 5b: canlı lobi, draft, swap --- */
 .lobby {
@@ -174,25 +222,9 @@ input:not([type]) {
   gap: 16px;
 }
 
-.lobby-head {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
 
-.seats {
-  display: flex;
-  gap: 12px;
-}
 
-.seat {
-  color: var(--muted);
-}
 
-.seat.on {
-  color: var(--fg);
-}
 
 .blue {
   color: var(--blue);
@@ -332,7 +364,7 @@ input:not([type]) {
 
 .pool-item:not(:disabled):hover .champ {
   border-color: var(--accent);
-  box-shadow: 0 0 10px rgba(200, 170, 110, 0.45);
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
 }
 
 .pool-confirm {
@@ -349,17 +381,7 @@ input:not([type]) {
   margin-bottom: 12px;
 }
 
-.games {
-  padding-left: 20px;
-}
 
-button.link {
-  background: none;
-  border: none;
-  color: var(--accent);
-  padding: 0 4px;
-  text-decoration: underline;
-}
 
 a {
   color: var(--accent);
@@ -388,7 +410,7 @@ a {
 .map {
   width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .map-bg {
@@ -541,7 +563,7 @@ a {
   padding: 12px 16px 0;
   background: linear-gradient(90deg, rgba(74, 144, 226, 0.14), var(--panel) 30%, var(--panel) 70%, rgba(226, 86, 74, 0.14));
   border: 1px solid var(--line);
-  border-radius: 8px 8px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .draft-team {
@@ -655,7 +677,7 @@ a {
   background: var(--panel);
   border: 1px solid var(--line);
   border-top: 0;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .ban-row {
@@ -709,7 +731,7 @@ a {
   height: 76px;
   margin-bottom: 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--panel);
 }
@@ -747,7 +769,7 @@ a {
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  background: linear-gradient(0deg, rgba(10, 12, 16, 0.92), transparent);
+  background: linear-gradient(0deg, rgba(8, 9, 26, 0.92), transparent);
 }
 
 .pick-card.red .pick-info {
@@ -823,18 +845,20 @@ a {
   letter-spacing: 0.03em;
 }
 
+/* Ban düğmesi kırmızı kalır; beyaz yazı okunsun diye koyu kırmızı geçiş. */
 .lock-in.ban:not(:disabled) {
-  background: var(--error);
-  border-color: var(--error);
+  background: linear-gradient(135deg, #e5484d, #be185d);
+  border-color: transparent;
+  box-shadow: 0 6px 20px rgba(229, 72, 77, 0.3);
 }
 
 @keyframes glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(200, 170, 110, 0);
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
   }
   50% {
-    box-shadow: 0 0 14px 2px rgba(200, 170, 110, 0.55);
+    box-shadow: 0 0 14px 2px rgba(167, 139, 250, 0.6);
   }
 }
 
@@ -933,7 +957,7 @@ a {
   left: 50%;
   width: min(100%, 520px);
   aspect-ratio: 16 / 9;
-  border-radius: 10px;
+  border-radius: var(--radius);
   overflow: hidden;
   border: 2px solid var(--error);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
@@ -991,7 +1015,7 @@ a {
   font-weight: 900;
   letter-spacing: 0.12em;
   transform: rotate(-6deg);
-  background: rgba(10, 12, 16, 0.55);
+  background: rgba(8, 9, 26, 0.55);
 }
 
 .ban-flash-text span {
@@ -1106,7 +1130,7 @@ a {
   padding: 10px 16px;
   background: linear-gradient(90deg, rgba(74, 144, 226, 0.14), var(--panel) 30%, var(--panel) 70%, rgba(226, 86, 74, 0.14));
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .score-team {
@@ -1337,7 +1361,7 @@ a {
   padding: 5px 10px;
   background: var(--panel);
   border-left: 3px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   animation: log-in 0.35s ease-out;
 }
 
@@ -1502,8 +1526,8 @@ a {
   width: max-content;
   max-width: 92%;
   padding: 10px 22px;
-  border-radius: 8px;
-  background: rgba(10, 12, 16, 0.88);
+  border-radius: var(--radius);
+  background: rgba(8, 9, 26, 0.88);
   border-top: 3px solid;
   border-bottom: 3px solid;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
@@ -1731,7 +1755,7 @@ a {
 .report-hero {
   padding: 18px 20px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius);
 }
 
 .report-hero.blue {
@@ -1793,7 +1817,7 @@ a {
   padding: 14px 16px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .report-card h3 {
@@ -1806,7 +1830,7 @@ a {
   padding: 14px 16px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .gold-chart-plot {
@@ -1907,7 +1931,7 @@ a {
   padding: 6px 10px;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
   font-size: 0.8rem;
   white-space: nowrap;
@@ -2041,4 +2065,799 @@ a {
   .gc-axis {
     font-size: 20px;
   }
+}
+
+/* --- §8.31: ana sayfa, davet, lobi (seri bandı, koltuklar, davet kartı, seri paneli) --- */
+
+/* Ekran okuyucuya açık, gözden gizli (radyo/onay kutusu görsel kartın içinde; klavyeyle odaklanabilir kalır). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Buton gibi görünen link (Yeni seri aç). */
+a.button {
+  display: inline-block;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+a.button.primary {
+  background: var(--accent-grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(124, 92, 246, 0.35);
+}
+
+a.button:hover {
+  filter: brightness(1.12);
+}
+
+button.big {
+  padding: 13px 22px;
+  font-size: 1.05rem;
+  border-radius: 12px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.chip.accent {
+  color: var(--accent);
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.chip.ok {
+  color: var(--ok);
+  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(74, 222, 128, 0.08);
+}
+
+/* Bu maçtaki taraf: renk sadece rozette; yazı rengini değiştirmez. */
+.side-chip {
+  display: inline-flex;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.side-chip.blue {
+  color: #cfe3fb;
+  background: rgba(74, 144, 226, 0.22);
+  border: 1px solid rgba(74, 144, 226, 0.5);
+}
+
+.side-chip.red {
+  color: #fbd5d1;
+  background: rgba(226, 86, 74, 0.22);
+  border: 1px solid rgba(226, 86, 74, 0.5);
+}
+
+/* Ana sayfa: solda karşılama + adımlar, sağda lobi açma kartı; arkada soluk splash'lar. */
+/* Geniş ekranda sayfa içerik alanının (1100 px) dışına taşar: sağa en fazla 160 px (lobi kartı sağa kayar,
+   aradaki boşlukta arka plan görünür), sola en fazla 40 px (yazı ve adımlar biraz sola). Ekran 1180 px'ten
+   darsa taşma yok (clamp 0). Üst boşluk 64 px: içerik başlığın hemen altına yapışmasın. */
+.home {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(320px, 410px);
+  justify-content: space-between;
+  gap: 40px;
+  align-items: center;
+  padding: 64px 0 16px;
+  margin-right: calc(-1 * clamp(0px, (100vw - 1180px) / 2, 160px));
+  margin-left: calc(-1 * clamp(0px, (100vw - 1180px) / 2, 40px));
+}
+
+/* Arka plan düz (eğim yok): sinema şeridi gibi geniş; iki yanı ve altı zemine doğru söner.
+   İki maske kesişir (yatay × dikey): ortası görünür, dört kenarda sert çizgi kalmaz. */
+.home-backdrop {
+  position: absolute;
+  inset: -24px -16px auto;
+  height: 440px;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  mask-image:
+    linear-gradient(90deg, transparent 0, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(180deg, #000 0, #000 35%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* Dönen görseller üst üste: görünen (.on) açılır ve 6,5 sn'de %6 yakınlaşır; gideni 1,2 sn'de söner,
+   yakınlaşması ancak söndükten sonra (gecikmeli) sıfırlanır, geçişte sıçrama görünmez. */
+.home-backdrop img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0;
+  transform: scale(1);
+  transition:
+    opacity 1.2s ease,
+    transform 0s linear 1.2s;
+}
+
+.home-backdrop img.on {
+  opacity: 1;
+  transform: scale(1.06);
+  transition:
+    opacity 1.2s ease,
+    transform 6.5s linear;
+}
+
+.home-hero,
+.create {
+  position: relative;
+  z-index: 1;
+}
+
+.home-hero h1 {
+  margin: 10px 0 14px;
+  font-size: clamp(2rem, 4.4vw, 3.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+.grad {
+  background: linear-gradient(90deg, #8b9cff, #c084fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.lead {
+  max-width: 34em;
+  color: var(--muted);
+  font-size: 1.05rem;
+  margin: 0 0 24px;
+}
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.steps li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(20, 23, 53, 0.7);
+  border: 1px solid var(--line);
+}
+
+.steps strong {
+  display: block;
+}
+
+.steps small {
+  color: var(--muted);
+}
+
+.step-no {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: rgba(167, 139, 250, 0.14);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Kart sütunun altına yaslı: alt kenarı soldaki adım kutularının alt kenarıyla aynı hizada. */
+.create {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  background: linear-gradient(160deg, var(--panel-2), var(--panel) 60%);
+}
+
+.create h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.formats {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.formats legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.format {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  text-align: center;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.format strong {
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+}
+
+.format small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.format:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.format.on {
+  border-color: var(--accent);
+  background: rgba(167, 139, 250, 0.12);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.format.on strong {
+  color: var(--accent);
+}
+
+.format:has(input:focus-visible),
+.toggle-card:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toggle-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.toggle-text {
+  flex: 1;
+}
+
+.toggle-text strong {
+  display: block;
+}
+
+.toggle-text small {
+  color: var(--muted);
+}
+
+.switch {
+  flex: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.toggle-card.on {
+  border-color: rgba(167, 139, 250, 0.6);
+}
+
+.toggle-card.on .switch {
+  background: var(--accent-grad);
+}
+
+.toggle-card.on .switch::after {
+  transform: translateX(18px);
+}
+
+.hint {
+  margin: -6px 0 0;
+  text-align: center;
+}
+
+/* Davet sayfası ve kapandı/bağlanıyor bildirimleri. */
+.join,
+.notice {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 28px;
+}
+
+.join button {
+  align-self: stretch;
+}
+
+.join h1,
+.notice h2 {
+  margin: 0;
+}
+
+.join p,
+.notice p {
+  margin: 0 0 8px;
+}
+
+.notice-line {
+  text-align: center;
+  margin-top: 48px;
+}
+
+.conn-warn {
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 123, 138, 0.1);
+  border: 1px solid rgba(255, 123, 138, 0.35);
+  color: var(--error);
+  font-size: 0.9rem;
+}
+
+/* Seri bandı: A | skor | B. */
+.series-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.14), var(--panel) 35%, var(--panel) 65%, rgba(168, 85, 247, 0.14));
+  box-shadow: var(--shadow);
+}
+
+.series-band.compact {
+  padding: 8px 12px;
+}
+
+.series-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.series-center .chips {
+  display: flex;
+  gap: 6px;
+}
+
+.series-score {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-score span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.series-band.compact .series-score {
+  font-size: 1.5rem;
+}
+
+.series-center small {
+  font-size: 0.8rem;
+}
+
+.seat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--fg);
+}
+
+.seat-card.right {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.seat-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  border: 2px solid var(--line);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.seat-card.blue .seat-avatar {
+  border-color: var(--blue);
+  box-shadow: 0 0 14px rgba(74, 144, 226, 0.35);
+}
+
+.seat-card.red .seat-avatar {
+  border-color: var(--red);
+  box-shadow: 0 0 14px rgba(226, 86, 74, 0.35);
+}
+
+.seat-card.empty .seat-avatar {
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.series-band.compact .seat-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  font-size: 0.95rem;
+}
+
+.seat-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Durum satırı düz metin akışı: dar ekranda "Bağlı değil · hükmen 76 sn" sözcük sözcük sarılır, parçalanmaz. */
+.seat-info small {
+  color: var(--muted);
+}
+
+.dot {
+  display: inline-block;
+  vertical-align: middle;
+  margin: -2px 6px 0 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.seat-card.on .dot {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
+.seat-card:not(.on):not(.empty) .dot {
+  background: var(--error);
+}
+
+/* Davet kartı. */
+.invite {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+.invite-head {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.invite-head p {
+  margin: 2px 0 0;
+}
+
+/* Bekleme nabzı: rakip gelene kadar yavaşça atar. */
+.pulse {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.8s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgba(167, 139, 250, 0);
+  }
+}
+
+.invite-link {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-link input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  font-size: 0.95rem;
+}
+
+.invite-link button {
+  flex: none;
+  min-width: 150px;
+}
+
+button.copied {
+  color: var(--ok);
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+/* Seri paneli. */
+.series {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.next-game {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 24px;
+  color: var(--fg);
+}
+
+.next-game.blue {
+  background: linear-gradient(120deg, rgba(74, 144, 226, 0.18), var(--panel) 55%);
+}
+
+.next-game.red {
+  background: linear-gradient(120deg, rgba(226, 86, 74, 0.18), var(--panel) 55%);
+}
+
+.next-game h2 {
+  margin: 6px 0;
+  font-size: 1.6rem;
+}
+
+.next-game p {
+  margin: 0;
+}
+
+.ready-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.ready-box button {
+  min-width: 240px;
+}
+
+.series-result {
+  text-align: center;
+  padding: 28px;
+}
+
+.series-result h2 {
+  margin: 0 0 4px;
+  font-size: 1.8rem;
+}
+
+.series-result.win {
+  background: linear-gradient(160deg, rgba(168, 85, 247, 0.28), var(--panel) 60%);
+  border-color: rgba(167, 139, 250, 0.5);
+}
+
+.series-result.loss {
+  background: linear-gradient(160deg, rgba(99, 102, 241, 0.14), var(--panel) 60%);
+}
+
+.section-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.game-no {
+  font-weight: 700;
+  min-width: 56px;
+}
+
+.result {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.result.win {
+  color: var(--ok);
+}
+
+.result.loss {
+  color: var(--error);
+}
+
+.result.hidden {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.game-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-actions button {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+.share {
+  font-size: 0.85rem;
+}
+
+@media (max-width: 860px) {
+  .home {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-top: 12px;
+  }
+
+  .home-backdrop {
+    height: 300px;
+  }
+}
+
+@media (max-width: 560px) {
+  .steps {
+    grid-template-columns: 1fr;
+  }
+
+  .series-band {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      'center center'
+      'a b';
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .series-band > .seat-card:first-child {
+    grid-area: a;
+  }
+
+  .series-band > .seat-card:last-child {
+    grid-area: b;
+  }
+
+  .series-center {
+    grid-area: center;
+  }
+
+  .seat-card .side-chip {
+    display: none;
+  }
+
+  .invite-link {
+    flex-direction: column;
+  }
+
+  .ready-box,
+  .ready-box button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .game-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+
+  .home-backdrop img,
+  .home-backdrop img.on {
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Koltuktaki hükmen sayacı satır içinde: draft saatinin büyük yazısını almaz. */
+.seat-info .countdown {
+  font-size: inherit;
+  font-weight: 600;
 }

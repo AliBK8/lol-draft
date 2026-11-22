@@ -2,6 +2,7 @@
 // Kendi sunucumuzdan sunulur: oyuncunun tarayıcısı Riot'a istek atmaz, CSP değişmez, sürüm sabit kalır.
 // Çalıştırma: npm run icons  (şampiyon listesi değişince; sonuç repoya girer). Yama sabitlemek için:
 // npm run icons -- 16.22.1 (verilmezse en son yama; mevcut dosyaları yeni yamaya taşımadan ekleme yapmak için).
+// Sadece ana sayfanın arka plan görselleri (tam boy, §8.31): npm run icons -- --hero
 //
 // Eşleştirme: bizim kimliğimiz (renekton) ile Data Dragon anahtarı (Renekton, MonkeyKing...) her zaman aynı değil;
 // ada göre eşleşir (harf dışı karakterler atılır: "Kai'Sa" = "kaisa"). Eşleşmeyen olursa betik durur, sessizce atlamaz.
@@ -37,8 +38,10 @@ async function fetchRetry(url) {
 /** Splash dosya adı anahtardan farklı olanlar (Data Dragon tutarsızlığı: centered/Fiddlesticks_0.jpg 403). */
 const SPLASH_KEY = { Fiddlesticks: 'FiddleSticks' }
 
+const args = process.argv.slice(2)
+const heroOnly = args.includes('--hero')
 const { champions } = JSON.parse(await readFile(join(root, 'data', 'champions.json'), 'utf8'))
-const version = process.argv[2] ?? (await json(`${DDRAGON}/api/versions.json`))[0]
+const version = args.find((a) => !a.startsWith('--')) ?? (await json(`${DDRAGON}/api/versions.json`))[0]
 const { data } = await json(`${DDRAGON}/cdn/${version}/data/en_US/champion.json`)
 
 // Data Dragon: ad → anahtar (resim dosyasının adı anahtardan gelir).
@@ -49,17 +52,41 @@ if (missing.length > 0) {
   throw new Error(`Data Dragon'da bulunamadı: ${missing.map((c) => c.id).join(', ')}`)
 }
 
+const keyOf = (champion) => byName.get(normalize(champion.name)) ?? byName.get(normalize(champion.id))
+// Kostüm numarası: 0 temel kostüm; diğerleri Data Dragon'daki şampiyon belgesinin `skins[].num` alanı.
+const splashUrl = (key, skin = 0) => `${DDRAGON}/cdn/img/champion/centered/${SPLASH_KEY[key] ?? key}_${skin}.jpg`
+
+// Ana sayfanın dönen arka planı (§8.31): kostüm splash'ları tam boy (1280×720). Kart için küçültülmüş 640'lık
+// sürüm geniş ekranda ~1100 px'e büyüyüp bulanıklaşıyordu. Liste sayfayla ortak: web/src/pages/backdrop.json
+// ({ id, skin, name }) → champions/hero/{id}-{skin}.jpg.
+const heroes = JSON.parse(await readFile(join(root, 'web', 'src', 'pages', 'backdrop.json'), 'utf8'))
+const heroOut = join(out, 'hero')
+await mkdir(heroOut, { recursive: true })
+for (const { id, skin } of heroes) {
+  const champion = champions.find((c) => c.id === id)
+  if (!champion) throw new Error(`backdrop.json: havuzda yok: ${id}`)
+  const splash = await fetchRetry(splashUrl(keyOf(champion), skin))
+  if (!splash.ok) throw new Error(`${id} kostüm ${skin}: ${splash.status}`)
+  const full = await sharp(Buffer.from(await splash.arrayBuffer()))
+    .resize(1280, 720)
+    .jpeg({ quality: 80, mozjpeg: true })
+    .toBuffer()
+  await writeFile(join(heroOut, `${id}-${skin}.jpg`), full)
+}
+console.log(`${heroes.length} arka plan görseli indirildi (tam boy kostüm splash'ları).`)
+if (heroOnly) process.exit(0)
+
 // Draft ekranının pick kartları: yatay "centered" splash (1280×720; karakter ortada, geniş karta tamamı sığar;
 // dikey yükleme görselinden yatay şerit kesince karakterin sadece gövdesi kalıyordu) → champions/splash/{id}.jpg.
 // Data Dragon'da sürümsüz adreste (temel kostüm, _0).
 const splashOut = join(out, 'splash')
 await mkdir(splashOut, { recursive: true })
 for (const champion of champions) {
-  const key = byName.get(normalize(champion.name)) ?? byName.get(normalize(champion.id))
+  const key = keyOf(champion)
   const response = await fetchRetry(`${DDRAGON}/cdn/${version}/img/champion/${key}.png`)
   if (!response.ok) throw new Error(`${champion.id} (${key}): ${response.status}`)
   await writeFile(join(out, `${champion.id}.png`), Buffer.from(await response.arrayBuffer()))
-  const splash = await fetchRetry(`${DDRAGON}/cdn/img/champion/centered/${SPLASH_KEY[key] ?? key}_0.jpg`)
+  const splash = await fetchRetry(splashUrl(key))
   if (!splash.ok) throw new Error(`${champion.id} (${key}) splash: ${splash.status}`)
   // Kart en fazla ~240×76 (2x ekranda 480 genişlik): 640×360 yeter. Tam boy 170 tane 18 MB, küçülmüş ~5-7 MB.
   const small = await sharp(Buffer.from(await splash.arrayBuffer()))
@@ -72,7 +99,7 @@ for (const champion of champions) {
 // Hangi yamadan alındığı: Riot'un fan projesi politikası kaynağı belirtmeyi ister, güncellemede de işe yarar.
 await writeFile(
   join(out, 'SOURCE.txt'),
-  `Riot Games Data Dragon ${version}\n${DDRAGON}\nsplash/: ${DDRAGON}/cdn/img/champion/centered/{key}_0.jpg\n`,
+  `Riot Games Data Dragon ${version}\n${DDRAGON}\nsplash/, hero/: ${DDRAGON}/cdn/img/champion/centered/{key}_0.jpg\n`,
 )
 console.log(`${champions.length} portre ve splash indirildi (Data Dragon ${version}).`)
 
