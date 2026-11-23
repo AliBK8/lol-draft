@@ -96,6 +96,16 @@ internal sealed record DraftActionDto(int Step, string Side, string Kind, string
         new(action.Step, Names.Side(action.Side), Names.Kind(action.Kind), action.Champion?.Value, action.ByTimeout);
 }
 
+/// <summary>
+/// Rakibin ön izlemesi (§8.32, sadece rakibe gider): <c>side</c> takımı <c>step</c>. adımda <c>champion</c>'u
+/// gösteriyor; null ise temizledi. İstemci sadece adım hâlâ o adımsa gösterir.
+/// </summary>
+internal sealed record DraftPreviewDto(string Side, int Step, string? Champion)
+{
+    public static DraftPreviewDto Of(DraftPreview preview) =>
+        new(Names.Side(preview.Side), preview.Step, preview.Champion?.Value);
+}
+
 /// <summary>Hub hamlesinin cevabı (sadece hamleyi yapana). Başarılıysa yeni durum ayrıca herkese yayınlanır.</summary>
 internal sealed record HubResultDto(bool Ok, string? Error, string? Message)
 {

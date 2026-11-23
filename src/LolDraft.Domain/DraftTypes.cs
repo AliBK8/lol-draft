@@ -3,6 +3,12 @@ namespace LolDraft.Domain;
 /// <summary>Yapılmış bir hamle. Zaman aşımında ban boş kalır (<see cref="Champion"/> null).</summary>
 public sealed record DraftAction(int Step, Side Side, DraftActionKind Kind, ChampionId? Champion, bool ByTimeout);
 
+/// <summary>
+/// Geçerli bir ön izleme (§8.32): <paramref name="Side"/> takımı <paramref name="Step"/>. adımda
+/// <paramref name="Champion"/>'u gösteriyor (null: ön izleme temizlendi). Hamle değildir, durumu değiştirmez.
+/// </summary>
+public sealed record DraftPreview(Side Side, int Step, ChampionId? Champion);
+
 /// <summary>Adım süreleri (DESIGN.md §2: her adım 30 sn).</summary>
 public sealed record DraftTimings
 {

@@ -50,6 +50,13 @@ export interface DraftState {
   fearlessLocks: string[]
 }
 
+/** Rakibin ön izlemesi (§8.32, hub'dan OpponentPreview): side takımı step. adımda champion'u gösteriyor (null: bıraktı). */
+export interface DraftPreview {
+  side: Side
+  step: number
+  champion: string | null
+}
+
 export interface SeatState {
   seat: Seat
   connected: boolean

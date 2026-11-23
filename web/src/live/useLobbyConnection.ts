@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { LobbyState } from '../api/types'
+import type { DraftPreview, LobbyState } from '../api/types'
 import type { Replay } from '../match/types'
 import { clockOffset } from './clock'
 import { newer } from './revision'
@@ -18,7 +18,7 @@ export interface ActionResult {
 }
 
 
-export type HubMethod = 'Ready' | 'Ban' | 'Pick' | 'SwapRoles' | 'LockLineup'
+export type HubMethod = 'Ready' | 'Ban' | 'SkipBan' | 'Pick' | 'SwapRoles' | 'LockLineup'
 
 // Kopunca yeniden dene: hükmen süresi (2 dk) boyunca sık, sonra seyrek; 10 dk sonra vazgeç.
 // Varsayılan politika 4 denemede (~30 sn) bırakıyordu: kısa bir Wi-Fi kopması seriyi kaybettirebilirdi.
@@ -36,6 +36,7 @@ export function useLobbyConnection(token: string) {
   const [closed, setClosed] = useState(false)
   const [offsetMs, setOffsetMs] = useState(0)
   const [matches, setMatches] = useState<Replay[]>([])
+  const [opponentPreview, setOpponentPreview] = useState<DraftPreview | null>(null)
   const connectionRef = useRef<signalR.HubConnection | null>(null)
 
   useEffect(() => {
@@ -56,6 +57,8 @@ export function useLobbyConnection(token: string) {
     connection.on('MatchReady', (match: Replay) => {
       setMatches((current) => (current.some((m) => m.id === match.id) ? current : [...current, match]))
     })
+    // Rakibin ön izlemesi (§8.32): son gelen tutulur; geçerli mi (adım, sıra) ekran karar verir.
+    connection.on('OpponentPreview', (preview: DraftPreview) => setOpponentPreview(preview))
     connection.on('LobbyClosed', () => {
       setClosed(true)
       void connection.stop()
@@ -105,7 +108,17 @@ export function useLobbyConnection(token: string) {
     }
   }, [])
 
-  return { lobby, status, closed, offsetMs, matches, act }
+  /**
+   * Ön izlemeyi rakibe gönderir (§8.32). Hamle değil: cevap beklenmez, kimlik yok, bağlantı yoksa ya da koparsa
+   * kaybolur (tekrar denenmez; sıradaki seçim zaten yenisini yollar). Gönderme sıklığını çağıran sınırlar.
+   */
+  const preview = useCallback((champion: string | null) => {
+    const connection = connectionRef.current
+    if (connection?.state !== signalR.HubConnectionState.Connected) return
+    connection.send('Preview', champion).catch(() => {})
+  }, [])
+
+  return { lobby, status, closed, offsetMs, matches, act, opponentPreview, preview }
 }
 
 // Bağlantı yeniden kurulana kadar en fazla 10 sn bekler.

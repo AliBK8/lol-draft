@@ -1,6 +1,6 @@
 // Draft'ın istemci görünümü: sunucunun durumundan türetilir, kural koymaz (kurallar Domain'de, DESIGN.md §8.3).
 // Burada sadece ekranın sorduğu sorular: hangi taraf benim, sıra bende mi, hangi şampiyon tıklanamaz, yuvalar.
-import type { Champion, DraftAction, DraftState, LobbyState, Role, Seat, Side } from '../api/types'
+import type { Champion, DraftAction, DraftPreview, DraftState, LobbyState, Role, Seat, Side } from '../api/types'
 import { ROLES } from '../api/types'
 
 /** Turnuva sırası (Domain/DraftOrder.cs ile aynı): 6 ban, 6 pick, 4 ban, 4 pick. */
@@ -38,8 +38,35 @@ export function unavailable(draft: DraftState): Set<string> {
   return new Set([...taken, ...draft.fearlessLocks])
 }
 
+/**
+ * Rakibin ön izlemesinden şu an gösterilecek şampiyon (§8.32); yoksa null. Sadece hâlâ geçerliyse: sıra onda ve aynı
+ * adım (hamle ya da zaman aşımı gelince eski ön izleme kendiliğinden düşer, ayrı "temizle" mesajı gerekmez),
+ * şampiyon bu arada alınmamış. Kendi rengimdeki ön izleme (aynı oyuncunun başka sekmesi) gösterilmez.
+ */
+export function opponentChoice(draft: DraftState, me: Side, preview: DraftPreview | null): string | null {
+  if (!preview?.champion || preview.side === me) return null
+  if (draft.turn !== preview.side || draft.step === null || draft.actions.length !== preview.step) return null
+  return unavailable(draft).has(preview.champion) ? null : preview.champion
+}
+
 export function bans(draft: DraftState, side: Side): (string | null)[] {
   return draft.actions.filter((a) => a.side === side && a.kind === 'ban').map((a) => a.champion)
+}
+
+/** Ban yuvası: banlandı, boş geçti (süre doldu ya da "Ban yok", §8.33) ya da henüz sırası gelmedi. */
+export type BanSlot = { kind: 'banned'; champion: string } | { kind: 'none' } | { kind: 'open' }
+
+/**
+ * Takımın 5 ban yuvası sırayla. Boş geçen ban "oynanmış" sayılır: oynanmamış yuvayla aynı görünürse ban turu
+ * bitmemiş gibi durur (hata, 2026-11-23: AFK'da 4 boş ban, şeritte "1 ban + 4 boş yuva" görünüp pick'ler başlamıştı).
+ */
+export function banSlots(draft: DraftState, side: Side): BanSlot[] {
+  const played = bans(draft, side)
+  return Array.from({ length: 5 }, (_, i): BanSlot => {
+    if (i >= played.length) return { kind: 'open' }
+    const champion = played[i]
+    return champion ? { kind: 'banned', champion } : { kind: 'none' }
+  })
 }
 
 /** Pick sırası = yuva sırası (1. pick top, 2. pick orman…); swap'ta dizilim sunucudan gelir. */

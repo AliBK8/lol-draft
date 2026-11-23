@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.SignalR;
 namespace LolDraft.Api.Hubs;
 
 /// <summary>
-/// Canlı draft (DESIGN.md §8.7). İstemci sadece niyet gönderir (Ready, Ban, Pick, SwapRoles, LockLineup);
+/// Canlı draft (DESIGN.md §8.7). İstemci sadece niyet gönderir (Ready, Ban, SkipBan, Pick, SwapRoles, LockLineup; Preview hamle değil);
 /// kurallar Domain'de, sonuç sunucunun. Her bağlantı lobisinin grubundadır; başarılı hamleden sonra
 /// yeni durum gruptaki herkese <see cref="LobbyUpdated"/> ile gider, hamleyi yapan ayrıca cevap alır.
 /// </summary>
@@ -22,6 +22,9 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
     /// <summary>Draft bitti, maç oynandı: olay listesi gruba gider (sonra skoru taşıyan LobbyUpdated).</summary>
     public const string MatchReady = nameof(MatchReady);
+
+    /// <summary>Rakibin ön izlemesi (§8.32): sadece gönderenin dışındakilere gider.</summary>
+    public const string OpponentPreview = nameof(OpponentPreview);
 
     // Bağlantı lobiye "bağlandı" diye sayıldıysa işaret: kopunca sadece sayılan bağlantı düşülür.
     private static readonly object CountedKey = new();
@@ -68,6 +71,10 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
     public Task<HubResultDto> Pick(string champion, Guid actionId) =>
         WithChampion(champion, actionId, commands.Pick);
 
+    /// <summary>Ban adımını bilerek boş geçer ("Ban yok", §8.33). Hamle: mesaj limitinde hamle kovasından.</summary>
+    public Task<HubResultDto> SkipBan(Guid actionId) =>
+        Run(actionId, (who, action, ct) => commands.SkipBan(who, action, ct));
+
     /// <summary>Swap fazında iki yuvayı değiştirir: "top", "jungle", "mid", "bot", "support".</summary>
     public Task<HubResultDto> SwapRoles(string a, string b, Guid actionId)
     {
@@ -79,6 +86,32 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
     public Task<HubResultDto> LockLineup(Guid actionId) =>
         Run(actionId, (who, action, ct) => commands.LockLineup(who, action, ct));
+
+    /// <summary>
+    /// Ön izleme (§8.32): sırası gelen oyuncu havuzda bir şampiyona tıkladı (null: seçimi bıraktı). Hamle değil:
+    /// actionId yok (kaybolan ön izleme tekrar denenmez), durum değişmez. Geçerliyse (sıra onda, şampiyon alınabilir)
+    /// rakibe gider; gönderenin bu bağlantısına geri gelmez. Mesaj limiti ayrı kovadan (<see cref="RateLimitHubFilter"/>).
+    /// </summary>
+    public async Task<HubResultDto> Preview(string? champion)
+    {
+        ChampionId? id = null;
+        if (champion is not null)
+        {
+            var parsed = ChampionId.Create(champion);
+            if (parsed.IsFailure)
+                return HubResultDto.Failure(parsed.Error!);
+            id = parsed.Value;
+        }
+
+        var who = Identity;
+        var preview = await commands.Preview(who, id, Context.ConnectionAborted);
+        if (preview.IsFailure)
+            return HubResultDto.Failure(preview.Error!);
+
+        await Clients.OthersInGroup(Group(who.Lobby))
+            .SendAsync(OpponentPreview, DraftPreviewDto.Of(preview.Value), Context.ConnectionAborted);
+        return HubResultDto.Success;
+    }
 
     public static string Group(LobbyCode lobby) => $"lobby:{lobby.Value}";
 

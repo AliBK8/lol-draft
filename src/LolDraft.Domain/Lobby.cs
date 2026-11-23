@@ -218,6 +218,28 @@ public sealed class Lobby
     public Result Pick(PlayerId player, ActionId action, ChampionId champion, Instant now) =>
         OnDraft(player, action, now, (draft, side) => draft.Pick(side, champion, now));
 
+    /// <summary>Ban adımını bilerek boş geçer ("Ban yok", §8.33).</summary>
+    public Result SkipBan(PlayerId player, ActionId action, Instant now) =>
+        OnDraft(player, action, now, (draft, side) => draft.SkipBan(side, now));
+
+    /// <summary>
+    /// Oyuncunun ön izlemesi (rakibe gider, §8.32). Hamle değil: durum, revizyon ve son hareket zamanı değişmez,
+    /// tekrar koruması da yok (kaybolan ön izleme yeniden denenmez). Renk koltuktan gelir, istemciden değil.
+    /// </summary>
+    public Result<DraftPreview> Preview(PlayerId player, ChampionId? champion, Instant now)
+    {
+        if (SeatOf(player) is not { } seat)
+            return Result<DraftPreview>.Fail(LobbyErrors.NotInLobby);
+        if (Series.CurrentDraft is not { } draft)
+            return Result<DraftPreview>.Fail(DraftErrors.PhaseClosed);
+
+        var side = Series.SideOf(seat);
+        var step = draft.Preview(side, champion, now);
+        return step.IsFailure
+            ? Result<DraftPreview>.Fail(step.Error!)
+            : Result<DraftPreview>.Ok(new DraftPreview(side, step.Value, champion));
+    }
+
     public Result SwapRoles(PlayerId player, ActionId action, Role a, Role b, Instant now) =>
         OnDraft(player, action, now, (draft, side) => draft.SwapRoles(side, a, b, now));
 

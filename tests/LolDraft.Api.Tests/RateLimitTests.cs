@@ -70,6 +70,25 @@ public sealed class RateLimitTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task On_izleme_kendi_kovasindan_hamle_butcesini_yemez()
+    {
+        var connection = await ConnectToNewLobby();
+
+        // 5 ön izleme (draft yok → phase_closed): ön izleme kovası doldu.
+        var previews = new List<HubResult>();
+        for (var i = 0; i < 5; i++)
+            previews.Add(await connection.InvokeAsync<HubResult>("Preview", "zed"));
+        // Hamle kovası boş: Ready işlenir (rakip yok → lobby_not_full), rate_limited değil.
+        var ready = await connection.InvokeAsync<HubResult>("Ready", Guid.NewGuid());
+        // 6. ön izleme kendi kovasına takılır.
+        var sixth = await connection.InvokeAsync<HubResult>("Preview", "zed");
+
+        Assert.All(previews, r => Assert.Equal("phase_closed", r.Error));
+        Assert.Equal("lobby_not_full", ready.Error);
+        Assert.Equal("rate_limited", sixth.Error);
+    }
+
+    [Fact]
     public async Task Limiti_dakikada_10_kez_asan_baglanti_kapatilir()
     {
         var connection = await ConnectToNewLobby();

@@ -18,7 +18,7 @@ const FORFEIT_MS = 2 * 60_000 // Domain/Lobby.ForfeitAfter
 
 // Canlı lobi (DESIGN.md §8.18): hub'dan gelen durum neyse o çizilir. Draft varsa draft/swap, yoksa seri paneli.
 export function LobbyScreen({ code, session }: { code: string; session: Session }) {
-  const { lobby, status, closed, offsetMs, matches, act } = useLobbyConnection(session.token)
+  const { lobby, status, closed, offsetMs, matches, act, opponentPreview, preview } = useLobbyConnection(session.token)
   const champions = useChampions()
   const [revealed, setRevealed] = useState(() => loadRevealed(code))
   // Elle açılan eski maç (izlenmiş olanlar); izlenmemiş maç varsa o kendiliğinden açılır.
@@ -78,7 +78,16 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
       {!lobby.isFull && <Invite code={code} />}
 
       {draft && draft.phase !== 'swap' && draft.phase !== 'completed' && (
-        <DraftBoard key={lobby.gameNumber} draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
+        <DraftBoard
+          key={lobby.gameNumber}
+          draft={draft}
+          me={me}
+          champions={champions}
+          offsetMs={offsetMs}
+          act={act}
+          opponentPreview={opponentPreview}
+          sendPreview={preview}
+        />
       )}
       {draft?.phase === 'swap' && (
         <SwapBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />

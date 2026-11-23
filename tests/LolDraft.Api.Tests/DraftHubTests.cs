@@ -95,6 +95,66 @@ public sealed class DraftHubTests : IAsyncDisposable
         Assert.Equal(before, blue.Received);
     }
 
+    [Fact]
+    public async Task Ban_yok_bos_ban_olarak_yazilir_ve_rakip_gorur()
+    {
+        var (_, _, blue, red) = await StartedDraft();
+
+        var result = await blue.Invoke("SkipBan");
+
+        Assert.True(result.Ok, result.Error);
+        var seenByRed = await red.Last();
+        var action = seenByRed.GetProperty("draft").GetProperty("actions")[0];
+        Assert.Equal("ban", action.GetProperty("kind").GetString());
+        Assert.Equal(JsonValueKind.Null, action.GetProperty("champion").ValueKind);
+        Assert.False(action.GetProperty("byTimeout").GetBoolean());
+        Assert.Equal("red", seenByRed.GetProperty("draft").GetProperty("turn").GetString());
+    }
+
+    [Fact]
+    public async Task On_izleme_sadece_rakibe_gider_durum_yayinlanmaz()
+    {
+        var (_, _, blue, red) = await StartedDraft();
+        var updatesBefore = red.Received;
+
+        var result = await blue.Preview("zed");
+
+        Assert.True(result.Ok, result.Error);
+        var seen = await red.NextPreview();
+        Assert.Equal("blue", seen.GetProperty("side").GetString());
+        Assert.Equal(0, seen.GetProperty("step").GetInt32());
+        Assert.Equal("zed", seen.GetProperty("champion").GetString());
+        // Gönderen kendi ön izlemesini geri almaz; hamle olmadığı için LobbyUpdated da gitmez.
+        await Task.Delay(150);
+        Assert.Equal(0, blue.Previews);
+        Assert.Equal(updatesBefore, red.Received);
+    }
+
+    [Fact]
+    public async Task On_izleme_temizlenince_rakip_bos_gorur()
+    {
+        var (_, _, blue, red) = await StartedDraft();
+
+        await blue.Preview("zed");
+        await red.NextPreview();
+        await blue.Preview(null);
+
+        var cleared = await red.NextPreview();
+        Assert.Equal(JsonValueKind.Null, cleared.GetProperty("champion").ValueKind);
+    }
+
+    [Fact]
+    public async Task Sirasi_olmayanin_on_izlemesi_reddedilir_ve_gitmez()
+    {
+        var (_, _, blue, red) = await StartedDraft();
+
+        var result = await red.Preview("zed");
+
+        Assert.Equal("not_your_turn", result.Error);
+        await Task.Delay(150);
+        Assert.Equal(0, blue.Previews);
+    }
+
     [Theory]
     [InlineData("Zed", "invalid_champion_id")]
     [InlineData("olmayan", "not_in_pool")]
@@ -325,6 +385,7 @@ public sealed class DraftHubTests : IAsyncDisposable
         private readonly HubConnection _connection;
         private readonly BlockingCollection<JsonElement> _updates = [];
         private readonly BlockingCollection<JsonElement> _matches = [];
+        private readonly BlockingCollection<JsonElement> _previews = [];
         private int _received;
 
         public Player(HubConnection connection)
@@ -336,7 +397,17 @@ public sealed class DraftHubTests : IAsyncDisposable
                 _updates.Add(state);
             });
             connection.On<JsonElement>("MatchReady", match => _matches.Add(match));
+            connection.On<JsonElement>("OpponentPreview", preview => _previews.Add(preview));
         }
+
+        /// <summary>Sıradaki rakip ön izlemesi (en fazla 5 sn beklenir).</summary>
+        public Task<JsonElement> NextPreview() => Task.Run(() =>
+            _previews.TryTake(out var preview, Wait) ? preview : throw new TimeoutException("OpponentPreview gelmedi."));
+
+        /// <summary>Kuyrukta bekleyen (okunmamış) rakip ön izlemesi sayısı.</summary>
+        public int Previews => _previews.Count;
+
+        public Task<HubResult> Preview(string? champion) => _connection.InvokeAsync<HubResult>("Preview", champion);
 
         /// <summary>Sıradaki oynanan maç (en fazla 5 sn beklenir).</summary>
         public Task<JsonElement> NextMatch() => Task.Run(() =>

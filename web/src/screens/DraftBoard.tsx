@@ -1,15 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { Champion, DraftState, Role, Side } from '../api/types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { Champion, DraftPreview, DraftState, Role, Side } from '../api/types'
 import { ROLES } from '../api/types'
 import { ChampionIcon } from '../components/ChampionIcon'
 import { remainingMs } from '../live/clock'
-import { bans, DRAFT_ORDER, isMyTurn, latestBan, lineup, ROLE_TR, unavailable } from '../live/draft'
+import { banSlots, DRAFT_ORDER, isMyTurn, latestBan, lineup, opponentChoice, ROLE_TR, unavailable } from '../live/draft'
 import type { ActionResult, HubMethod } from '../live/useLobbyConnection'
 
 const PHASE_TR: Record<string, string> = { ban1: 'Ban 1', pick1: 'Pick 1', ban2: 'Ban 2', pick2: 'Pick 2' }
 const SIDE_TR: Record<Side, string> = { blue: 'Mavi', red: 'Kırmızı' }
 /** Bir adımın süresi (Domain DraftTimings.Default): süre çubuğu bunun ne kadarının kaldığını gösterir. */
 const STEP_SECONDS = 30
+/** Ön izleme en fazla bu aralıkla gider (§8.32): saniyede en çok 4; sunucunun sınırı 5. */
+const PREVIEW_INTERVAL_MS = 300
+/** Havuzdaki "Ban yok" kutusunun seçim değeri (§8.33); şampiyon kimliği olamaz (kimlikler küçük harf ve rakam). */
+const NO_BAN = '-'
 
 interface Props {
   draft: DraftState
@@ -17,12 +21,16 @@ interface Props {
   champions: Map<string, Champion>
   offsetMs: number
   act: (method: HubMethod, ...args: string[]) => Promise<ActionResult>
+  /** Rakibin son ön izlemesi (geçerli mi, burada karar verilir). */
+  opponentPreview: DraftPreview | null
+  /** Seçimimi rakibe ön izleme olarak gönderir. */
+  sendPreview: (champion: string | null) => void
 }
 
 // Ban/pick (DESIGN.md §2, görünüm §8.27): turnuva yayını gibi. Üstte süre ve ban şeridi, iki yanda takımların pick
-// kartları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme), onayla. Kurallar sunucuda; burada
-// tıklanamayanlar sadece görüntü. Maç başına bir kez takılır (LobbyScreen'de anahtar = maç numarası).
-export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
+// kartları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme, rakip de görür §8.32), onayla.
+// Kurallar sunucuda; burada tıklanamayanlar sadece görüntü. Maç başına bir kez takılır (LobbyScreen'de anahtar = maç numarası).
+export function DraftBoard({ draft, me, champions, offsetMs, act, opponentPreview, sendPreview }: Props) {
   // Ekran açıldığında görülen hamleler: ban animasyonu sadece bundan sonrakiler için (rejoin'de eskiler oynamaz).
   const [seenAtOpen] = useState(() => draft.actions.length)
   const flash = latestBan(draft.actions, seenAtOpen)
@@ -42,13 +50,34 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
       .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
   }, [champions, role, search])
 
-  // Seçim sırası değişince (rakip oynadı, süre doldu) eski seçim düşer.
-  const choice = selected && !taken.has(selected) ? selected : null
+  // Seçim sırası değişince (rakip oynadı, süre doldu) eski seçim düşer; "Ban yok" sadece ban adımında geçerli.
+  const choice =
+    selected === NO_BAN ? (draft.step === 'ban' ? NO_BAN : null) : selected && !taken.has(selected) ? selected : null
+  // Yuvada ön izlenen ve rakibe giden şampiyon: "Ban yok" seçiliyken yok (yuva boş görünür).
+  const champion = choice === NO_BAN ? null : choice
+
+  // Ön izleme rakibe (§8.32): seçim ya da adım değişince gider, en fazla 300 ms'de bir. Arada değişenlerden sadece
+  // sonuncusu gider: zamanlayıcı her değişiklikte yeniden kurulur ama hedef an (son gönderim + 300 ms) aynı kalır,
+  // hızlı tıklama gönderimi ertelemez. Adım da bağımlılıkta: art arda iki adım bendeyse seçim yeni adımla yeniden gider.
+  const step = draft.actions.length
+  const lastSentAt = useRef(0)
+  useEffect(() => {
+    if (!myTurn) return
+    const wait = Math.max(0, lastSentAt.current + PREVIEW_INTERVAL_MS - Date.now())
+    const timer = setTimeout(() => {
+      lastSentAt.current = Date.now()
+      sendPreview(champion)
+    }, wait)
+    return () => clearTimeout(timer)
+  }, [champion, myTurn, step, sendPreview])
+
+  // Sıradaki yuvada görünen ön izleme: sıra bendeyse benim seçimim, rakipteyse onunki (hâlâ geçerliyse).
+  const shown = myTurn ? champion : opponentChoice(draft, me, opponentPreview)
 
   async function confirm() {
     if (!choice || !draft.step) return
     setBusy(true)
-    const result = await act(draft.step === 'ban' ? 'Ban' : 'Pick', choice)
+    const result = choice === NO_BAN ? await act('SkipBan') : await act(draft.step === 'ban' ? 'Ban' : 'Pick', choice)
     setBusy(false)
     if (result.ok) {
       setSelected(null)
@@ -79,10 +108,10 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
         <StepTimer deadline={draft.deadline} offsetMs={offsetMs} side={draft.turn} />
       </div>
 
-      <BanStrip draft={draft} champions={champions} me={me} preview={myTurn && draft.step === 'ban' ? choice : null} />
+      <BanStrip draft={draft} champions={champions} preview={draft.step === 'ban' ? shown : null} />
 
       <div className="draft-main">
-        <TeamColumn side="blue" draft={draft} champions={champions} preview={me === 'blue' && myTurn ? choice : null} />
+        <TeamColumn side="blue" draft={draft} champions={champions} preview={draft.turn === 'blue' ? shown : null} />
 
         <div className="pool">
           {flash?.champion && (
@@ -111,6 +140,20 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
             <input placeholder="Ara" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <div className="pool-grid">
+            {/* LoL'deki "None": ban adımında ilk kutu; seç, sonra onayla (tek tıkla geçilmesin). Filtreden bağımsız. */}
+            {draft.step === 'ban' && (
+              <button
+                className={['pool-item', 'no-ban', choice === NO_BAN ? 'picked' : ''].join(' ')}
+                disabled={!myTurn}
+                onClick={() => setSelected(NO_BAN)}
+                title="Bu adımda ban atma"
+              >
+                <span className="pool-portrait">
+                  <NoBanIcon size={60} />
+                </span>
+                <span>Ban yok</span>
+              </button>
+            )}
             {pool.map((c) => {
               const out = taken.has(c.id)
               const locked = draft.fearlessLocks.includes(c.id)
@@ -133,14 +176,15 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
           </div>
           <div className="pool-confirm">
             <button className={`primary lock-in ${draft.step ?? ''}`} disabled={!myTurn || !choice || busy} onClick={confirm}>
-              {draft.step === 'ban' ? 'Banla' : 'Kilitle'}
-              {choice ? `: ${champions.get(choice)?.name}` : ''}
+              {choice === NO_BAN
+                ? 'Onayla: Ban yok'
+                : `${draft.step === 'ban' ? 'Banla' : 'Kilitle'}${choice ? `: ${champions.get(choice)?.name}` : ''}`}
             </button>
             {error && <span className="error">{error}</span>}
           </div>
         </div>
 
-        <TeamColumn side="red" draft={draft} champions={champions} preview={me === 'red' && myTurn ? choice : null} />
+        <TeamColumn side="red" draft={draft} champions={champions} preview={draft.turn === 'red' ? shown : null} />
       </div>
     </div>
   )
@@ -148,7 +192,7 @@ export function DraftBoard({ draft, me, champions, offsetMs, act }: Props) {
 
 /**
  * Ban anı (2 sn, havuzun üstünde, tıklamayı engellemez): splash renkli belirir, griye döner, kırmızı çizgi çekilir,
- * "BANLANDI" damgası basılır, söner. Zamanlayıcı yok: her yeni ban yeni anahtarla takılır, CSS animasyonu bir kez
+ * altta şampiyon ve takım belirir, söner ("BANLANDI" damgası kaldırıldı, 2026-11-23: kaba duruyordu). Zamanlayıcı yok: her yeni ban yeni anahtarla takılır, CSS animasyonu bir kez
  * oynar ve görünmez kalır (sonraki ban'a kadar). Durum iki oyuncuya aynı anda geldiği için ikisi de aynı anı görür.
  */
 function BanFlash({ champion, name, side }: { champion: string; name: string; side: Side }) {
@@ -157,7 +201,7 @@ function BanFlash({ champion, name, side }: { champion: string; name: string; si
       <img className="ban-flash-art" src={`/champions/splash/${champion}.jpg`} alt="" />
       <span className="ban-flash-slash" />
       <div className="ban-flash-text">
-        <strong>BANLANDI</strong>
+        <span className="sr-only">Banlandı:</span>
         <span>
           {name} · {SIDE_TR[side]}
         </span>
@@ -192,13 +236,13 @@ function StepTimer({ deadline, offsetMs, side }: { deadline: string | null; offs
 
 /**
  * Ban şeridi (bandın altı): mavinin 5 ban'ı solda, mavinin üstünde; kırmızınınki sağda, ayna gibi (ilk ban en sağda).
- * Sıradaki ban yuvası parlar; sıra bendeyse seçtiğim orada yarı saydam görünür.
+ * Sıradaki ban yuvası parlar; sıradakinin ön izlemesi (benimki ya da rakibinki) orada yarı saydam görünür.
  */
-function BanStrip(props: { draft: DraftState; champions: Map<string, Champion>; me: Side; preview: string | null }) {
+function BanStrip(props: { draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
   return (
     <div className="ban-strip">
       {(['blue', 'red'] as const).map((side) => (
-        <BanRow key={side} side={side} {...props} preview={props.me === side ? props.preview : null} />
+        <BanRow key={side} side={side} {...props} preview={props.draft.turn === side ? props.preview : null} />
       ))}
     </div>
   )
@@ -206,14 +250,22 @@ function BanStrip(props: { draft: DraftState; champions: Map<string, Champion>; 
 
 function BanRow(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
   const { side, draft, champions, preview } = props
-  const teamBans = bans(draft, side)
+  const slots = banSlots(draft, side)
   const next = draft.step ? DRAFT_ORDER[draft.actions.length] : undefined
-  const active = next?.side === side && next.kind === 'ban' ? teamBans.length : -1
+  const active = next?.side === side && next.kind === 'ban' ? slots.filter((s) => s.kind !== 'open').length : -1
   return (
     <div className={`ban-row ${side}`} aria-label={`${SIDE_TR[side]} ban'ları`}>
-      {Array.from({ length: 5 }, (_, i) => {
-        const ban = teamBans[i] ?? (i === active ? preview : null)
-        const state = teamBans[i] ? 'filled' : i === active ? (preview ? 'active preview' : 'active') : ''
+      {slots.map((slot, i) => {
+        // Boş geçen ban (süre doldu ya da "Ban yok"): oynanmamış yuvadan ayrı, ⊘ işaretiyle (§8.33).
+        if (slot.kind === 'none') {
+          return (
+            <span key={`${i}-none`} className="ban-slot none" title="Ban yok" aria-label="Ban yok">
+              <NoBanIcon size={40} />
+            </span>
+          )
+        }
+        const ban = slot.kind === 'banned' ? slot.champion : i === active ? preview : null
+        const state = slot.kind === 'banned' ? 'filled' : i === active ? (preview ? 'active preview' : 'active') : ''
         return (
           <span key={`${i}-${ban ?? ''}-${state}`} className={`ban-slot ${state}`}>
             <ChampionIcon id={ban} name={ban ? champions.get(ban)?.name : undefined} size={40} dim={state === 'filled'} />
@@ -224,7 +276,19 @@ function BanRow(props: { side: Side; draft: DraftState; champions: Map<string, C
   )
 }
 
-/** Takım: 5 pick kartı. Sıradaki yuva parlar; sıra bendeyse seçtiğim orada yarı saydam görünür. */
+/** Boş ban işareti (⊘): süre doldu ya da "Ban yok" (§8.33). Portre boyunda, `champ` çerçevesiyle. */
+function NoBanIcon({ size }: { size: number }) {
+  return (
+    <span className="champ none" style={{ width: size, height: size }} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="50%" height="50%">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M5.6 18.4 18.4 5.6" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    </span>
+  )
+}
+
+/** Takım: 5 pick kartı. Sıradaki yuva parlar; sıradakinin ön izlemesi (benimki ya da rakibinki) orada yarı saydam. */
 function TeamColumn(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
   const { side, draft, champions, preview } = props
   const picks = lineup(draft, side)

@@ -270,6 +270,21 @@ input:focus-visible {
   opacity: 0.35;
 }
 
+/* Boş ban işareti (⊘, §8.33): portre boyunda kutu, ortada soluk işaret. Oynanmamış yuvanın çizgili zemininden ayrı. */
+.champ.none {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.ban-slot.none .champ {
+  opacity: 0.7;
+}
+
+.pool-item.no-ban .champ.none {
+  color: var(--fg);
+}
+
 .draft-bar {
   display: flex;
   flex-wrap: wrap;
@@ -719,12 +734,18 @@ a {
   background: repeating-linear-gradient(135deg, var(--bg) 0 5px, var(--panel) 5px 7px);
 }
 
-/* Ban'lı: gri ikonun üstünde çapraz çizgi; düşerken mühür gibi basılır. */
+/* Ban'lı: gri ikonun üstünde ince çapraz çizgi (2 px, köşelere değmez: her kenardan %18 içeride; 40 px'lik yuvada
+   ~7 px, telefondaki 28 px'likte ~5 px), tok kırmızı. Önceki köşeden köşeye kalın neon bant kaba duruyordu (2026-11-23). */
 .ban-slot.filled::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 46%, var(--error) 46% 54%, transparent 54%);
+  inset: 18%;
+  background: linear-gradient(
+    135deg,
+    transparent calc(50% - 1px),
+    rgba(229, 72, 77, 0.9) calc(50% - 1px) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
   pointer-events: none;
 }
 
@@ -1022,19 +1043,8 @@ a {
   animation: ban-flash-stamp 2s ease-out forwards;
 }
 
-.ban-flash-text strong {
-  padding: 2px 14px;
-  border: 3px solid var(--error);
-  border-radius: 6px;
-  color: var(--error);
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-  transform: rotate(-6deg);
-  background: rgba(8, 9, 26, 0.55);
-}
-
 .ban-flash-text span {
+  font-size: 1.1rem;
   font-weight: 700;
 }
 
@@ -1101,7 +1111,7 @@ a {
   }
 }
 
-/* Hareket hassasiyeti: sadece belirip söner; içerik baştan gri, çizgili ve damgalı. */
+/* Hareket hassasiyeti: sadece belirip söner; içerik baştan gri ve çizgili. */
 @media (prefers-reduced-motion: reduce) {
   .ban-flash {
     animation-name: ban-flash-fade;

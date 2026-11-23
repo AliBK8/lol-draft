@@ -20,11 +20,23 @@ public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock, PlayMa
     public Task<Result<LobbyUpdate>> Pick(GuestIdentity who, ActionId action, ChampionId champion, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.Pick(who.Player, action, champion, now), ct);
 
+    public Task<Result<LobbyUpdate>> SkipBan(GuestIdentity who, ActionId action, CancellationToken ct) =>
+        Run(who, (lobby, now) => lobby.SkipBan(who.Player, action, now), ct);
+
     public Task<Result<LobbyUpdate>> SwapRoles(GuestIdentity who, ActionId action, Role a, Role b, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.SwapRoles(who.Player, action, a, b, now), ct);
 
     public Task<Result<LobbyUpdate>> LockLineup(GuestIdentity who, ActionId action, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.LockLineup(who.Player, action, now), ct);
+
+    /// <summary>
+    /// Ön izleme (§8.32): kilit altında okunur (aynı anda gelen hamleyle çelişmesin), durum değişmez;
+    /// kayıt yok, yayını hub yapar (sadece rakibe).
+    /// </summary>
+    public Task<Result<DraftPreview>> Preview(GuestIdentity who, ChampionId? champion, CancellationToken ct) =>
+        lobbies.Execute(who.Lobby, lobby => lobby.SeatOf(who.Player) != who.Seat
+            ? Result<DraftPreview>.Fail(LobbyErrors.NotInLobby)
+            : lobby.Preview(who.Player, champion, clock.Now), ct);
 
     /// <summary>Oyuncunun bir bağlantısı açıldı (hub). Yeni durum: koltuk "bağlı" görünür.</summary>
     public Task<Result<LobbyUpdate>> Connect(GuestIdentity who, CancellationToken ct) =>

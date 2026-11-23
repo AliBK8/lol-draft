@@ -168,7 +168,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | `hub-connect` | `/hubs/draft` (negotiate + WS) | IP | eşzamanlı en fazla 5 bağlantı |
 | `simulate-heavy` | Monte Carlo / "ne olurdu?" uçları | oyuncu (JWT `sub`) | eşzamanlılık: sunucu genelinde 4 iş, kuyruk 20; oyuncu başına dakikada 3 |
 
-**Hub içi limit** (`IHubFilter`, API'de): bağlantı başına saniyede 5 mesaj, dakikada 60. Aşılırsa mesaj reddedilir; tekrar ederse bağlantı kapatılır.
+**Hub içi limit** (`IHubFilter`, API'de): bağlantı başına saniyede 5 mesaj, dakikada 60. Aşılırsa mesaj reddedilir; tekrar ederse bağlantı kapatılır. Ön izleme (`Preview`, §8.32) ayrı kovadan: saniyede 5, dakika kovası yok (saniye sınırı zaten dakikada en çok 300). Hamle bütçesini yemez; havuzda hızlı tıklayan oyuncu kendi Pick'ini engelletmez. İstemci 300 ms'de birden sık göndermez (saniyede en çok 4); aşan standart dışıdır, ret ihtar sayılır (aynı kapanma kuralı).
 
 - Aşımda `429 Too Many Requests` + `Retry-After` döner. Hub'da istemciye `RateLimited` olayı gider.
 - IP, gateway önünde başka bir proxy varsa `ForwardedHeaders` ile ve **sadece güvenilen proxy listesinden** okunur; aksi halde `X-Forwarded-For` taklit edilip limit atlatılabilir.

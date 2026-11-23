@@ -72,6 +72,45 @@ public sealed class DraftSession
 
     internal Result Pick(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Pick, champion, now);
 
+    /// <summary>
+    /// Ban adımını bilerek boş geçer (LoL'deki "None", §8.33): sonucu süre dolmasıyla aynı (şampiyonsuz ban),
+    /// tek farkı kayıtta zaman aşımı değil. Sadece ban adımında ve sıra bu takımdayken.
+    /// </summary>
+    internal Result SkipBan(Side side, Instant now)
+    {
+        ThrowIfUnknown(side);
+
+        var turn = CheckTurn(side, now);
+        if (turn.IsFailure)
+            return turn;
+
+        var step = CurrentStep!;
+        if (step.Kind != DraftActionKind.Ban)
+            return Result.Fail(DraftErrors.WrongAction);
+
+        Apply(step, null, byTimeout: false, now);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Ön izleme (rakip görür, §8.32): sırası gelen takım bu şampiyonu şu an ban/pick edebilir mi? Hamleyle aynı
+    /// kurallar (faz, süre, sıra, şampiyon) ama hiçbir şey değişmez. Geçerliyse adımın numarası döner: istemci ön
+    /// izlemeyi sadece o adım sürerken gösterir, hamle gelince eskisi kendiliğinden düşer. Şampiyon null: temizlenir.
+    /// </summary>
+    internal Result<int> Preview(Side side, ChampionId? champion, Instant now)
+    {
+        ThrowIfUnknown(side);
+
+        var turn = CheckTurn(side, now);
+        if (turn.IsFailure)
+            return Result<int>.Fail(turn.Error!);
+
+        if (champion is { } value && CheckChampion(value) is { IsFailure: true } unavailable)
+            return Result<int>.Fail(unavailable.Error!);
+
+        return Result<int>.Ok(_stepIndex);
+    }
+
     /// <summary>Swap fazında iki yuvadaki şampiyonların yerini değiştirir (arayüzde top'a, sonra adc'ye tıklamak).</summary>
     internal Result SwapRoles(Side side, Role a, Role b, Instant now)
     {
@@ -140,14 +179,37 @@ public sealed class DraftSession
         ThrowIfUnknown(side);
 
         // Kontrol sırası: önce faz ve süre, sonra sıra, en son şampiyon.
+        var turn = CheckTurn(side, now);
+        if (turn.IsFailure)
+            return turn;
+
+        var step = CurrentStep!;
+        if (step.Kind != kind)
+            return Result.Fail(DraftErrors.WrongAction);
+
+        var available = CheckChampion(champion);
+        if (available.IsFailure)
+            return available;
+
+        Apply(step, champion, byTimeout: false, now);
+        return Result.Ok();
+    }
+
+    // Hamle ve ön izleme ortak: ban/pick adımı açık mı, süresi dolmadı mı, sıra bu takımda mı?
+    private Result CheckTurn(Side side, Instant now)
+    {
         if (CurrentStep is not { } step)
             return Result.Fail(DraftErrors.PhaseClosed);
         if (now >= Deadline)
             return Result.Fail(DraftErrors.TurnExpired);
         if (step.Side != side)
             return Result.Fail(DraftErrors.NotYourTurn);
-        if (step.Kind != kind)
-            return Result.Fail(DraftErrors.WrongAction);
+        return Result.Ok();
+    }
+
+    // Hamle ve ön izleme ortak: şampiyon havuzda mı, alınmamış mı, fearless kilidi yok mu?
+    private Result CheckChampion(ChampionId champion)
+    {
         if (!_pool.Contains(champion))
             return Result.Fail(DraftErrors.NotInPool);
         if (_taken.Contains(champion))
@@ -156,8 +218,6 @@ public sealed class DraftSession
         // Kilitli şampiyon seçilemez; ban'lamak da anlamsız (zaten kimse seçemez), o da olmaz.
         if (_locks.Contains(champion))
             return Result.Fail(DraftErrors.LockedByFearless);
-
-        Apply(step, champion, byTimeout: false, now);
         return Result.Ok();
     }
 

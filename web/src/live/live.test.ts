@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { Champion, DraftState, LobbyState } from '../api/types'
 import { clockOffset, remainingMs, secondsLeft } from './clock'
-import { DRAFT_ORDER, isMyTurn, latestBan, lineup, mySide, offRolePenalty, unavailable } from './draft'
+import {
+  banSlots,
+  DRAFT_ORDER,
+  isMyTurn,
+  latestBan,
+  lineup,
+  mySide,
+  offRolePenalty,
+  opponentChoice,
+  unavailable,
+} from './draft'
 import { newer } from './revision'
 
 const lobby = (revision: number, extra: Partial<LobbyState> = {}): LobbyState => ({
@@ -56,6 +66,38 @@ describe('draft', () => {
   it('renk koltuğa göre: mavi koltuk B ise A kırmızı', () => {
     expect(mySide(lobby(1, { blueTeam: 'A' }), 'A')).toBe('blue')
     expect(mySide(lobby(1, { blueTeam: 'B' }), 'A')).toBe('red')
+  })
+
+  it('boş geçen ban (süre doldu ya da "Ban yok") oynanmamış yuvadan ayrı', () => {
+    const d = draft({
+      actions: [
+        { step: 0, side: 'blue', kind: 'ban', champion: 'zed', byTimeout: false },
+        { step: 1, side: 'red', kind: 'ban', champion: null, byTimeout: true },
+        { step: 2, side: 'blue', kind: 'ban', champion: null, byTimeout: false },
+      ],
+    })
+
+    expect(banSlots(d, 'blue')).toEqual([
+      { kind: 'banned', champion: 'zed' },
+      { kind: 'none' },
+      { kind: 'open' },
+      { kind: 'open' },
+      { kind: 'open' },
+    ])
+    expect(banSlots(d, 'red').map((s) => s.kind)).toEqual(['none', 'open', 'open', 'open', 'open'])
+  })
+
+  it('rakibin ön izlemesi sadece sıra ondayken, aynı adımda ve şampiyon alınmamışsa görünür', () => {
+    const d = draft({ turn: 'red', actions: [{ step: 0, side: 'blue', kind: 'ban', champion: 'zed', byTimeout: false }] })
+    const red = (champion: string | null, step = 1) => ({ side: 'red' as const, step, champion })
+
+    expect(opponentChoice(d, 'blue', red('ahri'))).toBe('ahri')
+    expect(opponentChoice(d, 'blue', null)).toBeNull()
+    expect(opponentChoice(d, 'blue', red(null))).toBeNull() // bıraktı
+    expect(opponentChoice(d, 'blue', red('ahri', 0))).toBeNull() // eski adımın ön izlemesi
+    expect(opponentChoice(d, 'blue', red('zed'))).toBeNull() // bu arada ban'landı
+    expect(opponentChoice(d, 'red', red('ahri'))).toBeNull() // kendi rengim (başka sekme)
+    expect(opponentChoice(draft({ turn: 'blue' }), 'blue', red('ahri', 0))).toBeNull() // sıra onda değil
   })
 
   it('sıra bende mi', () => {
