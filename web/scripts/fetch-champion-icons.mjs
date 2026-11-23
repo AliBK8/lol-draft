@@ -59,6 +59,8 @@ const splashUrl = (key, skin = 0) => `${DDRAGON}/cdn/img/champion/centered/${SPL
 // Ana sayfanın dönen arka planı (§8.31): kostüm splash'ları tam boy (1280×720). Kart için küçültülmüş 640'lık
 // sürüm geniş ekranda ~1100 px'e büyüyüp bulanıklaşıyordu. Liste sayfayla ortak: web/src/pages/backdrop.json
 // ({ id, skin, name }) → champions/hero/{id}-{skin}.jpg.
+// Riot'un dosyası olduğu gibi yazılır (yeniden sıkıştırma ikinci kez kalite kaybettirir); sadece boyu 1280×720
+// değilse küçültülür. Listede olmayan eski görseller elle silinir.
 const heroes = JSON.parse(await readFile(join(root, 'web', 'src', 'pages', 'backdrop.json'), 'utf8'))
 const heroOut = join(out, 'hero')
 await mkdir(heroOut, { recursive: true })
@@ -67,10 +69,12 @@ for (const { id, skin } of heroes) {
   if (!champion) throw new Error(`backdrop.json: havuzda yok: ${id}`)
   const splash = await fetchRetry(splashUrl(keyOf(champion), skin))
   if (!splash.ok) throw new Error(`${id} kostüm ${skin}: ${splash.status}`)
-  const full = await sharp(Buffer.from(await splash.arrayBuffer()))
-    .resize(1280, 720)
-    .jpeg({ quality: 80, mozjpeg: true })
-    .toBuffer()
+  const original = Buffer.from(await splash.arrayBuffer())
+  const { width, height } = await sharp(original).metadata()
+  const full =
+    width === 1280 && height === 720
+      ? original
+      : await sharp(original).resize(1280, 720).jpeg({ quality: 90, mozjpeg: true }).toBuffer()
   await writeFile(join(heroOut, `${id}-${skin}.jpg`), full)
 }
 console.log(`${heroes.length} arka plan görseli indirildi (tam boy kostüm splash'ları).`)

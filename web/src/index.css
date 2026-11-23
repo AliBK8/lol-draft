@@ -12,8 +12,18 @@
   --accent: #a78bfa;
   --accent-2: #6366f1;
   --accent-grad: linear-gradient(135deg, #6366f1, #a855f7);
+  /* Renk dağılımı 45/45/10: lacivert ve mor zemin/paneller, %10 şeftali sadece "göz buraya" yerlerinde
+     (ana düğmeler, seçili format, açık fearless, Fearless rozeti). Morun karşısındaki sıcak ton, zeminden ayrışır.
+     Açık renkli dolguda yazı koyu (--pop-ink), beyaz okunmuyor. */
+  --pop: #ffab7a;
+  --pop-soft: rgba(255, 171, 122, 0.12);
+  --pop-line: rgba(255, 171, 122, 0.55);
+  --pop-grad: linear-gradient(135deg, #ffc8a3, #ff8f5e);
+  --pop-ink: #2a1206;
+  --pop-glow: rgba(255, 143, 94, 0.32);
   --ok: #4ade80;
   --error: #ff7b8a;
+  --top-h: 58px;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 12px 32px rgba(3, 4, 20, 0.45);
@@ -44,14 +54,19 @@ body {
   flex-direction: column;
 }
 
+/* Üst şerit çubuksuz (dolgu, alt çizgi yok): logo zeminin ya da ana sayfa görselinin üstünde durur.
+   Yükseklik --top-h'de sabit (14 + 30 logo + 14): ana sayfa görseli bu kadar yukarı uzar, sayfanın tepesine değer.
+   z-index: görsel (.home-backdrop) logonun altında kalsın. */
 .top {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-  background: rgba(10, 12, 29, 0.6);
-  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  height: var(--top-h);
 }
 
 .top-inner {
+  width: 100%;
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 16px;
@@ -165,11 +180,11 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent-grad);
-  color: #fff;
+  background: var(--pop-grad);
+  color: var(--pop-ink);
   border-color: transparent;
   font-weight: 600;
-  box-shadow: 0 6px 20px rgba(124, 92, 246, 0.35);
+  box-shadow: 0 6px 20px var(--pop-glow);
 }
 
 button.primary:not(:disabled):hover {
@@ -849,6 +864,7 @@ a {
 .lock-in.ban:not(:disabled) {
   background: linear-gradient(135deg, #e5484d, #be185d);
   border-color: transparent;
+  color: #fff;
   box-shadow: 0 6px 20px rgba(229, 72, 77, 0.3);
 }
 
@@ -2093,10 +2109,10 @@ a.button {
 }
 
 a.button.primary {
-  background: var(--accent-grad);
+  background: var(--pop-grad);
   border-color: transparent;
-  color: #fff;
-  box-shadow: 0 6px 20px rgba(124, 92, 246, 0.35);
+  color: var(--pop-ink);
+  box-shadow: 0 6px 20px var(--pop-glow);
 }
 
 a.button:hover {
@@ -2131,9 +2147,9 @@ button.big {
 }
 
 .chip.accent {
-  color: var(--accent);
-  border-color: rgba(167, 139, 250, 0.45);
-  background: rgba(167, 139, 250, 0.1);
+  color: var(--pop);
+  border-color: var(--pop-line);
+  background: var(--pop-soft);
 }
 
 .chip.ok {
@@ -2180,11 +2196,13 @@ button.big {
 }
 
 /* Arka plan düz (eğim yok): sinema şeridi gibi geniş; iki yanı ve altı zemine doğru söner.
-   İki maske kesişir (yatay × dikey): ortası görünür, dört kenarda sert çizgi kalmaz. */
+   İki maske kesişir (yatay × dikey): ortası görünür, dört kenarda sert çizgi kalmaz.
+   Üstte logo şeridini (--top-h) de kaplar: görsel sayfanın tepesinden başlar, boyu o kadar uzar,
+   alt ucu eskisiyle aynı yerde kalır. */
 .home-backdrop {
   position: absolute;
-  inset: -24px -16px auto;
-  height: 440px;
+  inset: calc(-24px - var(--top-h)) -16px auto;
+  height: calc(440px + var(--top-h));
   opacity: 0.35;
   pointer-events: none;
   z-index: 0;
@@ -2194,8 +2212,8 @@ button.big {
   mask-composite: intersect;
 }
 
-/* Dönen görseller üst üste: görünen (.on) açılır ve 6,5 sn'de %6 yakınlaşır; gideni 1,2 sn'de söner,
-   yakınlaşması ancak söndükten sonra (gecikmeli) sıfırlanır, geçişte sıçrama görünmez. */
+/* Dönen görseller üst üste: görünen (.on) 1,2 sn'de açılır, gideni aynı sürede söner.
+   Yakınlaşma yok: büyütülen görüntüyü tarayıcı animasyon boyunca yumuşak çiziyor, splash bulanık duruyordu. */
 .home-backdrop img {
   position: absolute;
   inset: 0;
@@ -2204,18 +2222,11 @@ button.big {
   object-fit: cover;
   object-position: center 30%;
   opacity: 0;
-  transform: scale(1);
-  transition:
-    opacity 1.2s ease,
-    transform 0s linear 1.2s;
+  transition: opacity 1.2s ease;
 }
 
 .home-backdrop img.on {
   opacity: 1;
-  transform: scale(1.06);
-  transition:
-    opacity 1.2s ease,
-    transform 6.5s linear;
 }
 
 .home-hero,
@@ -2343,17 +2354,17 @@ button.big {
 }
 
 .format:hover {
-  border-color: rgba(167, 139, 250, 0.5);
+  border-color: var(--pop-line);
 }
 
 .format.on {
-  border-color: var(--accent);
-  background: rgba(167, 139, 250, 0.12);
-  box-shadow: 0 0 0 1px var(--accent) inset;
+  border-color: var(--pop);
+  background: var(--pop-soft);
+  box-shadow: 0 0 0 1px var(--pop) inset;
 }
 
 .format.on strong {
-  color: var(--accent);
+  color: var(--pop);
 }
 
 .format:has(input:focus-visible),
@@ -2408,11 +2419,11 @@ button.big {
 }
 
 .toggle-card.on {
-  border-color: rgba(167, 139, 250, 0.6);
+  border-color: var(--pop-line);
 }
 
 .toggle-card.on .switch {
-  background: var(--accent-grad);
+  background: var(--pop-grad);
 }
 
 .toggle-card.on .switch::after {
@@ -2794,7 +2805,7 @@ button.copied {
   }
 
   .home-backdrop {
-    height: 300px;
+    height: calc(300px + var(--top-h));
   }
 }
 
@@ -2849,9 +2860,7 @@ button.copied {
     animation: none;
   }
 
-  .home-backdrop img,
-  .home-backdrop img.on {
-    transform: none;
+  .home-backdrop img {
     transition: none;
   }
 }

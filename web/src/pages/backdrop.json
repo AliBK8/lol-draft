@@ -1,8 +1,16 @@
 [
-  { "id": "ahri", "skin": 27, "name": "Spirit Blossom Ahri" },
-  { "id": "kaisa", "skin": 26, "name": "K/DA ALL OUT Kai'Sa" },
-  { "id": "jinx", "skin": 4, "name": "Star Guardian Jinx" },
-  { "id": "lux", "skin": 7, "name": "Elementalist Lux" },
-  { "id": "thresh", "skin": 5, "name": "Dark Star Thresh" },
-  { "id": "syndra", "skin": 6, "name": "Star Guardian Syndra" }
+  { "id": "evelynn", "skin": 42, "name": "Soul Fighter Evelynn" },
+  { "id": "sylas", "skin": 36, "name": "Winterblessed Sylas" },
+  { "id": "masteryi", "skin": 52, "name": "Spirit Blossom Master Yi" },
+  { "id": "nunuwillump", "skin": 35, "name": "Cosmic Paladins Nunu & Willump" },
+  { "id": "malzahar", "skin": 39, "name": "Empyrean Malzahar" },
+  { "id": "varus", "skin": 44, "name": "Snow Moon Varus" },
+  { "id": "leesin", "skin": 72, "name": "Inkshadow Lee Sin" },
+  { "id": "masteryi", "skin": 10, "name": "Cosmic Blade Master Yi" },
+  { "id": "hwei", "skin": 11, "name": "Spirit Blossom Hwei" },
+  { "id": "nidalee", "skin": 18, "name": "Cosmic Huntress Nidalee" },
+  { "id": "gwen", "skin": 20, "name": "Soul Fighter Gwen" },
+  { "id": "senna", "skin": 56, "name": "Winterblessed Senna" },
+  { "id": "syndra", "skin": 25, "name": "Bewitching Syndra" },
+  { "id": "jhin", "skin": 36, "name": "Soul Fighter Jhin" }
 ]

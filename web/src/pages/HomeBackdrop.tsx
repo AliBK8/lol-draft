@@ -12,7 +12,7 @@ const SLIDES: Slide[] = slides
 const INTERVAL_MS = 5000
 
 // Dönen arka plan (§8.31): görseller üst üste durur, sadece görünenin opaklığı açık; 5 sn'de bir sıradakine geçilir,
-// geçişi CSS yapar (opaklık + hafif yakınlaşma). Her ziyaret rastgele bir görselden başlar.
+// geçişi CSS yapar (opaklık; yakınlaşma yok, görüntüyü yumuşatıyordu). Her ziyaret rastgele bir görselden başlar.
 // Yükleme tembel: sadece şimdiye kadar görünenler ve sıradaki çizilir (sayfa açılışında 6 görsel birden inmesin).
 // Hareket azaltma tercihi olanda döngü yok, tek görsel kalır.
 export function HomeBackdrop() {
