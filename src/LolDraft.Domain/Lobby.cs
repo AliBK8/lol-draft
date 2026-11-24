@@ -246,6 +246,10 @@ public sealed class Lobby
     public Result LockLineup(PlayerId player, ActionId action, Instant now) =>
         OnDraft(player, action, now, (draft, side) => draft.LockLineup(side, now));
 
+    /// <summary>Oyun planını seçer (DESIGN.md §4.10). Renk koltuktan; iki takım da seçince draft biter, maç oynanır.</summary>
+    public Result ChoosePlan(PlayerId player, ActionId action, MatchPlan plan, Instant now) =>
+        OnDraft(player, action, now, (draft, side) => draft.ChoosePlan(side, plan, now));
+
     /// <summary>
     /// Draft'ı biten maçın sonucunu seriye yazar (DESIGN.md §8.3: dışarıdan tek kapı). Simülasyonu dışarısı yapar
     /// (Domain motoru bilmez): draft bitince Application maçı oynatır, kazanan rengi ve maçın kimliğini buraya verir.
@@ -268,7 +272,7 @@ public sealed class Lobby
     /// <item>Kapanış: kimse bağlı değilse son çıkıştan 5 dk sonra; ya da 30 dk hiç hareket yoksa.</item>
     /// <item>Hükmen galibiyet: seri başladıktan sonra bir oyuncu 2 dk kesintisiz yoksa ve rakibi bağlıysa.
     /// İkisi birden yoksa kimse kazanmaz; lobi 1. maddeyle kapanır.</item>
-    /// <item>Zaman aşımı: draft adımının süresi dolduysa boş ban / rastgele pick / swap biter.</item>
+    /// <item>Zaman aşımı: draft adımının süresi dolduysa boş ban / rastgele pick / swap biter / plan fazı biter.</item>
     /// </list>
     /// Hamleyle yarışmaz: ikisi de lobinin kilidinden geçer; süre dolduktan sonra gelen hamleyi
     /// <see cref="DraftSession"/> zaten reddeder (turn_expired), süre dolmadan zaman aşımı olmaz.

@@ -64,6 +64,8 @@ public sealed class LobbyRecordGameTests
         {
             lobby.LockLineup(_host, Action(), T0);
             lobby.LockLineup(_guest, Action(), T0);
+            lobby.ChoosePlan(_host, Action(), MatchPlan.Balanced, T0);
+            lobby.ChoosePlan(_guest, Action(), MatchPlan.Balanced, T0);
             Assert.NotNull(draft.Outcome);
         }
 

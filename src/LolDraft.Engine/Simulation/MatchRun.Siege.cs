@@ -65,8 +65,13 @@ internal sealed partial class MatchRun
         var attacker = lead > 0 ? TeamSide.Blue : TeamSide.Red;
         var defender = attacker.Opponent();
         var needed = SiegeLeadNeeded(minute) / (HasBaron(attacker, t) ? 2 : 1);
+        // Hızlı bitir planı: eşik ×0,75 (uyumla ölçekli), kuşatmalar arası bekleme 1 dk kısa (Tactics.cs).
+        var tactics = Tactics(attacker);
+        if (tactics.Knobs.SiegeLeadDiscount > 0)
+            needed *= tactics.SiegeLeadFactor;
 
-        if (Math.Abs(lead) < needed || !AtTheGates(attacker) || minute - _lastSiegeMinute < SiegeCooldownMinutes)
+        if (Math.Abs(lead) < needed || !AtTheGates(attacker)
+            || minute - _lastSiegeMinute < SiegeCooldownMinutes - tactics.Knobs.SiegeCooldownCut)
             return;
 
         _lastSiegeMinute = minute;
@@ -90,7 +95,8 @@ internal sealed partial class MatchRun
 
         // Throw: savunan kuşatmayı tutar ve kill'leri alır. Önde olanları keser, ödüllerini toplar: fark kendiliğinden
         // kapanır (eskiden sabit +10 puan). Maç sürer.
-        ScheduleFightKills(defender, t, ThrowMaxKills);
+        // Hızlı bitir planıyla tutulan kuşatma daha pahalı: savunan bir kill fazla alabilir.
+        ScheduleFightKills(defender, t, ThrowMaxKills + tactics.Knobs.ThrowExtraKills);
         At(t + 6, () => _events.Add(new ThrowEvent(t + 6,
             $"{attacker.DisplayName()} bitirmeye gitti ama {defender.DisplayName()} savunmayı tuttu. Throw!", defender, 1 - probability)));
     }

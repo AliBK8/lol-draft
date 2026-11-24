@@ -12,6 +12,7 @@ import type { Replay } from '../match/types'
 import { useReplay } from '../match/useReplay'
 import { clearRejoinToken, clearSession, type Session } from '../session'
 import { DraftBoard } from './DraftBoard'
+import { PlanBoard } from './PlanBoard'
 import { SwapBoard } from './SwapBoard'
 
 const FORFEIT_MS = 2 * 60_000 // Domain/Lobby.ForfeitAfter
@@ -77,7 +78,7 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
 
       {!lobby.isFull && <Invite code={code} />}
 
-      {draft && draft.phase !== 'swap' && draft.phase !== 'completed' && (
+      {draft && draft.phase !== 'swap' && draft.phase !== 'plan' && draft.phase !== 'completed' && (
         <DraftBoard
           key={lobby.gameNumber}
           draft={draft}
@@ -92,6 +93,7 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
       {draft?.phase === 'swap' && (
         <SwapBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
       )}
+      {draft?.phase === 'plan' && <PlanBoard key={lobby.gameNumber} draft={draft} me={me} offsetMs={offsetMs} act={act} />}
       {viewing !== null && (
         <GameViewer
           key={lobby.games[viewing].match}

@@ -20,6 +20,25 @@ var drafter = new RandomDrafter(pool, options.Seed, options.OffRoleRate);
 var simulator = MatchEngine.CreateSimulator();
 var stats = new BalanceStats(new IdentityClassifier(pool));
 
+if (options.Plans)
+{
+    // Plan ölçümü: plan zarları draft dizisinden ayrı üreteçte (aynı --seed aynı draft'lar ve aynı planlar).
+    var planRandom = new Random(options.Seed + 1);
+    var plans = new PlanStats();
+    for (var i = 0; i < options.Drafts; i++)
+    {
+        var (a, b) = drafter.NextPair();
+        var seed = drafter.NextSeed();
+        var (planA, planB) = (PlanStats.Random(planRandom), PlanStats.Random(planRandom));
+
+        plans.Add(a, b, planA, planB, simulator.Simulate(new MatchInput(a, b, seed, planA, planB)));
+        plans.Add(b, a, planB, planA, simulator.Simulate(new MatchInput(b, a, seed, planB, planA)));
+    }
+
+    plans.Print(Console.Out);
+    return;
+}
+
 for (var i = 0; i < options.Drafts; i++)
 {
     var (a, b) = drafter.NextPair();

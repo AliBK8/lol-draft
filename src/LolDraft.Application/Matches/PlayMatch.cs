@@ -18,7 +18,7 @@ public sealed record MatchRecord(
 /// Lobinin kilidi altında çağrılır (hamle ya da saat tikinin içinde): "draft bitti" ile "sonuç yazıldı" arasına
 /// başka hamle giremez. Simülasyon ~1 ms, kilidi uzatmaz.
 /// </summary>
-public sealed class PlayMatch(IChampionCatalog catalog, IMatchSimulator simulator, ISecureRandom random)
+public sealed class PlayMatch(PlanAdvisor advisor, IMatchSimulator simulator, ISecureRandom random)
 {
     private static readonly string EngineVersion =
         typeof(IMatchSimulator).Assembly.ManifestModule.ModuleVersionId.ToString("N");
@@ -36,14 +36,18 @@ public sealed class PlayMatch(IChampionCatalog catalog, IMatchSimulator simulato
 
         // Seed CSPRNG'den: oyuncular tahmin edemez (DESIGN.md §8.6) ve istemciye hiç gönderilmez.
         var seed = new Seed(BitConverter.ToUInt32(random.Bytes(sizeof(uint))));
-        var result = simulator.Simulate(new MatchInput(Team(draft.Blue), Team(draft.Red), seed));
+        // Oyun planları (DESIGN.md §4.10): seçmeyen Dengeli (DraftSession). Uyum replay'e de yazılır (karne).
+        var (blue, red) = (advisor.Team(draft.Blue), advisor.Team(draft.Red));
+        var (bluePlan, redPlan) = (PlanAdvisor.ToEngine(draft.BluePlan), PlanAdvisor.ToEngine(draft.RedPlan));
+        var result = simulator.Simulate(new MatchInput(blue, red, seed, bluePlan, redPlan));
+        var plans = new MatchPlans(draft.BluePlan, MatchEngine.PlanFit(blue, bluePlan), draft.RedPlan, MatchEngine.PlanFit(red, redPlan));
 
         var id = MatchId.FromBytes(random.Bytes(MatchId.ByteLength));
         // Maç numarası ve mavi takım yazmadan önce okunur: RecordGame seriyi bir sonraki maça geçirir.
         // Belge seriye yazmadan önce üretilir: çeviri hata verirse (sözleşmede olmayan olay) skor da yazılmaz.
         var gameNumber = lobby.Series.GameNumber;
         var blueTeam = lobby.Series.BlueTeam;
-        var replay = MatchReplay.Create(id, gameNumber, blueTeam, result);
+        var replay = MatchReplay.Create(id, gameNumber, blueTeam, result, plans);
         var record = new MatchRecord(id, lobby.Code, gameNumber, blueTeam, seed, EngineVersion, now, replay);
 
         var winner = result.End.Winner == TeamSide.Blue ? Side.Blue : Side.Red;
@@ -53,10 +57,7 @@ public sealed class PlayMatch(IChampionCatalog catalog, IMatchSimulator simulato
 
         return record;
     }
-
-    // Swap sonrası dizilim → motorun takımı: yuva sırası (top, jungle, mid, bot, support) iki tarafta aynı.
-    // Şampiyon kendi rolünde değilse ceza ve oynaklığı motor uygular (profildeki doğal roller, DESIGN.md §16.8).
-    private TeamDraft Team(TeamLineup lineup) => new(
-        catalog.Profile(lineup[Role.Top]), catalog.Profile(lineup[Role.Jungle]), catalog.Profile(lineup[Role.Mid]),
-        catalog.Profile(lineup[Role.Bot]), catalog.Profile(lineup[Role.Support]));
 }
+
+/// <summary>Maçın planları ve draft'a uyumları (DESIGN.md §4.10): replay'de, rakibin planı maç sonunda görünür.</summary>
+public sealed record MatchPlans(MatchPlan Blue, PlanFit BlueFit, MatchPlan Red, PlanFit RedFit);

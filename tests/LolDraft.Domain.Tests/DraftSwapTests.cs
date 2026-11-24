@@ -40,7 +40,7 @@ public sealed class DraftSwapTests
     }
 
     [Fact]
-    public void Iki_takim_da_kilitleyince_draft_biter()
+    public void Iki_takim_da_kilitleyince_plan_fazi_baslar_planlardan_sonra_draft_biter()
     {
         var session = InSwap();
         session.SwapRoles(Side.Red, Role.Jungle, Role.Mid, T0);
@@ -49,6 +49,11 @@ public sealed class DraftSwapTests
         Assert.Equal(DraftPhase.Swap, session.Phase);
 
         session.LockLineup(Side.Red, T0);
+        Assert.Equal(DraftPhase.Plan, session.Phase);
+        Assert.Null(session.Outcome);
+
+        session.ChoosePlan(Side.Blue, MatchPlan.Balanced, T0);
+        session.ChoosePlan(Side.Red, MatchPlan.Balanced, T0);
 
         Assert.Equal(DraftPhase.Completed, session.Phase);
         Assert.Equal(session.Lineup(Side.Red), session.Outcome!.Red);

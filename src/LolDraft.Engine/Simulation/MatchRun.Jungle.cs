@@ -38,8 +38,13 @@ internal sealed partial class MatchRun
     // Pencerenin başında seçilen gank dakikaları → dakika içindeki saniye.
     private readonly Dictionary<int, double> _gankAt = [];
 
+    // Erken baskı planının ek gank dakikaları (normal pencerelerin arası): gank'ı planın takımı atar (Tactics.cs).
+    private static readonly int[] ExtraGankMinutes = [8, 11];
+
     // Orman akışı dakika başında puana yazılır; gank kendi saniyesine kaydolur.
-    // Zar sırası: orman gürültüsü, (pencere başındaysa) gank dakikası ve saniyesi, (dk 5) istila.
+    // Zar sırası: orman gürültüsü, (pencere başındaysa) gank dakikası ve saniyesi, (dk 5) istila,
+    // (Erken baskı planı, dk 8 ve 11) Mavi'nin sonra Kırmızı'nın ek gank'ı: olacak mı, saniye.
+    // Plan yoksa ek zar yok (Dengeli bit bit aynı).
     private void ScheduleJungle(int minute)
     {
         var t0 = (minute - 1) * 60;
@@ -60,24 +65,43 @@ internal sealed partial class MatchRun
 
         ScheduleInvade(minute, powerDiff);
 
-        if (!_gankAt.TryGetValue(minute, out var second))
-            return;
+        if (ExtraGankMinutes.Contains(minute))
+        {
+            foreach (var side in (TeamSide[])[TeamSide.Blue, TeamSide.Red])
+            {
+                var chance = Tactics(side).ExtraGankChance;
+                if (chance > 0 && _rng.NextDouble() < chance)
+                    ScheduleGank(minute, GankMinSecond + _rng.NextDouble() * GankSecondSpan, powerDiff, side);
+            }
+        }
 
+        if (_gankAt.TryGetValue(minute, out var second))
+            ScheduleGank(minute, second, powerDiff, side: null);
+    }
+
+    // side: gank'ı atan belli (Erken baskı'nın ek gank'ı) ya da null (ormancı gücüne göre zar).
+    private void ScheduleGank(int minute, double second, double powerDiff, TeamSide? side)
+    {
         // Objektifli dakikada aynı zar 50-55'e sıkıştırılır (tek saniyeye yığılmasın).
         if (_objectiveAt.ContainsKey(minute))
             second = GankAfterObjectiveSecond + (second - GankMinSecond) / GankSecondSpan * (60 - 5 - GankAfterObjectiveSecond);
-        var t = t0 + second;
-        At(t, () => PlayGank(minute, t, powerDiff));
+        var t = (minute - 1) * 60 + second;
+        At(t, () => PlayGank(minute, t, powerDiff, side));
     }
 
-    // Zar sırası: taraf, koridor, (şartlar tutarsa) support katılımı, başarı.
-    private void PlayGank(int minute, double t, double powerDiff)
+    // Zar sırası: (atan belli değilse) taraf, koridor, (şartlar tutarsa) support katılımı, başarı.
+    private void PlayGank(int minute, double t, double powerDiff, TeamSide? forcedSide)
     {
         // Gank'ı atan taraf: p_Mavi = clamp(1 / (1 + e^(−(G_eff_jg farkı)/4))). Eşit ormancıda %50.
         // Prototipte sıkıştırılmıyordu (fark 9'da ~%90.5); her olay ihtimali gibi %10-%90.
         var blueProbability = Probability.Clamp(Probability.Logistic(powerDiff / GankSideDivisor));
-        var side = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
-        var lane = Lanes[_rng.NextIndex(Lanes.Length)];
+        var side = forcedSide ?? (_rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red);
+
+        // Koridor: üçü eşit. Bot baskısı planında bot'a ~%73 (uyumla 0,63-0,83), kalan top ve mid'e eşit.
+        var botShare = Tactics(side).BotGankShare;
+        var lane = botShare > 0
+            ? _rng.NextDouble() < botShare ? Lane.Bot : _rng.NextIndex(2) == 0 ? Lane.Top : Lane.Mid
+            : Lanes[_rng.NextIndex(Lanes.Length)];
         var team = Team(side);
         var jungler = team.Jungle;
         var support = team.Support;
@@ -107,6 +131,9 @@ internal sealed partial class MatchRun
         var pickBonus = TeamRules.GankPickBonus(gankers, victim);
         ReportGankRule(side, jungler, pickBonus);
         var success = (withSupport ? GankSuccessWithSupport : GankSuccessSolo) + pickBonus;
+        // Bot baskısı planı: bot'a gank +%10 (uyumla ölçekli).
+        if (lane == Lane.Bot && Tactics(side).BotGankSuccessBonus > 0)
+            success += Tactics(side).BotGankSuccessBonus;
         if (_rng.NextDouble() < success)
         {
             _scores.Add(ScoreCategory.Jungle, side.Sign() * (withSupport ? GankWinValueWithSupport : GankWinValueSolo));

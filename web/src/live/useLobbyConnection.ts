@@ -18,7 +18,7 @@ export interface ActionResult {
 }
 
 
-export type HubMethod = 'Ready' | 'Ban' | 'SkipBan' | 'Pick' | 'SwapRoles' | 'LockLineup'
+export type HubMethod = 'Ready' | 'Ban' | 'SkipBan' | 'Pick' | 'SwapRoles' | 'LockLineup' | 'ChoosePlan'
 
 // Kopunca yeniden dene: hükmen süresi (2 dk) boyunca sık, sonra seyrek; 10 dk sonra vazgeç.
 // Varsayılan politika 4 denemede (~30 sn) bırakıyordu: kısa bir Wi-Fi kopması seriyi kaybettirebilirdi.

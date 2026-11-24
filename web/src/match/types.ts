@@ -1,6 +1,6 @@
 // Maçın dondurulmuş belgesi (DESIGN.md §4.9, §8.15, §8.16): MatchReady ve GET /api/matches/{id} aynı biçim.
 // Sunucudaki Application/Matches/MatchReplay.cs ile birebir; sözleşme kırılırsa `version` artar.
-import type { Role, Seat, Side } from '../api/types'
+import type { PlanFit, PlanId, Role, Seat, Side } from '../api/types'
 
 export type Lane = 'top' | 'mid' | 'bot'
 export type River = 'top' | 'bottom'
@@ -106,6 +106,8 @@ export interface Replay {
   events: MatchEvent[]
   goldFrames: GoldFrame[]
   report: { rules: RuleLine[]; carries: CarryLine[]; blue: TeamGold; red: TeamGold; offRoles: OffRoleLine[] }
+  /** İki takımın oyun planı ve draft'a uyumu (DESIGN.md §4.10). 2026-11-24'ten önceki kayıtlarda yok. */
+  plans?: Record<Side, { plan: PlanId; fit: PlanFit }>
 }
 
 /**

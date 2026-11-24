@@ -12,6 +12,7 @@ import {
   opponentChoice,
   unavailable,
 } from './draft'
+import { hasChosenPlan, planFits, planName, PLANS } from './plans'
 import { newer } from './revision'
 
 const lobby = (revision: number, extra: Partial<LobbyState> = {}): LobbyState => ({
@@ -22,7 +23,8 @@ const lobby = (revision: number, extra: Partial<LobbyState> = {}): LobbyState =>
 
 const draft = (extra: Partial<DraftState> = {}): DraftState => ({
   phase: 'ban1', turn: 'blue', step: 'ban', deadline: null, actions: [], blueLineup: null, redLineup: null,
-  blueLocked: false, redLocked: false, fearlessLocks: [], ...extra,
+  blueLocked: false, redLocked: false, fearlessLocks: [], bluePlanChosen: false, redPlanChosen: false,
+  bluePlanFits: null, redPlanFits: null, ...extra,
 })
 
 describe('revision', () => {
@@ -159,5 +161,21 @@ describe('draft', () => {
     expect(offRolePenalty(champions, 'thresh', 'bot')).toBe(0.3)
     expect(offRolePenalty(champions, 'thresh', 'support')).toBe(0)
     expect(offRolePenalty(champions, null, 'top')).toBe(0)
+  })
+})
+
+describe('oyun planı', () => {
+  it('uyum takımın kendi tablosundan; plan fazı dışında boş', () => {
+    const planning = draft({ phase: 'plan', bluePlanFits: { dragonLate: 'good' }, redPlanFits: { dragonLate: 'poor' } })
+    expect(planFits(planning, 'blue').dragonLate).toBe('good')
+    expect(planFits(planning, 'red').dragonLate).toBe('poor')
+    expect(planFits(draft(), 'blue')).toEqual({})
+  })
+
+  it('seçim bayrağı tarafa göre; 7 plan kartı, adı bilinmeyen kimlik kendisi', () => {
+    expect(hasChosenPlan(draft({ redPlanChosen: true }), 'red')).toBe(true)
+    expect(hasChosenPlan(draft({ redPlanChosen: true }), 'blue')).toBe(false)
+    expect(PLANS.map((p) => p.id)).toEqual(['balanced', 'dragonLate', 'earlyPressure', 'botPressure', 'split', 'fastFinish', 'invade'])
+    expect(planName('fastFinish')).toBe('Hızlı bitir')
   })
 })

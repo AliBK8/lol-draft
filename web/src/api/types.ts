@@ -24,7 +24,13 @@ export interface Champion {
   offRole: Record<Role, number>
 }
 
-export type DraftPhase = 'ban1' | 'pick1' | 'ban2' | 'pick2' | 'swap' | 'completed'
+export type DraftPhase = 'ban1' | 'pick1' | 'ban2' | 'pick2' | 'swap' | 'plan' | 'completed'
+
+/** Oyun planı (DESIGN.md §4.10). */
+export type PlanId = 'balanced' | 'dragonLate' | 'earlyPressure' | 'botPressure' | 'split' | 'fastFinish' | 'invade'
+
+/** Planın draft'a uyumu (motordan): uyumlu kazanç ×1,25 ve bedel ×0,75, uymayan tersi. */
+export type PlanFit = 'good' | 'neutral' | 'poor'
 
 export interface DraftAction {
   step: number
@@ -48,6 +54,12 @@ export interface DraftState {
   blueLocked: boolean
   redLocked: boolean
   fearlessLocks: string[]
+  /** Plan fazı: takım seçti mi (hangi plan olduğu gizli, maç sonunda replay'de). */
+  bluePlanChosen: boolean
+  redPlanChosen: boolean
+  /** Plan fazında takımın her plana uyumu; başka fazda null. */
+  bluePlanFits: Partial<Record<PlanId, PlanFit>> | null
+  redPlanFits: Partial<Record<PlanId, PlanFit>> | null
 }
 
 /** Rakibin ön izlemesi (§8.32, hub'dan OpponentPreview): side takımı step. adımda champion'u gösteriyor (null: bıraktı). */

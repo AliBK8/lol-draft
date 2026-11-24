@@ -37,17 +37,18 @@ internal static class MatchReplay
     // ASP.NET'in Results.Ok ve SignalR'ın kullandığı biçimle aynı (camelCase); 4f-1'deki alanlar aynen korunur.
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public static Replay Create(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result) =>
-        new(Replay.CurrentVersion, JsonSerializer.SerializeToUtf8Bytes(MatchDto.Of(id, gameNumber, blueTeam, result), Json));
+    public static Replay Create(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result, MatchPlans plans) =>
+        new(Replay.CurrentVersion, JsonSerializer.SerializeToUtf8Bytes(MatchDto.Of(id, gameNumber, blueTeam, result, plans), Json));
 }
 
 /// <param name="Version">Sözleşme sürümü (<see cref="Replay.CurrentVersion"/>): eski kayıtları istemci buna bakıp tanır.</param>
 /// <param name="BlueTeam">Bu maçta mavi olan koltuk (A/B): istemci renkleri koltuğa bununla çevirir.</param>
+/// <param name="Plans">İki takımın oyun planı ve draft'a uyumu (DESIGN.md §4.10; eklendi 2026-11-24, eski kayıtlarda yok).</param>
 internal sealed record MatchDto(
     int Version, string Id, int GameNumber, string BlueTeam, MatchEndDto End, object[] Events, GoldFrameDto[] GoldFrames,
-    ReportDto Report)
+    ReportDto Report, PlansDto Plans)
 {
-    public static MatchDto Of(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result)
+    public static MatchDto Of(MatchId id, int gameNumber, TeamSlot blueTeam, MatchResult result, MatchPlans plans)
     {
         return new MatchDto(
             Replay.CurrentVersion,
@@ -59,7 +60,9 @@ internal sealed record MatchDto(
             [.. result.Events.Select(Event)],
             [.. result.GoldFrames.Select(f => new GoldFrameDto(f.Minute,
                 [.. f.Champions.Select(c => new ChampionGoldDto(c.ChampionId, EngineNames.Side(c.Side), c.Gold, c.Cs))]))],
-            ReportDto.Of(result.Report));
+            ReportDto.Of(result.Report),
+            new PlansDto(new PlanDto(PlanNames.Plan(plans.Blue), PlanNames.Fit(plans.BlueFit)),
+                new PlanDto(PlanNames.Plan(plans.Red), PlanNames.Fit(plans.RedFit))));
     }
 
     // Her olay: type + t (oyun saniyesi) + text (boşsa log'a yazılmaz, sadece haritayı yönlendirir) + kendi alanları.
@@ -115,6 +118,10 @@ internal sealed record MatchDto(
 }
 
 internal sealed record MatchEndDto(int Minute, string Winner, string Kind, double WinnerProbability);
+
+internal sealed record PlansDto(PlanDto Blue, PlanDto Red);
+
+internal sealed record PlanDto(string Plan, string Fit);
 
 internal sealed record GoldFrameDto(int Minute, ChampionGoldDto[] Champions);
 

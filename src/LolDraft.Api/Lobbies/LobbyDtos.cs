@@ -1,4 +1,5 @@
 using LolDraft.Application.Lobbies;
+using LolDraft.Application.Matches;
 using LolDraft.Domain;
 
 namespace LolDraft.Api.Lobbies;
@@ -66,7 +67,11 @@ internal sealed record DraftStateDto(
     string[]? RedLineup,
     bool BlueLocked,
     bool RedLocked,
-    string[] FearlessLocks)
+    string[] FearlessLocks,
+    bool BluePlanChosen,
+    bool RedPlanChosen,
+    Dictionary<string, string>? BluePlanFits,
+    Dictionary<string, string>? RedPlanFits)
 {
     public static DraftStateDto Of(DraftView view) => new(
         Names.Phase(view.Phase),
@@ -78,7 +83,15 @@ internal sealed record DraftStateDto(
         view.RedLineup?.Champions.Select(c => c.Value).ToArray(),
         view.BlueLocked,
         view.RedLocked,
-        [.. view.FearlessLocks.Select(c => c.Value)]);
+        [.. view.FearlessLocks.Select(c => c.Value)],
+        view.BluePlanChosen,
+        view.RedPlanChosen,
+        Fits(view.BluePlanFits),
+        Fits(view.RedPlanFits));
+
+    // Plan → uyum ("dragonLate": "good"); plan fazı dışında null.
+    private static Dictionary<string, string>? Fits(IReadOnlyDictionary<MatchPlan, Engine.PlanFit>? fits) =>
+        fits?.ToDictionary(f => PlanNames.Plan(f.Key), f => PlanNames.Fit(f.Value));
 }
 
 /// <summary>
@@ -138,6 +151,7 @@ internal static class Names
         DraftPhase.Ban2 => "ban2",
         DraftPhase.Pick2 => "pick2",
         DraftPhase.Swap => "swap",
+        DraftPhase.Plan => "plan",
         DraftPhase.Completed => "completed",
         _ => throw new ArgumentOutOfRangeException(nameof(phase), phase, null),
     };

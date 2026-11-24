@@ -8,10 +8,11 @@ namespace LolDraft.Application.Lobbies;
 /// (<see cref="Lobby.Advance"/>). Durumu değişenlerin yeni görüntüsünü ve kapananların kodunu döndürür;
 /// kapanan lobi depodan burada, kilidin içinde silinir. Yayını Api yapar.
 /// Zamanlayıcı bilmez: kim, ne sıklıkla çağıracağına dışarısı karar verir (test beklemeden çağırır).
-/// Swap'ın süresi dolup draft biterse maç da aynı kilidin altında oynanır (<see cref="PlayMatch"/>).
+/// Plan fazının süresi dolup draft biterse maç da aynı kilidin altında oynanır (<see cref="PlayMatch"/>).
 /// </summary>
 public sealed class AdvanceLobbies(
-    ILobbyRepository lobbies, IClock clock, IDraftRandom random, PlayMatch playMatch, IMatchRepository matches)
+    ILobbyRepository lobbies, IClock clock, IDraftRandom random, PlayMatch playMatch, IMatchRepository matches,
+    PlanAdvisor plans)
 {
     public async Task<AdvanceReport> Handle(CancellationToken ct)
     {
@@ -33,7 +34,7 @@ public sealed class AdvanceLobbies(
 
                 var match = tick == LobbyTick.Changed ? playMatch.PlayIfDrafted(lobby, now) : null;
                 return Result<(LobbyTick, LobbyView?, MatchRecord?)>.Ok(
-                    (tick, tick == LobbyTick.Changed ? LobbyView.Of(lobby, now) : null, match));
+                    (tick, tick == LobbyTick.Changed ? LobbyView.Of(lobby, now, plans) : null, match));
             }, ct);
 
             // Lobi bu arada silindiyse (NotFound) atlanır.

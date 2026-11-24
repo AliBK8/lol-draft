@@ -16,4 +16,6 @@ public static class DraftErrors
     public static readonly Error InvalidRole = new("invalid_role", "Geçersiz yuva.");
     public static readonly Error SameRole = new("same_role", "Aynı yuva kendisiyle değiştirilemez.");
     public static readonly Error LineupLocked = new("lineup_locked", "Dizilim kilitlendi, artık değiştirilemez.");
+    public static readonly Error InvalidPlan = new("invalid_plan", "Geçersiz oyun planı.");
+    public static readonly Error PlanChosen = new("plan_chosen", "Plan seçildi, artık değiştirilemez.");
 }

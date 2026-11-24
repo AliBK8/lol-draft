@@ -243,8 +243,30 @@ public sealed class DraftHubTests : IAsyncDisposable
         await Task.Delay(220);
         Assert.True((await red.Invoke("LockLineup")).Ok);
 
-        // İkinci kilit draft'ı bitirir, maç aynı istekte oynanır; ikisine de aynı maç gider.
+        // İkinci kilit plan fazını açar (DESIGN.md §4.10): iki takımın her plana uyumu durumda.
+        var planning = (await host.Last()).GetProperty("draft");
+        Assert.Equal("plan", planning.GetProperty("phase").GetString());
+        Assert.Equal(7, planning.GetProperty("bluePlanFits").EnumerateObject().Count());
+        Assert.Contains(planning.GetProperty("redPlanFits").GetProperty("dragonLate").GetString(), new[] { "good", "neutral", "poor" });
+
+        await Task.Delay(220);
+        Assert.Equal("invalid_plan", (await red.Invoke("ChoosePlan", "yokboyle")).Error);
+        Assert.True((await blue.Invoke("ChoosePlan", "dragonLate")).Ok);
+
+        // Gizli: rakip sadece "seçti"yi görür, hangi plan olduğu durumun hiçbir yerinde yok.
+        var chosen = await guest.Last();
+        Assert.True(chosen.GetProperty("draft").GetProperty("bluePlanChosen").GetBoolean());
+        Assert.False(chosen.GetProperty("draft").GetProperty("redPlanChosen").GetBoolean());
+        Assert.DoesNotContain("\"dragonLate\"", chosen.GetProperty("draft").GetRawText().Replace("\"dragonLate\":", ""));
+
+        await Task.Delay(220);
+        Assert.True((await red.Invoke("ChoosePlan", "split")).Ok);
+
+        // İkinci plan draft'ı bitirir, maç aynı istekte oynanır; ikisine de aynı maç gider.
         var match = await host.NextMatch();
+        var plans = match.GetProperty("plans");
+        Assert.Equal("dragonLate", plans.GetProperty("blue").GetProperty("plan").GetString());
+        Assert.Equal("split", plans.GetProperty("red").GetProperty("plan").GetString());
         var seenByGuest = await guest.NextMatch();
         var id = match.GetProperty("id").GetString()!;
         Assert.Equal(id, seenByGuest.GetProperty("id").GetString());

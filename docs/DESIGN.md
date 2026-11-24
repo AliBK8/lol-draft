@@ -49,6 +49,7 @@ Temel ilkeler:
 | "Ban yok" ve boş ban görünümü | Ban adımında havuzun ilk kutusu "Ban yok" (seç, onayla); sonucu süre dolmasıyla aynı (şampiyonsuz ban), kayıtta zaman aşımı değil. Boş geçen ban şeritte ⊘ ile, oynanmamış yuvadan ayrı görünür (§8.33). (2026-11-23) | Sebep: AFK'da süresi dolan ban'lar oynanmamış yuva gibi görünüyordu; ban turu bitmemiş gibi durup pick'ler başlıyordu (kural doğruydu, görüntü yanlıştı). Reddedildi: tek tıkla "Ban yok" (yanlışlıkla geçilmesin, LoL'deki gibi seç + onayla). |
 | Draft'ta rakibin ön izlemesi | Sırası gelenin havuzda tıkladığı şampiyon (kilitlemeden) rakibin ekranında, o takımın sıradaki yuvasında yarı saydam görünür; ban ve pick adımında. Hamle değil, durumu değiştirmez; hamleyle aynı kurallarla doğrulanır, sadece rakibe gider. Mesaj limiti ayrı kovadan (§8.32, SISTEM §8.5). (2026-11-23) | Gerçek LoL'de rakip hover'ı görmez; burada turnuva yayınının görünümü seçildi (blöfe de kapı açar). Reddedildi: ön izlemenin hamle kovasını paylaşması (hızlı tıklayan kendi Pick'ini engelletirdi). |
 | Görsel tema ve yazı tipi | Koyu lacivert-mor tema, lavanta vurgu, yumuşak köşeli kutular; takım renkleri (mavi/kırmızı) temadan bağımsız. Yazı tipi Outfit, npm paketiyle kendi sunucumuzdan (§8.31). Kullanıcı beğenmezse yazı tipi değişir (tek satır). (2026-11-22) Outfit kullanıcı onaylı (2026-11-24). Renk dağılımı 45/45/10: lacivert + mor zemin, %10 şeftali vurgu sadece ana düğme ve seçili durumlarda (§8.31). (2026-11-23) | Reddedildi: Google Fonts'tan yüklemek (oyuncunun IP'si üçüncü tarafa gider; portrelerdeki kararın aynısı). Eski altın vurgulu gri-koyu tema ("çirkin ama çalışan", 5. adım) yerine. |
+| Oyun planı (F1) | Swap'tan sonra 20 sn'lik plan fazı: 6 plan + Dengeli, gizli ve eşzamanlı, seçim tek seferlik, süre dolarsa Dengeli. Rakibin planı maç sonunda karnede. Düğme değerleri motorda tek tabloda (`Tactics.cs`). Uyum hem kazancı hem bedeli ölçekler: uyan kazanç ×1,25 / bedel ×0,75, uymayan tersi. Dengeli × Dengeli maç plansız motorla bit bit aynı (parmak izi testi). Ölçüm: bütün planlar %49-51, uyum Ejder & late ve Erken baskı'da belirgin (~%55 / ~%46) (§4.10, §8.35, DENGE.md). (2026-11-24) | Kullanıcı: rakibin planı maç sonunda görünsün (canlı görünmesi blöfü bozar). Reddedildi: düğmeler `data/tactics.json`'da (neredeyse her plan yeni düğme kodu istiyor; dosya motorun dış yüzünü büyütürdü). Reddedildi: bedel hep tam (tur 1'de uyum ~1 puan, görünmüyordu). Split'in takım savaşı cezası kaldırıldı: split olunca splitter zaten savaşta yok, bedel iki kez kesiliyordu (%45,6). |
 | Savaş dizilişi ve orman hareketi | Savaşta (objektif, son savaş, kuşatma, nehir çatışması, istila) iki takım olay noktasının iki yanında, iki sıra: ön sıra top, ormancı, support; arka sıra mid, adc. İkonlar kenar kenara; eksen her yer için yürünebilir alana göre seçilir. Ormancı kamptan kampa gerçek bir program izler (6 kamp, doğma süreleri; başlangıç tarafı ve temizleme hızı şampiyondan). İlk recall 6:00'dan sonra, yaklaşan savaştan önce recall yok (§8.34). (2026-11-24) | Sebep (kullanıcı): ejderde 5 kişi üst üste biniyordu (7 birim arayla tek çizgi), savaşta dağılmıyorlardı; iki ormancı aynı saniyelerde aynı sıradaki kampları dolaşıyordu. Reddedildi: sabit "kendi üssüne doğru" eksen (ejder çukurunun o yanı duvar, takımlar karışıyordu). |
 | Gank zamanı ve ormancı istilası | Gank sabit dakikaların 40. saniyesinde değil, pencerelerde (dk 4, 6-7, 9-10, 12-13, 17-18, 23-24) 10-55. saniyede. Her maçın %20'sinde 4:05-4:40'ta ormancı istilası: rakibin yeniden doğan küçük kampı, cevap yoksa çalınır, cevap varsa çatışma; kazanan 3 dk orman temposu alır (§4.5, §8.34). (2026-11-24) | Sebep (kullanıcı): gank'lar saat gibi işliyordu (2:40, 5:40, 8:40…), baskınlar hep aynı görünüyordu. İstila Dengeli'de de %20 (kullanıcı); "Ormancı istilası" planı kesinleştirir (§4.10). Kendi altını yok: çalınan kamp farm, "ormancı geride" orman akışına tempo (farm kuralı altına çevirir). |
 | Oyun planının draft'a uyumu | Planın bedeli hep tam; kazancı draft'a uyana ×1,25, nötre ×1, uymayana ×0,75 (§4.10). (2026-11-24) | Kullanıcı: uymayana ×0,5 fazla ezici, simetrik ×0,75 daha adil. Uymayan plan yine net küçük ceza (bedel tam, kazanç eksik); ayrı ceza kuralı gerekmez. |
@@ -68,7 +69,7 @@ Temel ilkeler:
    - Swap fazı: şampiyonlar rollere atanır (top, jg, mid, adc, sup).
    (M = Mavi, K = Kırmızı)
    Süre dolarsa: ban adımı boş geçer, pick adımında uygun şampiyonlardan rastgele biri seçilir, swap'ta o anki dizilim kalır. Ban adımı bilerek de boş geçilebilir ("Ban yok", LoL'deki None; §8.33). Sıra sabittir: AFK kalınsa da pick turu ancak ban turu (boş geçenler dahil) bitince gelir.
-3. **(İleride) Koç direktifi.** Draft bitince 20 sn içinde maç planı seçilir (§4.10). Güç vermez, olayların dağılımını değiştirir.
+3. **Oyun planı.** Swap'tan sonra 20 sn: iki oyuncu gizlice ve aynı anda bir plan seçer (§4.10, §8.35). Güç vermez, motorun düğmelerini o takım için çevirir; her kazancın bedeli var, draft'a uyum planı ne kadar iyi uyguladığını belirler. Süre dolarsa Dengeli. Rakibin planı maç sonunda karnede görünür.
 4. **Simülasyon.** Sunucu maçı seed ile hesaplar, olay listesini gönderir; istemci 1 dk oyun = 3 sn hızında oynatır (2x, 4x, sona atla).
 5. **Maç sonu.** Kazanan, bitiş türü, son savaşın ihtimali, puan dökümü. (İleride: draft kalitesi Monte Carlo, paylaşım kartı.)
 6. **Seri.** İlk maçta mavi taraf rastgele belirlenir, sonraki her maçta renkler değişir. Skor renge değil takıma yazılır. Seri devam ediyorsa fearless kilitleri uygulanır.
@@ -248,7 +249,7 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 
 `text` boş olan olaylar log'a yazılmaz, sadece hareketi yönlendirir.
 
-### 4.10 Oyun planı ve maç içi karar anları (ileride; tasarım 2026-11-19, uygulanmadı)
+### 4.10 Oyun planı ve maç içi karar anları (tasarım 2026-11-19; ① oyun planı uygulandı 2026-11-24, ② karar anları sırada)
 
 Oyuncunun maça etkisi draft'la bitmesin: maç öncesi bir **oyun planı**, maç içinde birkaç **karar anı**. Plan, karar anlarının varsayılan cevabıdır (cevap vermeyen, geliştirme botu ve denge aracı planına göre seçer).
 
@@ -258,21 +259,34 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
                     seçmeyene planın varsayılanı → maç kaldığı yerden sürer → … → bitiş
 ```
 
-**① Oyun planı** motorun ayar düğmelerini çevirir (her kazancın bir bedeli var; tanımlar veri dosyasında, ör. `tactics.json`: yeni plan çoğu zaman kod değil veri işi):
+**① Oyun planı** (uygulandı, §8.35) motorun ayar düğmelerini o takım için çevirir; her kazancın bir bedeli var. Düğmeler motorda tek tabloda (`Simulation/Tactics.cs`, `PlanKnobs.Of`): neredeyse her yeni plan yeni bir düğme kodu istediği için veri dosyası (`tactics.json`) yerine kod (kullanıcı, 2026-11-24). Değerler nötr uyumdaki hâli (tur 3):
 
 | Plan | Kazanç | Bedel |
 |---|---|---|
-| Ejder odaklı, late'e götür | Ejder savaşlarında bonus, geç güç biraz artar | Herald ve erken kuleler kolay verilir |
-| Erken baskı | Gank sıklığı ve erken savaş bonusu | 20. dk'dan sonra güç biraz düşer |
-| Bot lane baskısı | Gank'lar bot'a daha sık | Top yalnız kalır |
-| Ormancı istilası | 3-4. dk'da ekstra istila olayı | Kaybedilirse ormancı geride |
-| Split | Yan koridor kule olayları artar | Takım savaşlarında 1 kişi geç gelir |
-| Hızlı bitir | Kuşatma eşiği düşer (45 → 35) | Throw cezası artar |
+| Dengeli | — | — (seçmeyen bunu oynar) |
+| Ejder & late | Ejder/Elder savaşında d +4,5; 25. dk'dan sonra güç ×1,06 | Herald savaşında d −4,5; 20. dk'ya kadar her koridorda akış −0,225 |
+| Erken baskı | 14. dk'ya kadar her koridorda akış +0,15; ek gank pencereleri dk 8 ve 11 (gank'ı bu takım atar); 15. dk'ya kadar nehir çatışmasında d +3 | 20. dk'dan sonra güç ×0,94 |
+| Bot baskısı | 14. dk'ya kadar bot akışı +0,25; gank'ların ~%73'ü bot'a, bot'a gank başarısı +%10 | 14. dk'ya kadar top akışı −0,25 |
+| Split | Split etiketi 1 olan da gider; rakibin cevap verme ihtimali %50 → %35; splitter düelloda d +2 | Ayrı ceza yok: split olunca splitter objektif savaşında yok (4'e 5) |
+| Hızlı bitir | Kuşatma eşiği ×0,7; kuşatmalar arası bekleme 3 → 2 dk | Kuşatmada savunanın avantajı +3; throw'da savunan bir kill fazla |
+| Ormancı istilası | 4. dk istilası kesin ve bu takımdan; istila çatışmasında d +3 | Püskürtülürse rakibin orman temposu 1 yerine 2,5 (4 dk) |
 
-- Draft'a uyum (2026-11-24, kullanıcıyla): bedel hep tam; kazanç uyana ×1,25, nötre ×1, uymayana ×0,75. Uymayan plan böylece net küçük ceza (Kayle'li takımda "erken baskı"); ayrı ceza kuralı yok.
-- "Dengeli" planı: düğmelere dokunmaz; plan seçmeyen ya da süreyi kaçıran Dengeli oynar. Dengeli × Dengeli maç plansız motorla bit bit aynı (test): denge ölçümleri geçerli kalır.
-- Ormancı istilası artık motorda (§4.5, Dengeli'de %20); plan bu ihtimali kesinleştirir.
-- Taş-kâğıt-makas: her planın karşıtı var; denge aracı plan × plan matrisini ölçer, **baskın plan olmamalı**.
+- **Draft'a uyum** (kullanıcıyla): planı ne kadar iyi uyguladığın. Uyan draft kazancı ×1,25 alır ve bedeli ×0,75 öder, uymayan kazancı ×0,75 alır ve bedeli ×1,25 öder, nötr ×1. Ayrık kazançlar (zayıf splitçi gider, bekleme 1 dk kısa, istila kesin, throw +1 kill) ölçeklenmez. Ölçütler (`PlanFits`, havuza göre: her plan rastgele draft'ların ~%25-33'üne uyar, ~%20-33'üne uymaz):
+
+  | Plan | Uyar | Uymaz |
+  |---|---|---|
+  | Ejder & late | Σ(geç − erken) ≥ 7 | ≤ −1 |
+  | Erken baskı | Σ(geç − erken) ≤ −1 | ≥ 7 |
+  | Bot baskısı | adc + sup erken ortalaması ≥ 7 | ≤ 5,5 |
+  | Split | top + mid split toplamı ≥ 3 | 0 |
+  | Hızlı bitir | poke ≥ 7 ya da Σ(geç − erken) ≤ −2 | Σ(geç − erken) ≥ 5 ve poke ≤ 4 |
+  | Ormancı istilası | ormancı erken ≥ 8 | ≤ 5 |
+
+  Havuz ortalaması Σ(geç − erken) = +2,65 (havuz geç ağırlıklı); eşikler ortaya göre.
+- **Dengeli:** düğmelere dokunmaz; Dengeli × Dengeli maç plansız motorla bit bit aynı (parmak izi testi, `BalancedPlanFingerprintTests`): denge ölçümleri geçerli kalır. Planın katkısı sıfırsa hiç eklenmez, plan yoksa ek zar atılmaz.
+- **Ölçüm** (DENGE.md, oyun planı turları; 60.000 draft, rastgele plan çifti): bütün planlar bütün planlara karşı %49,1-51,1 (baskın yok, matriste en uç %47,6 / %52,4). Dengeli'ye karşı uyan / uymayan: Ejder & late %55,2 / %47,0, Erken baskı %54,2 / %46,4. Bot baskısı, Hızlı bitir, İstila ve Split'te uyum gürültü içinde: etkileri birkaç ana sıkışmış "olay planları", maç sonucuna etkileri küçük. Split'in asıl yeri belki ② karar anı ("geç oyun: split / grupla").
+- **Gizlilik:** iki oyuncu aynı anda seçer, rakip sadece "seçti"yi görür; hangi plan olduğu maç sonunda karnede (replay'de `plans`).
+- Taş-kâğıt-makas: karşıtlıklar elle yazılmaz, düğmelerden doğar; denge aracı (`--plans`) matrisi ölçer, **baskın plan olmamalı**.
 
 **② Karar anı** küçük bir iki kişilik oyun; sonuç iki seçimin kesişimi. Örnek, ejder:
 

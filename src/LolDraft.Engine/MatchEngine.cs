@@ -12,4 +12,14 @@ public static class MatchEngine
     /// tablo motorda tek kaynak kalsın diye istemciye hesaplanmış değer gider.
     /// </summary>
     public static double OffRolePenalty(ChampionProfile champion, ChampionRole slot) => OffRole.Penalty(champion, slot);
+
+    /// <summary>
+    /// Planın bu draft'a uyumu (DESIGN.md §4.10): kazancı uyana ×1,25, nötre ×1, uymayana ×0,75. Arayüz plan
+    /// kartında gösterir; ölçüt motorda tek kaynak.
+    /// </summary>
+    public static PlanFit PlanFit(TeamDraft team, GamePlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(team);
+        return PlanFits.Of(team, plan);
+    }
 }

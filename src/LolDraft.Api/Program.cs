@@ -33,6 +33,7 @@ builder.Services.AddSingleton<AdvanceLobbies>();
 // Simülasyon (4f): motor durumsuz, tek örnek paylaşılır. Draft bitince maçı oynatan senaryo ve replay okuma.
 builder.Services.AddSingleton(MatchEngine.CreateSimulator());
 builder.Services.AddSingleton<PlayMatch>();
+builder.Services.AddSingleton<PlanAdvisor>();
 builder.Services.AddSingleton<GetMatch>();
 builder.Services.AddSingleton<ListChampions>();
 

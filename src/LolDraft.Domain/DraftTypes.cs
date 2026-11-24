@@ -9,24 +9,50 @@ public sealed record DraftAction(int Step, Side Side, DraftActionKind Kind, Cham
 /// </summary>
 public sealed record DraftPreview(Side Side, int Step, ChampionId? Champion);
 
-/// <summary>Adım süreleri (DESIGN.md §2: her adım 30 sn).</summary>
+/// <summary>Adım süreleri (DESIGN.md §2: her adım 30 sn; §4.10: plan 20 sn).</summary>
 public sealed record DraftTimings
 {
+    private static readonly TimeSpan DefaultPlan = TimeSpan.FromSeconds(20);
+
     public DraftTimings(TimeSpan turn, TimeSpan swap)
+        : this(turn, swap, DefaultPlan)
+    {
+    }
+
+    public DraftTimings(TimeSpan turn, TimeSpan swap, TimeSpan plan)
     {
         if (turn <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(turn), turn, "Süre pozitif olmalı.");
         if (swap <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(swap), swap, "Süre pozitif olmalı.");
+        if (plan <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(nameof(plan), plan, "Süre pozitif olmalı.");
 
         Turn = turn;
         Swap = swap;
+        Plan = plan;
     }
 
-    public static DraftTimings Default { get; } = new(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    public static DraftTimings Default { get; } = new(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30), DefaultPlan);
 
     public TimeSpan Turn { get; }
     public TimeSpan Swap { get; }
+    public TimeSpan Plan { get; }
+}
+
+/// <summary>
+/// Oyun planı (DESIGN.md §4.10). Domain motoru bilmez: Application motorun GamePlan'ına çevirir (adlar aynı).
+/// Seçmeyen <see cref="Balanced"/> oynar.
+/// </summary>
+public enum MatchPlan
+{
+    Balanced,
+    DragonLate,
+    EarlyPressure,
+    BotPressure,
+    Split,
+    FastFinish,
+    Invade,
 }
 
 /// <summary>
@@ -86,5 +112,9 @@ public sealed class TeamLineup
     }
 }
 
-/// <summary>Biten draft'ın çıktısı. Application bunu kataloğa bakarak motorun TeamDraft'ına çevirir.</summary>
-public sealed record DraftResult(TeamLineup Blue, TeamLineup Red, IReadOnlyList<DraftAction> Actions);
+/// <summary>
+/// Biten draft'ın çıktısı. Application bunu kataloğa bakarak motorun TeamDraft'ına çevirir. Planlar burada: maç
+/// oynanırken motora gider, replay'e yazılır (rakibin planı maç sonunda görünür).
+/// </summary>
+public sealed record DraftResult(
+    TeamLineup Blue, TeamLineup Red, IReadOnlyList<DraftAction> Actions, MatchPlan BluePlan, MatchPlan RedPlan);

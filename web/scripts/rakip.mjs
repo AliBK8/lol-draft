@@ -6,7 +6,8 @@
 //   --gateway http://localhost:5000              (varsayılan)
 //
 // Oyun tarzı: hazır der; ban'da havuzdan rastgele; pick'te sıradaki yuvanın (1. pick top, 2. orman…) rolündeki
-// rastgele bir şampiyon, yoksa herhangi biri; swap'ta dizilimi olduğu gibi kilitler. Seri bitince çıkar.
+// rastgele bir şampiyon, yoksa herhangi biri; swap'ta dizilimi olduğu gibi kilitler; planda uyumlu bir plan seçer.
+// Seri bitince çıkar.
 import * as signalR from '@microsoft/signalr'
 
 const ROLES = ['top', 'jungle', 'mid', 'bot', 'support']
@@ -101,6 +102,20 @@ async function decide(state) {
   if (draft.phase === 'swap') {
     const locked = side === 'blue' ? draft.blueLocked : draft.redLocked
     if (!locked) await act(`${game}:lock`, 'LockLineup')
+    return
+  }
+
+  // Oyun planı (DESIGN.md §4.10): uyumlu planlardan biri, yoksa rastgele bir plan.
+  if (draft.phase === 'plan') {
+    const chosen = side === 'blue' ? draft.bluePlanChosen : draft.redPlanChosen
+    if (chosen) return
+    const fits = (side === 'blue' ? draft.bluePlanFits : draft.redPlanFits) ?? {}
+    const good = Object.keys(fits).filter((p) => fits[p] === 'good')
+    const all = Object.keys(fits).length ? Object.keys(fits) : ['balanced']
+    const options = good.length ? good : all
+    const plan = options[Math.floor(Math.random() * options.length)]
+    await act(`${game}:plan`, 'ChoosePlan', plan)
+    log(`maç ${game}: plan ${plan}`)
     return
   }
 

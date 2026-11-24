@@ -133,11 +133,11 @@ internal static class BalanceReport
     private static void Row(TextWriter w, string label, string value, string target) =>
         w.WriteLine(target.Length == 0 ? $"  {label,-55} {value}" : $"  {label,-55} {value,-24} hedef {target}");
 
-    private static string Pct(int part, int total) =>
+    internal static string Pct(int part, int total) =>
         total == 0 ? "—" : (part * 100.0 / total).ToString("'%'0.0", Tr);
 
     // %95 hata payı: ±1.96 × √(p(1−p)/n). İki oran bu payların dışında farklıysa fark gürültü değildir.
-    private static string Margin(int part, int total)
+    internal static string Margin(int part, int total)
     {
         if (total == 0) return "";
         var p = (double)part / total;

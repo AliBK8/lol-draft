@@ -4,12 +4,13 @@ using LolDraft.Domain;
 namespace LolDraft.Application.Lobbies;
 
 /// <summary>
-/// Oyuncunun lobideki hamleleri (hub'dan gelir): hazır, ban, pick, swap, kilitle.
+/// Oyuncunun lobideki hamleleri (hub'dan gelir): hazır, ban, pick, swap, kilitle, plan.
 /// Her hamle lobinin kilidi altında koşar ve başarılıysa yeni durumu aynı kilidin altında üretir;
 /// böylece yayınlanan görüntü tam olarak bu hamleden sonraki durumdur (araya başka hamle giremez).
 /// Hamle draft'ı bitirdiyse (ikinci kilit) maç da aynı kilidin altında oynanır (<see cref="PlayMatch"/>).
 /// </summary>
-public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock, PlayMatch playMatch, IMatchRepository matches)
+public sealed class LobbyCommands(
+    ILobbyRepository lobbies, IClock clock, PlayMatch playMatch, IMatchRepository matches, PlanAdvisor plans)
 {
     public Task<Result<LobbyUpdate>> Ready(GuestIdentity who, ActionId action, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.Ready(who.Player, action, DraftTimings.Default, now), ct);
@@ -28,6 +29,10 @@ public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock, PlayMa
 
     public Task<Result<LobbyUpdate>> LockLineup(GuestIdentity who, ActionId action, CancellationToken ct) =>
         Run(who, (lobby, now) => lobby.LockLineup(who.Player, action, now), ct);
+
+    /// <summary>Oyun planı (DESIGN.md §4.10). İkinci plan draft'ı bitirir: maç aynı kilidin altında oynanır.</summary>
+    public Task<Result<LobbyUpdate>> ChoosePlan(GuestIdentity who, ActionId action, MatchPlan plan, CancellationToken ct) =>
+        Run(who, (lobby, now) => lobby.ChoosePlan(who.Player, action, plan, now), ct);
 
     /// <summary>
     /// Ön izleme (§8.32): kilit altında okunur (aynı anda gelen hamleyle çelişmesin), durum değişmez;
@@ -62,7 +67,7 @@ public sealed class LobbyCommands(ILobbyRepository lobbies, IClock clock, PlayMa
 
             // Görüntü maçtan sonra üretilir: skor ve oynanan maç listesi yayına girsin.
             var match = playMatch.PlayIfDrafted(lobby, now);
-            return Result<LobbyUpdate>.Ok(new LobbyUpdate(LobbyView.Of(lobby, now), match));
+            return Result<LobbyUpdate>.Ok(new LobbyUpdate(LobbyView.Of(lobby, now, plans), match));
         }, ct);
 
         // Kayıt kilidin dışında (depo async); yayından önce: link yayınlandığında maç okunabilir olsun.

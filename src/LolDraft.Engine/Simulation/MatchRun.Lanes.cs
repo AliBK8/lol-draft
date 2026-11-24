@@ -50,6 +50,12 @@ internal sealed partial class MatchRun
             var rawDelta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
                            + rules.Sum(e => e.Signed)
                            + _rng.NextNormal() * LaneNoiseSigma * Volatility(minute, [.. blue, .. red]);
+            // Oyun planı (planın tarafının gözünden, uyumla ölçekli; Tactics.cs): Ejder & late 20. dk'ya kadar her koridorda
+            // −0,225; Erken baskı 14. dk'ya kadar her koridorda +0,15; Bot baskısı 14. dk'ya kadar bot +0,25, top −0,25.
+            // Sıfırsa eklenmez.
+            var planShift = Tactics(TeamSide.Blue).LaneShift(lane, minute) - Tactics(TeamSide.Red).LaneShift(lane, minute);
+            if (planShift != 0)
+                rawDelta += planShift;
             var (factor, damping) = LaneRules.Damping(lane, blue, red, minute);
             var delta = rawDelta * factor;
             ReportLaneRules(lane, rules, rawDelta, factor, damping);

@@ -59,13 +59,18 @@ public sealed class DraftTimeoutTests
     }
 
     [Fact]
-    public void Swap_fazinda_zaman_asimi_o_anki_dizilimle_bitirir()
+    public void Swap_fazinda_zaman_asimi_o_anki_dizilimle_plan_fazina_gecer()
     {
         var session = Start();
         PlaySteps(session, 20);
         session.SwapRoles(Side.Blue, Role.Top, Role.Bot, T0);
 
         session.Timeout(Expired, new FixedRandom(0));
+
+        Assert.Equal(DraftPhase.Plan, session.Phase);
+        Assert.Equal(Expired + DraftTimings.Default.Plan, session.Deadline);
+
+        session.Timeout(session.Deadline!.Value, new FixedRandom(0));
 
         Assert.Equal(DraftPhase.Completed, session.Phase);
         Assert.Equal(session.Lineup(Side.Blue), session.Outcome!.Blue);

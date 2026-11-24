@@ -17,6 +17,7 @@ internal sealed partial class MatchRun
     // Gidiyor mu: sadece 5v5 ihtimali < %50 olan takım; split 2 → %40, split 3 → %60.
     private const double SplitBaseChance = 0.4;
     private const double SplitChancePerTag = 0.2;
+    private const double MaxSplitChance = 0.9;
 
     // Rakip cevap veriyor mu: aynı roldeki rakip koridordaysa %50.
     private const double AnswerChance = 0.5;
@@ -38,21 +39,30 @@ internal sealed partial class MatchRun
         if (minute < SplitMinMinute || objective is Objective.Elder or Objective.FinalFight)
             return null;
 
-        var blueProbability = FightProbability(TeamSide.Blue, minute, t, FightKind.Objective);
+        var blueProbability = FightProbability(TeamSide.Blue, minute, t, FightKind.Objective, objective: objective);
         if (blueProbability == 0.5)
             return null;
 
         var side = blueProbability < 0.5 ? TeamSide.Blue : TeamSide.Red;
         var team = Team(side);
+        // Split planı: etiketi 1 olan da gidebilir (Tactics.cs). SplitChanceBonus tur 3'ten beri 0 (düğme duruyor).
+        var tactics = Tactics(side);
+        var minTag = tactics.Knobs.SplitAnyTag ? 1 : SplitMinTag;
         var splitter = new[] { team.Top, team.Mid }
-            .Where(c => c.Tags.Split >= SplitMinTag && IsInLane(c, t)
+            .Where(c => c.Tags.Split >= minTag && IsInLane(c, t)
                         && EffectivePower(c, minute, t) > EffectivePower(Counterpart(c), minute, t))
             .MaxBy(c => c.Tags.Split);
-        if (splitter is null || _rng.NextDouble() >= SplitChance(splitter))
+        if (splitter is null)
+            return null;
+        var chance = SplitChance(splitter);
+        if (tactics.SplitChanceBonus > 0)
+            chance = Math.Min(chance + tactics.SplitChanceBonus, MaxSplitChance);
+        if (_rng.NextDouble() >= chance)
             return null;
 
         var rival = Counterpart(splitter);
-        var answerer = IsInLane(rival, t) && _rng.NextDouble() < AnswerChance ? rival : null;
+        // Split planı: rakip daha az cevap verir (%50 → ~%35, uyumla ölçekli; Tactics.cs). Zar sayısı aynı.
+        var answerer = IsInLane(rival, t) && _rng.NextDouble() < AnswerChance - tactics.AnswerChanceCut ? rival : null;
         return new Split(side, splitter, splitter == team.Top ? Lane.Top : Lane.Mid, answerer);
     }
 
@@ -87,6 +97,9 @@ internal sealed partial class MatchRun
             return;
 
         var d = EffectivePower(splitter, minute, t) - EffectivePower(answerer, minute, t);
+        // Split planı: splitter düelloda +2 (uyumla ölçekli; Tactics.cs). Sıfırsa eklenmez.
+        if (Tactics(side).DuelBonus > 0)
+            d += Tactics(side).DuelBonus;
         var splitterWins = _rng.NextDouble() < Probability.Clamp(Probability.Logistic(d / DuelDivisor));
         var (winSide, killer, victim) = splitterWins ? (side, splitter, answerer) : (side.Opponent(), answerer, splitter);
         Kill(winSide, killer, victim, t, $"{killer.Name} yan koridorda düelloyu kazandı, {victim.Name} düştü", lane);

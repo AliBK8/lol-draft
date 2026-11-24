@@ -2,6 +2,7 @@ using LolDraft.Api.Auth;
 using LolDraft.Api.Lobbies;
 using LolDraft.Api.Matches;
 using LolDraft.Application.Lobbies;
+using LolDraft.Application.Matches;
 using LolDraft.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -9,7 +10,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace LolDraft.Api.Hubs;
 
 /// <summary>
-/// Canlı draft (DESIGN.md §8.7). İstemci sadece niyet gönderir (Ready, Ban, SkipBan, Pick, SwapRoles, LockLineup; Preview hamle değil);
+/// Canlı draft (DESIGN.md §8.7). İstemci sadece niyet gönderir (Ready, Ban, SkipBan, Pick, SwapRoles, LockLineup, ChoosePlan;
+/// Preview hamle değil);
 /// kurallar Domain'de, sonuç sunucunun. Her bağlantı lobisinin grubundadır; başarılı hamleden sonra
 /// yeni durum gruptaki herkese <see cref="LobbyUpdated"/> ile gider, hamleyi yapan ayrıca cevap alır.
 /// </summary>
@@ -86,6 +88,18 @@ internal sealed class DraftHub(LobbyCommands commands) : Hub
 
     public Task<HubResultDto> LockLineup(Guid actionId) =>
         Run(actionId, (who, action, ct) => commands.LockLineup(who, action, ct));
+
+    /// <summary>
+    /// Oyun planı (DESIGN.md §4.10): "balanced", "dragonLate", "earlyPressure", "botPressure", "split", "fastFinish",
+    /// "invade". Gizli: rakibe sadece "seçti" gider (durumda bayrak); hangi plan olduğu maç sonunda replay'de.
+    /// </summary>
+    public Task<HubResultDto> ChoosePlan(string plan, Guid actionId)
+    {
+        if (PlanNames.ParsePlan(plan) is not { } parsed)
+            return Task.FromResult(HubResultDto.Failure(DraftErrors.InvalidPlan));
+
+        return Run(actionId, (who, action, ct) => commands.ChoosePlan(who, action, parsed, ct));
+    }
 
     /// <summary>
     /// Ön izleme (§8.32): sırası gelen oyuncu havuzda bir şampiyona tıkladı (null: seçimi bıraktı). Hamle değil:

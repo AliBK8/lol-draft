@@ -203,6 +203,8 @@ public sealed class SeriesTests
 
         Assert.True(draft.LockLineup(Side.Blue, T0).IsSuccess);
         Assert.True(draft.LockLineup(Side.Red, T0).IsSuccess);
+        Assert.True(draft.ChoosePlan(Side.Blue, MatchPlan.Balanced, T0).IsSuccess);
+        Assert.True(draft.ChoosePlan(Side.Red, MatchPlan.Balanced, T0).IsSuccess);
 
         var outcome = draft.Outcome!;
         Assert.True(series.RecordGame(winner, NewMatch()).IsSuccess);

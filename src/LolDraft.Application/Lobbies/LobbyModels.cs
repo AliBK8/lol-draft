@@ -1,4 +1,6 @@
+using LolDraft.Application.Matches;
 using LolDraft.Domain;
+using LolDraft.Engine;
 
 namespace LolDraft.Application.Lobbies;
 
@@ -35,7 +37,8 @@ public sealed record LobbyView(
     Instant ServerNow)
 {
     /// <param name="now">Sunucu saati: istemci geri sayımı kendi saatiyle aradaki farkı düzelterek çizer.</param>
-    public static LobbyView Of(Lobby lobby, Instant now)
+    /// <param name="plans">Plan fazında dizilimlerin plan uyumu (motordan).</param>
+    public static LobbyView Of(Lobby lobby, Instant now, PlanAdvisor plans)
     {
         var series = lobby.Series;
         return new LobbyView(
@@ -54,7 +57,7 @@ public sealed record LobbyView(
             [.. Enum.GetValues<TeamSlot>()
                 .Where(seat => lobby.PlayerAt(seat) is not null)
                 .Select(seat => new SeatView(seat, lobby.IsConnected(seat), lobby.AbsentSince(seat)))],
-            series.CurrentDraft is { } draft ? DraftView.Of(draft, series.Locks) : null,
+            series.CurrentDraft is { } draft ? DraftView.Of(draft, series.Locks, plans) : null,
             [.. series.Games],
             now);
     }
@@ -63,6 +66,7 @@ public sealed record LobbyView(
 /// <summary>
 /// Draft'ın o anki durumu. Geri sayım için <see cref="Deadline"/> gider, saniyelik mesaj gitmez:
 /// istemci kalan süreyi kendisi çizer, süre dolunca karar yine sunucunun (sayaç servisi + Timeout).
+/// Oyun planı gizli: sadece takımın seçip seçmediği gider; uyum (herkesin görebileceği dizilimden) plan fazında.
 /// </summary>
 public sealed record DraftView(
     DraftPhase Phase,
@@ -74,19 +78,31 @@ public sealed record DraftView(
     TeamLineup? RedLineup,
     bool BlueLocked,
     bool RedLocked,
-    IReadOnlyList<ChampionId> FearlessLocks)
+    IReadOnlyList<ChampionId> FearlessLocks,
+    bool BluePlanChosen,
+    bool RedPlanChosen,
+    IReadOnlyDictionary<MatchPlan, PlanFit>? BluePlanFits,
+    IReadOnlyDictionary<MatchPlan, PlanFit>? RedPlanFits)
 {
-    public static DraftView Of(DraftSession draft, FearlessLocks locks) => new(
-        draft.Phase,
-        draft.Turn,
-        draft.CurrentStep?.Kind,
-        draft.Deadline,
-        [.. draft.Actions],
-        draft.Lineup(Side.Blue),
-        draft.Lineup(Side.Red),
-        draft.IsLineupLocked(Side.Blue),
-        draft.IsLineupLocked(Side.Red),
-        [.. locks.Champions.OrderBy(c => c.Value, StringComparer.Ordinal)]);
+    public static DraftView Of(DraftSession draft, FearlessLocks locks, PlanAdvisor plans)
+    {
+        var planning = draft.Phase == DraftPhase.Plan;
+        return new DraftView(
+            draft.Phase,
+            draft.Turn,
+            draft.CurrentStep?.Kind,
+            draft.Deadline,
+            [.. draft.Actions],
+            draft.Lineup(Side.Blue),
+            draft.Lineup(Side.Red),
+            draft.IsLineupLocked(Side.Blue),
+            draft.IsLineupLocked(Side.Red),
+            [.. locks.Champions.OrderBy(c => c.Value, StringComparer.Ordinal)],
+            draft.HasChosenPlan(Side.Blue),
+            draft.HasChosenPlan(Side.Red),
+            planning ? plans.Fits(draft.Lineup(Side.Blue)!) : null,
+            planning ? plans.Fits(draft.Lineup(Side.Red)!) : null);
+    }
 }
 
 /// <summary>

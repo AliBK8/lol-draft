@@ -1,7 +1,7 @@
 namespace LolDraft.Domain;
 
 /// <summary>
-/// Tek maçın draft'ı (DESIGN.md §2, §8.3): 20 ban/pick adımı, ardından swap.
+/// Tek maçın draft'ı (DESIGN.md §2, §8.3): 20 ban/pick adımı, ardından swap, ardından oyun planı (§4.10).
 /// Her hamle önce tamamen doğrulanır, durum en sonda tek seferde değişir;
 /// geçersiz hamle <see cref="Result.Fail"/> döner ve hiçbir şey değişmez.
 /// Saat ve rastgelelik dışarıdan gelir; sınıf ağ, DB ya da zamanlayıcı bilmez.
@@ -20,6 +20,10 @@ public sealed class DraftSession
     private readonly Dictionary<Side, List<ChampionId>> _picks = new() { [Side.Blue] = [], [Side.Red] = [] };
     private readonly Dictionary<Side, TeamLineup> _lineups = [];
     private readonly HashSet<Side> _lockedLineups = [];
+
+    // Plan fazında seçilen planlar (gizli: görünümde sadece seçildi mi). Faz bitince seçmeyen Dengeli.
+    private readonly Dictionary<Side, MatchPlan> _plans = [];
+    private bool _planning;
     private int _stepIndex;
 
     private DraftSession(HashSet<ChampionId> pool, FearlessLocks locks, DraftTimings timings, Instant now)
@@ -48,7 +52,8 @@ public sealed class DraftSession
     }
 
     public DraftPhase Phase =>
-        CurrentStep?.Phase ?? (Outcome is null ? DraftPhase.Swap : DraftPhase.Completed);
+        CurrentStep?.Phase
+        ?? (Outcome is not null ? DraftPhase.Completed : _planning ? DraftPhase.Plan : DraftPhase.Swap);
 
     /// <summary>Sıradaki ban/pick adımı; swap ve sonrasında null.</summary>
     public DraftStep? CurrentStep => _stepIndex < DraftOrder.Steps.Count ? DraftOrder.Steps[_stepIndex] : null;
@@ -67,6 +72,9 @@ public sealed class DraftSession
     public TeamLineup? Lineup(Side side) => _lineups.GetValueOrDefault(side);
 
     public bool IsLineupLocked(Side side) => _lockedLineups.Contains(side);
+
+    /// <summary>Takım planını seçti mi. Hangi planı seçtiği gizli (maç bitene kadar sadece kendisi bilir).</summary>
+    public bool HasChosenPlan(Side side) => _plans.ContainsKey(side);
 
     internal Result Ban(Side side, ChampionId champion, Instant now) => Act(side, DraftActionKind.Ban, champion, now);
 
@@ -126,7 +134,7 @@ public sealed class DraftSession
         return Result.Ok();
     }
 
-    /// <summary>Takım dizilimini onaylar; iki takım da onaylayınca draft biter.</summary>
+    /// <summary>Takım dizilimini onaylar; iki takım da onaylayınca plan fazı başlar.</summary>
     internal Result LockLineup(Side side, Instant now)
     {
         var check = CheckSwap(side, now);
@@ -135,13 +143,37 @@ public sealed class DraftSession
 
         _lockedLineups.Add(side);
         if (_lockedLineups.Count == 2)
+            StartPlan(now);
+        return Result.Ok();
+    }
+
+    /// <summary>
+    /// Oyun planı (DESIGN.md §4.10): takım planını seçer. Tek seferlik (seçim kilittir); iki takım da seçince draft
+    /// biter. Rakip sadece "seçti" görür; hangi plan olduğu maç bitince replay'de açılır.
+    /// </summary>
+    internal Result ChoosePlan(Side side, MatchPlan plan, Instant now)
+    {
+        ThrowIfUnknown(side);
+
+        if (Phase != DraftPhase.Plan)
+            return Result.Fail(DraftErrors.PhaseClosed);
+        if (now >= Deadline)
+            return Result.Fail(DraftErrors.TurnExpired);
+        if (!Enum.IsDefined(plan))
+            return Result.Fail(DraftErrors.InvalidPlan);
+        if (_plans.ContainsKey(side))
+            return Result.Fail(DraftErrors.PlanChosen);
+
+        _plans[side] = plan;
+        if (_plans.Count == 2)
             Complete();
         return Result.Ok();
     }
 
     /// <summary>
     /// Sunucu sayacı süre dolunca çağırır: ban adımında boş ban, pick adımında uygun
-    /// şampiyonlardan rastgele biri, swap'ta o anki dizilimler kabul edilir.
+    /// şampiyonlardan rastgele biri, swap'ta o anki dizilimler kabul edilir (plan fazı başlar), plan fazında seçmeyen
+    /// Dengeli oynar (draft biter).
     /// </summary>
     internal Result Timeout(Instant now, IDraftRandom random)
     {
@@ -154,7 +186,10 @@ public sealed class DraftSession
 
         if (CurrentStep is not { } step)
         {
-            Complete();
+            if (_planning)
+                Complete();
+            else
+                StartPlan(now);
             return Result.Ok();
         }
 
@@ -257,9 +292,17 @@ public sealed class DraftSession
         return Result.Ok();
     }
 
+    private void StartPlan(Instant now)
+    {
+        _planning = true;
+        Deadline = now + _timings.Plan;
+    }
+
+    // Plan seçmeyen Dengeli oynar.
     private void Complete()
     {
-        Outcome = new DraftResult(_lineups[Side.Blue], _lineups[Side.Red], _actions.ToArray());
+        Outcome = new DraftResult(_lineups[Side.Blue], _lineups[Side.Red], _actions.ToArray(),
+            _plans.GetValueOrDefault(Side.Blue, MatchPlan.Balanced), _plans.GetValueOrDefault(Side.Red, MatchPlan.Balanced));
         Deadline = null;
     }
 

@@ -411,6 +411,104 @@ input:focus-visible {
   margin-bottom: 12px;
 }
 
+/* --- Oyun planı (§8.35): 7 kart, uyum rozeti, seç → kilitle --- */
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: left;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.plan-card:not(:disabled):hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.plan-card.selected {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+
+/* Kilitlenen plan: şeftali (göz buraya), diğerleri sönük. */
+.plan-card.chosen {
+  border-color: var(--pop-line);
+  outline: 2px solid var(--pop);
+  background: var(--pop-soft);
+}
+
+.plan-card:disabled:not(.chosen) {
+  opacity: 0.45;
+}
+
+.plan-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.plan-gain {
+  color: var(--ok);
+  font-size: 0.85rem;
+}
+
+.plan-cost {
+  color: var(--error);
+  font-size: 0.85rem;
+}
+
+.plan-foot {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+/* Uyum rozeti: uyumlu yeşil, nötr gri, uymuyor kırmızı (plan kartı ve karne). */
+.fit {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.fit.good {
+  color: var(--ok);
+}
+
+.fit.neutral {
+  color: var(--muted);
+}
+
+.fit.poor {
+  color: var(--error);
+}
+
+.report-plans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: center;
+  margin: 10px 0 0;
+}
+
+.report-plans > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
 
 
 a {

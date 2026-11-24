@@ -3,6 +3,7 @@ import type { Champion, Seat, Side } from '../api/types'
 import { GoldChart } from './GoldChart'
 import { scoreboard, shortGold } from './scoreboard'
 import { endTime, stateAt } from './timeline'
+import { FIT_TR, planName } from '../live/plans'
 import type { Replay, RuleLine, TeamGold } from './types'
 
 const SIDE_TR: Record<Side, string> = { blue: 'Mavi', red: 'Kırmızı' }
@@ -54,6 +55,19 @@ export function MatchReport({ replay, champions, you }: { replay: Replay; champi
             </div>
           ))}
         </dl>
+        {/* Oyun planları (§4.10): rakibin planı burada açılır. Eski kayıtlarda yok. */}
+        {replay.plans && (
+          <p className="report-plans">
+            {(['blue', 'red'] as const).map((side) => (
+              <span key={side} className={side}>
+                {SIDE_TR[side]}: <strong>{planName(replay.plans![side].plan)}</strong>
+                {replay.plans![side].plan !== 'balanced' && (
+                  <span className={`fit ${replay.plans![side].fit}`}>{FIT_TR[replay.plans![side].fit]}</span>
+                )}
+              </span>
+            ))}
+          </p>
+        )}
       </header>
 
       <GoldChart replay={replay} />

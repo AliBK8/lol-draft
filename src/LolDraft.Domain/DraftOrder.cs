@@ -7,6 +7,9 @@ public enum DraftPhase
     Ban2,
     Pick2,
     Swap,
+
+    /// <summary>Oyun planı (DESIGN.md §4.10): iki takım gizlice, aynı anda plan seçer.</summary>
+    Plan,
     Completed,
 }
 

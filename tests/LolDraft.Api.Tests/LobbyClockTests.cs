@@ -79,9 +79,10 @@ public sealed class LobbyClockTests : IAsyncDisposable
         Assert.False(string.IsNullOrEmpty(pick.GetProperty("champion").GetString()));
     }
 
-    // Kimse hamle yapmazsa bile maç oynanır: 20 adım ve swap zaman aşımıyla geçer, swap bitince maçı saat oynatır.
+    // Kimse hamle yapmazsa bile maç oynanır: 20 adım, swap ve plan fazı (DESIGN.md §4.10) zaman aşımıyla geçer; plan
+    // süresi bitince (seçmeyen Dengeli) maçı saat oynatır.
     [Fact]
-    public async Task Swap_suresi_dolunca_maci_saat_oynatir_ve_yayinlar()
+    public async Task Plan_suresi_dolunca_maci_saat_oynatir_ve_yayinlar()
     {
         var updates = await StartDraft();
         var matches = new ConcurrentQueue<JsonElement>();
@@ -94,7 +95,11 @@ public sealed class LobbyClockTests : IAsyncDisposable
             await WaitFor(updates, s => Actions(s).GetArrayLength() == count);
         }
 
-        _clock.Advance(TimeSpan.FromSeconds(31));   // swap süresi
+        _clock.Advance(TimeSpan.FromSeconds(31));   // swap süresi → plan fazı
+        await WaitFor(updates, s => s.GetProperty("draft") is { ValueKind: JsonValueKind.Object } d
+                                    && d.GetProperty("phase").GetString() == "plan");
+
+        _clock.Advance(TimeSpan.FromSeconds(21));   // plan süresi
         var state = await WaitFor(updates, s => s.GetProperty("games").GetArrayLength() == 1);
 
         // bo1: tek maç seriyi bitirir.

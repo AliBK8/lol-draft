@@ -28,13 +28,19 @@ internal sealed partial class MatchRun
     private long _nextSeq;
     private MatchEnd? _end;
 
+    // Takımların oyun planı (DESIGN.md §4.10, Tactics.cs): [taraf].
+    private readonly TeamTactics[] _tactics;
+
     public MatchRun(MatchInput input, IRandomSource rng)
     {
         _blue = input.Blue;
         _red = input.Red;
         _rng = rng;
+        _tactics = [new TeamTactics(input.BluePlan, _blue), new TeamTactics(input.RedPlan, _red)];
         AssignRoles();
     }
+
+    private TeamTactics Tactics(TeamSide side) => _tactics[(int)side];
 
     public MatchResult Play()
     {

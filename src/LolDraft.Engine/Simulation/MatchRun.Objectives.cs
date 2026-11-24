@@ -91,7 +91,7 @@ internal sealed partial class MatchRun
             PlaySplit(split, minute, t);
 
         var blueProbability = FightProbability(TeamSide.Blue, minute, t, kind, absent,
-            report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective);
+            report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective, objective: objective);
         var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
 
@@ -150,8 +150,9 @@ internal sealed partial class MatchRun
     // Savaşta sadece o an yaşayanlar var: ölüler ve absent (split) ne güçleriyle ne etiketleriyle savaşa girer.
     // Faz H3: eskiden ölüler de sayılıyordu; objektif öncesi yakalanan oyuncu savaşı 5'e 4 yapmıyordu.
     // report: gerçek savaşsa karneye yazılacağı yer (split kararındaki "savaş olsa" hesabı yazılmaz).
+    // objective: objektif savaşıysa hangisi (oyun planının ejder ve Herald düğmeleri için).
     private double FightProbability(TeamSide side, int minute, double t, FightKind kind,
-        IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null)
+        IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null, Objective? objective = null)
     {
         var siege = kind == FightKind.Siege;
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
@@ -172,12 +173,36 @@ internal sealed partial class MatchRun
         var ruleSum = rules.Sum(e => e.Signed);
         var d = (EffectivePower(blue, minute, t) - EffectivePower(red, minute, t)) + TeamRules.CappedTotal(ruleSum)
                 + soulBonus + BuffBonus(TeamSide.Blue, t, siege) - BuffBonus(TeamSide.Red, t, siege);
-        // Kuşatmada side = saldıran; savunan kule altında savaşır (MatchRun.Siege.cs).
+        // Oyun planı (Tactics.cs): Ejder & late ejder/Elder'da +4,5, Herald'da −4,5 (uyumla ölçekli).
+        // Sıfırsa eklenmez (Dengeli bit bit aynı).
+        var plan = PlanFightBonus(TeamSide.Blue, kind, objective) - PlanFightBonus(TeamSide.Red, kind, objective);
+        if (plan != 0)
+            d += plan;
+        // Kuşatmada side = saldıran; savunan kule altında savaşır (MatchRun.Siege.cs). Hızlı bitir planıyla saldıranın
+        // kuşatması daha zor tutulur (savunana +3, uyumla ölçekli).
         if (siege)
+        {
             d -= side.Sign() * SiegeDefenseBonus;
+            if (Tactics(side).SiegeDefenseExtra > 0)
+                d -= side.Sign() * Tactics(side).SiegeDefenseExtra;
+        }
         if (report is { } context)
             ReportFightRules(rules, context, d, ruleSum, FightDivisor);
         return Probability.Clamp(Probability.Logistic(side.Sign() * d / FightDivisor));
+    }
+
+    // Bir takımın planından bu savaşa gelen d (kendi gözünden).
+    private double PlanFightBonus(TeamSide side, FightKind kind, Objective? objective)
+    {
+        var tactics = Tactics(side);
+        var bonus = 0.0;
+        if (objective is Objective.Dragon or Objective.Elder)
+            bonus += tactics.DragonFightBonus;
+        if (objective is Objective.Herald)
+            bonus -= tactics.HeraldFightPenalty;
+        if (kind is FightKind.Objective or FightKind.Final)
+            bonus -= tactics.TeamFightPenalty;
+        return bonus;
     }
 
     private double BuffBonus(TeamSide side, double t, bool siege) =>

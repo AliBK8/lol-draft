@@ -40,9 +40,13 @@ internal sealed partial class MatchRun
     private double InvadeTempoAt(int minute) => minute <= _invadeTempoUntil ? _invadeTempo : 0;
 
     // ScheduleJungle'ın sonunda çağrılır. Zar sırası (dk 5'in başında): istila var mı, (varsa) saniye.
+    // İstila planı olan takım varsa istila kesin ("var mı" zarı atılmaz).
     private void ScheduleInvade(int minute, double junglePowerDiff)
     {
-        if (minute != InvadeMinute || _rng.NextDouble() >= InvadeChance)
+        if (minute != InvadeMinute)
+            return;
+        var forced = Tactics(TeamSide.Blue).Knobs.ForceInvade || Tactics(TeamSide.Red).Knobs.ForceInvade;
+        if (!forced && _rng.NextDouble() >= InvadeChance)
             return;
 
         var t = (minute - 1) * 60 + InvadeMinSecond + _rng.NextDouble() * InvadeSecondSpan;
@@ -53,9 +57,13 @@ internal sealed partial class MatchRun
     // (cevap varsa) savunanın yardımcısı ve kazanan; kill sayısı. Kill'ler kendi saniyelerinde.
     private void PlayInvade(int minute, double t, double junglePowerDiff)
     {
-        // İstila eden: güçlü erken ormancı daha olası (gank'ı atan tarafla aynı eğri, %10-%90).
+        // İstila eden: güçlü erken ormancı daha olası (gank'ı atan tarafla aynı eğri, %10-%90). Tek takım istila
+        // planındaysa o takım (zar atılmaz); iki takım da planındaysa zar.
         var blueProbability = Probability.Clamp(Probability.Logistic(junglePowerDiff / GankSideDivisor));
-        var side = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
+        var (blueForced, redForced) = (Tactics(TeamSide.Blue).Knobs.ForceInvade, Tactics(TeamSide.Red).Knobs.ForceInvade);
+        var side = blueForced != redForced
+            ? blueForced ? TeamSide.Blue : TeamSide.Red
+            : _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var camp = InvadeCamps[_rng.NextIndex(InvadeCamps.Length)];
         var us = Team(side);
         var them = Team(side.Opponent());
@@ -86,6 +94,9 @@ internal sealed partial class MatchRun
         var (blue, red) = side == TeamSide.Blue ? (invaders, defenders) : (defenders, invaders);
         var rules = TeamRules.Effects(FightKind.Skirmish, blue, red, minute, c => EffectivePower(c, minute, t));
         var d = EffectivePower(blue, minute, t) - EffectivePower(red, minute, t) + rules.Sum(e => e.Signed);
+        // İstila planı: istila eden takım çatışmada +3 (uyumla ölçekli; Tactics.cs).
+        if (Tactics(side).InvadeFightBonus > 0)
+            d += side.Sign() * Tactics(side).InvadeFightBonus;
         ReportFightRules(rules, RuleContext.Skirmish, d, rules.Sum(e => e.Signed), SkirmishDivisor);
         var blueWins = Probability.Clamp(Probability.Logistic(d / SkirmishDivisor));
         var winner = _rng.NextDouble() < blueWins ? TeamSide.Blue : TeamSide.Red;
@@ -95,7 +106,12 @@ internal sealed partial class MatchRun
         MarkAway([.. invaders, .. defenders], t + AwayAfterFightSeconds);
         if (stolen)
             AddFarm(us.Jungle, StolenCampCs);
-        SetInvadeTempo(winner, minute);
+        // İstila planıyla püskürtülen istila daha pahalı: rakibin temposu 1 yerine ~2,5, 4 dk (uyumla ölçekli; Tactics.cs).
+        var tactics = Tactics(side);
+        if (!stolen && tactics.InvadeLossTempo > 0)
+            SetInvadeTempo(winner, minute, tactics.InvadeLossTempo, tactics.Knobs.InvadeLossTempoMinutes);
+        else
+            SetInvadeTempo(winner, minute);
 
         var text = stolen
             ? $"{Names(invaders)} {Possessive(side.Opponent())} ormanına girdi, {Names(defenders)} yetişti ama "
@@ -120,10 +136,10 @@ internal sealed partial class MatchRun
         return comes && IsInLane(helper, t) ? [helper] : [];
     }
 
-    private void SetInvadeTempo(TeamSide winner, int minute)
+    private void SetInvadeTempo(TeamSide winner, int minute, double tempo = InvadeTempo, int minutes = InvadeTempoMinutes)
     {
-        _invadeTempo = winner.Sign() * InvadeTempo;
-        _invadeTempoUntil = minute + InvadeTempoMinutes;
+        _invadeTempo = winner.Sign() * tempo;
+        _invadeTempoUntil = minute + minutes;
     }
 
     private static string Names(IReadOnlyList<ChampionProfile> champions) => string.Join(" ve ", champions.Select(c => c.Name));

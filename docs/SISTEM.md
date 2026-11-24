@@ -99,8 +99,9 @@ public sealed class DraftSession
     public Result Ban(Side side, ChampionId champion, Instant now) { /* faz, süre, sıra, havuz, tekrar, fearless */ }
     public Result Pick(Side side, ChampionId champion, Instant now) { /* aynı kontroller */ }
     public Result SwapRoles(Side side, Role a, Role b, Instant now) { /* swap fazında iki yuvayı değiştir */ }
-    public Result LockLineup(Side side, Instant now) { /* iki takım da kilitleyince draft biter */ }
-    public Result Timeout(Instant now, IDraftRandom random) { /* sunucu sayacı: boş ban / rastgele uygun pick / swap biter */ }
+    public Result LockLineup(Side side, Instant now) { /* iki takım da kilitleyince plan fazı başlar */ }
+    public Result ChoosePlan(Side side, MatchPlan plan, Instant now) { /* oyun planı (§4.10): tek seferlik, iki takım seçince draft biter */ }
+    public Result Timeout(Instant now, IDraftRandom random) { /* sunucu sayacı: boş ban / rastgele uygun pick / swap biter / plan fazı biter (seçmeyen Dengeli) */ }
 }
 ```
 Dışarıdan `Phase` ya da `Turn` set edilemez; geçersiz hamle `Result.Fail` döner ve durum değişmez.
@@ -227,7 +228,7 @@ Kayıt yok ama her istek bir kimliğe bağlı.
 | GET | `/api/lobbies/{code}` | JWT (lobide) | `{yourSeat, lobby}`: koltuk + hub'daki `LobbyUpdated` ile aynı biçimde durum |
 | GET | `/api/champions` | yok | Havuzdaki şampiyonlar (şu an 170): `id`, `name`, `roles`, `offRole` (yuva → rol dışı ceza); gizli motor sayıları yok (§8.17) |
 | GET | `/api/matches/{id}` | yok (paylaşım linki; kimlik 128 bit) | Oynanmış maç: olaylar, dakika kareleri, karne (§8.15); diskteki dondurulmuş belge, `MatchReady` ile aynı (§8.16) |
-| WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `Pick`, `SwapRoles`, `LockLineup` (her biri `actionId` ile) → `LobbyUpdated` (tam durum + `deadline` + `serverNow` + `revision` + `games`; saniyelik `TimerTick` yok, karar 2026-11-10), `MatchReady` (draft bitince oynanan maç, §8.15), `LobbyClosed` |
+| WS | `/hubs/draft` | JWT | `Ready`, `Ban`, `SkipBan`, `Pick`, `SwapRoles`, `LockLineup`, `ChoosePlan` (her biri `actionId` ile; `ChoosePlan` hamle kovasından, §8.35) → `LobbyUpdated` (tam durum + `deadline` + `serverNow` + `revision` + `games`; saniyelik `TimerTick` yok, karar 2026-11-10), `MatchReady` (draft bitince oynanan maç, §8.15), `LobbyClosed` |
 
 ### 8.8 Dağıtım
 
