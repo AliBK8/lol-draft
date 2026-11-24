@@ -12,4 +12,7 @@ public static class LobbyErrors
     public static readonly Error NotFull = new("lobby_not_full", "Rakip henüz katılmadı.");
     public static readonly Error InvalidActionId = new("invalid_action_id", "Geçersiz hamle kimliği.");
     public static readonly Error RejoinRejected = new("rejoin_rejected", "Koltuk anahtarı geçersiz.");
+
+    public static readonly Error InvalidTeamName = new(
+        "invalid_team_name", $"Takım adı {TeamName.MinLength}-{TeamName.MaxLength} karakter olmalı; harf, rakam, boşluk ve . - _ ' kullanılabilir.");
 }

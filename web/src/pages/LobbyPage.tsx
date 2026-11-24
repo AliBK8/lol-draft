@@ -3,7 +3,16 @@ import { useParams } from 'react-router-dom'
 import { api, ApiError } from '../api/http'
 import type { Ticket } from '../api/types'
 import { LobbyScreen } from '../screens/LobbyScreen'
-import { clearRejoinToken, loadRejoinToken, loadSession, saveSession, type Session } from '../session'
+import { TeamNameField } from '../components/TeamNameField'
+import {
+  clearRejoinToken,
+  loadRejoinToken,
+  loadSession,
+  loadTeamName,
+  saveSession,
+  saveTeamName,
+  type Session,
+} from '../session'
 
 // Davet linki (/l/:code). Bu sekmede token varsa canlı lobiye bağlanır. Token yok ama koltuk anahtarı varsa
 // (sekmeyi kapatıp linki yeniden açan oyuncu, §8.24) koltuğunu kendiliğinden geri alır. İkisi de yoksa "Katıl".
@@ -14,6 +23,7 @@ export function LobbyPage() {
   const [hasRejoin, setHasRejoin] = useState(() => loadRejoinToken(code) !== null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [name, setName] = useState(loadTeamName)
   // StrictMode efekti iki kez çalıştırır: ikinci istek aynı (artık kullanılmış) anahtarı yollar, sunucu reddeder
   // ve istemci anahtarı silerdi. Kendiliğinden geri dönüş bir kez denenir.
   const autoTried = useRef(false)
@@ -55,7 +65,8 @@ export function LobbyPage() {
     setBusy(true)
     setError(null)
     try {
-      enter(await api.joinLobby(code))
+      enter(await api.joinLobby(code, name))
+      saveTeamName(name)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Beklenmeyen bir hata oldu.')
     } finally {
@@ -83,6 +94,7 @@ export function LobbyPage() {
             Bir arkadaşın seni LoL draft'ına çağırıyor. Katılınca rakip koltuğa oturursun; draft'ı siz yaparsınız,
             maçı motor oynar.
           </p>
+          <TeamNameField value={name} onChange={setName} />
           <button className="primary big" disabled={busy} onClick={join}>
             {busy ? 'Katılıyor…' : 'Katıl'}
           </button>

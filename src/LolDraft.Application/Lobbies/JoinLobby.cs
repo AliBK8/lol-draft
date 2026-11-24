@@ -5,7 +5,8 @@ namespace LolDraft.Application.Lobbies;
 /// <summary>Davet koduyla lobiye katılır: boş koltuğa oturur, token alır.</summary>
 public sealed class JoinLobby(ILobbyRepository lobbies, ISecureRandom random, IGuestTokenService tokens, IClock clock)
 {
-    public async Task<Result<LobbyTicket>> Handle(LobbyCode code, CancellationToken ct)
+    /// <param name="name">Katılanın takım adı (isteğe bağlı, API'de doğrulanmış).</param>
+    public async Task<Result<LobbyTicket>> Handle(LobbyCode code, CancellationToken ct, TeamName? name = null)
     {
         var player = PlayerId.FromBytes(random.Bytes(PlayerId.ByteLength));
         var (rejoinToken, rejoinKey) = RejoinSecrets.New(random);
@@ -14,7 +15,7 @@ public sealed class JoinLobby(ILobbyRepository lobbies, ISecureRandom random, IG
         // Koltuk anahtarı aynı kilit içinde, oturur oturmaz: anahtarsız koltuk dışarıdan görülmez.
         var seat = await lobbies.Execute(code, lobby =>
         {
-            var joined = lobby.Join(player, clock.Now);
+            var joined = lobby.Join(player, clock.Now, name);
             if (joined.IsSuccess)
                 lobby.AssignRejoinKey(player, rejoinKey);
             return joined;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Champion, Game, LobbyState, Seat, Side } from '../api/types'
 import { Countdown } from '../components/Countdown'
+import type { SeriesHeader } from '../live/seriesHeader'
 import { useChampions } from '../live/champions'
 import { mySide } from '../live/draft'
 import { loadRevealed, saveRevealed, visibleScore } from '../live/reveal'
@@ -62,27 +63,34 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
   // Oynanmış ama izlenmemiş ilk maç: MatchReady gelince iki oyuncu da oynatıcıya geçer (skor bitince açılır, §8.15).
   const pending = revealed < lobby.games.length ? revealed : null
   const viewing = draft ? null : (watching ?? pending)
+  // Ban/pick ve maç ekranında ayrı seri bandı yok: adlar, seri skoru ve bağlantı o ekranın kendi bandında (§8.37).
+  // Swap ve plan fazında kendi bantları yok; seri bandı ince hâliyle kalır.
+  const banPick = draft !== null && draft.phase !== 'swap' && draft.phase !== 'plan' && draft.phase !== 'completed'
+  const ownBand = banPick || viewing !== null
 
   return (
     <section className="lobby">
-      <SeriesBand
-        lobby={lobby}
-        you={session.seat}
-        offsetMs={offsetMs}
-        winsA={score.winsA}
-        winsB={score.winsB}
-        hidden={revealed < lobby.games.length}
-        compact={draft !== null || viewing !== null}
-      />
+      {!ownBand && (
+        <SeriesBand
+          lobby={lobby}
+          you={session.seat}
+          offsetMs={offsetMs}
+          winsA={score.winsA}
+          winsB={score.winsB}
+          hidden={revealed < lobby.games.length}
+          compact={draft !== null}
+        />
+      )}
       {status !== 'connected' && <p className="conn-warn">Bağlantı koptu, yeniden bağlanıyor…</p>}
 
       {!lobby.isFull && <Invite code={code} />}
 
-      {draft && draft.phase !== 'swap' && draft.phase !== 'plan' && draft.phase !== 'completed' && (
+      {draft && banPick && (
         <DraftBoard
           key={lobby.gameNumber}
           draft={draft}
           me={me}
+          header={seriesHeader(lobby, lobby.blueTeam, score, offsetMs)}
           champions={champions}
           offsetMs={offsetMs}
           act={act}
@@ -101,6 +109,7 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
           known={matches.find((m) => m.id === lobby.games[viewing].match)}
           champions={champions}
           you={session.seat}
+          header={seriesHeader(lobby, lobby.games[viewing].blue, score, offsetMs)}
           onFinished={() => {
             // Bitince skor açılır; oynatıcı karneyle açık kalır (yoksa "izlenmemiş" listesi boşalınca hemen kapanırdı).
             if (viewing === revealed) {
@@ -134,7 +143,7 @@ function SeriesBand(props: {
       <SeatCard lobby={lobby} seat="A" you={you} offsetMs={offsetMs} />
       <div className="series-center">
         <div className="chips">
-          <span className="chip">{lobby.format.toUpperCase()}</span>
+          <span className="chip accent">{lobby.format.toUpperCase()}</span>
           {lobby.fearless && <span className="chip accent">Fearless</span>}
         </div>
         <div className="series-score" aria-label={`Skor: A ${winsA}, B ${winsB}`}>
@@ -155,36 +164,80 @@ function SeriesBand(props: {
 
 function SeatCard({ lobby, seat, you, offsetMs }: { lobby: LobbyState; seat: Seat; you: Seat; offsetMs: number }) {
   const state = lobby.seats.find((s) => s.seat === seat)
+  // Bu maçta hangi renk (renkler her maç değişir); seri bittiyse renk yok. Renk adın dış kenarındaki şeritte.
+  const side: Side | null = lobby.winner ? null : lobby.blueTeam === seat ? 'blue' : 'red'
+  const classes = ['seat-card', seat === 'B' ? 'right' : '', side ?? '', state?.connected ? 'on' : '', state ? '' : 'empty']
+  const who = seat === you ? 'Sen' : 'Rakip'
+  // Ad yoksa büyük yazı "Sen"/"Rakip"; ad varsa o, "Sen"/"Rakip" küçük satıra iner.
+  const title = !state ? 'Rakip bekleniyor' : (state.name ?? who)
+  const sideLabel = side === 'blue' ? 'mavi' : side === 'red' ? 'kırmızı' : null
+
+  return (
+    <div className={classes.join(' ').replace(/\s+/g, ' ').trim()} title={sideLabel ? `Bu maçta ${sideLabel}` : undefined}>
+      <span className="seat-stripe" aria-hidden="true" />
+      <span className="seat-info">
+        <strong className="seat-name">{title}</strong>
+        {state && (
+          <small>
+            <SeatPresence lobby={lobby} seat={seat} offsetMs={offsetMs} label={state.name ? who : null} />
+            {sideLabel && <span className="sr-only"> · bu maçta {sideLabel}</span>}
+          </small>
+        )}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * Koltuğun bağlantı durumu: yeşil/kırmızı nokta, varsa etiket ("Sen"/"Rakip"), koptuysa "Bağlı değil" ve hükmen
+ * sayacı. Seri bandında ve draft/maç bandında (§8.37) aynı parça.
+ */
+function SeatPresence(props: {
+  lobby: LobbyState
+  seat: Seat
+  offsetMs: number
+  label?: string | null
+  /** Bağlıyken hiçbir şey çizme (draft/maç bandı, §8.39): yeşil nokta bilgi taşımaz, kopukluk taşır. */
+  quiet?: boolean
+}) {
+  const { lobby, seat, offsetMs, label, quiet } = props
+  const state = lobby.seats.find((s) => s.seat === seat)
   const other = lobby.seats.find((s) => s.seat !== seat)
+  if (!state || (quiet && state.connected)) return null
   // Hükmen sayacı sadece seri başladıysa (Domain: Series.HasStarted) ve rakip bağlıysa işler.
   const started = lobby.games.length > 0 || lobby.draft !== null
   const forfeitAt =
-    state && started && !lobby.winner && state.absentSince && other?.connected
+    started && !lobby.winner && state.absentSince && other?.connected
       ? new Date(Date.parse(state.absentSince) + FORFEIT_MS).toISOString()
       : null
-  // Bu maçta hangi renk (renkler her maç değişir); seri bittiyse renk yok.
-  const side: Side | null = lobby.winner ? null : lobby.blueTeam === seat ? 'blue' : 'red'
-  const classes = ['seat-card', seat === 'B' ? 'right' : '', side ?? '', state?.connected ? 'on' : '', state ? '' : 'empty']
-
   return (
-    <div className={classes.join(' ').replace(/\s+/g, ' ').trim()}>
-      <span className="seat-avatar">{seat}</span>
-      <span className="seat-info">
-        <strong>{!state ? 'Boş koltuk' : seat === you ? 'Sen' : 'Rakip'}</strong>
-        <small>
-          <i className="dot" aria-hidden="true" />
-          {!state ? 'Rakip bekleniyor' : state.connected ? 'Bağlı' : 'Bağlı değil'}
-          {forfeitAt && (
-            <>
-              {' '}
-              · hükmen <Countdown deadline={forfeitAt} offsetMs={offsetMs} /> sn
-            </>
-          )}
-        </small>
-      </span>
-      {side && state && <span className={`side-chip ${side}`}>{side === 'blue' ? 'Mavi' : 'Kırmızı'}</span>}
-    </div>
+    <span className={`presence${state.connected ? ' on' : ' off'}`}>
+      <i className="dot" aria-label={state.connected ? 'Bağlı' : 'Bağlı değil'} />
+      {label}
+      {!state.connected && <>{label ? ' · ' : ''}Bağlı değil</>}
+      {forfeitAt && (
+        <>
+          {' '}
+          · hükmen <Countdown deadline={forfeitAt} offsetMs={offsetMs} /> sn
+        </>
+      )}
+    </span>
   )
+}
+
+/** Draft ve maç bandının seri bilgisi (§8.37): renk → koltuk; skor görünür skordan (izlenmemiş maç sayılmaz). */
+function seriesHeader(lobby: LobbyState, blue: Seat, score: { winsA: number; winsB: number }, offsetMs: number): SeriesHeader {
+  const team = (seat: Seat) => ({
+    name: lobby.seats.find((s) => s.seat === seat)?.name ?? null,
+    wins: seat === 'A' ? score.winsA : score.winsB,
+    presence: <SeatPresence lobby={lobby} seat={seat} offsetMs={offsetMs} quiet />,
+  })
+  return {
+    format: lobby.format,
+    fearless: lobby.fearless,
+    need: WINS_TO_TAKE[lobby.format],
+    teams: { blue: team(blue), red: team(blue === 'A' ? 'B' : 'A') },
+  }
 }
 
 function Invite({ code }: { code: string }) {
@@ -324,20 +377,21 @@ function GameViewer(props: {
   known: Replay | undefined
   champions: Map<string, Champion>
   you: Seat
+  header: SeriesHeader
   onFinished: () => void
   onClose?: () => void
 }) {
-  const { game, known, champions, you, onFinished, onClose } = props
+  const { game, known, champions, you, onFinished, onClose, header } = props
   const { replay, error } = useReplay(game.match, known)
+  // Kart ve başlık satırı yok: harita ekrana sığsın diye oynatıcı sayfanın tamamını kullanır. Seri bilgisi
+  // (adlar, seri skoru, bağlantı) oynatıcının skor bandında (§8.37).
   return (
-    <div className="card">
-      <div className="row viewer-head">
-        <h2>Maç {game.number}</h2>
-        {onClose && <button onClick={onClose}>Kapat</button>}
-      </div>
+    <div className="viewer" aria-label={`Maç ${game.number}`}>
       {error && <p className="error">{error}</p>}
       {!replay && !error && <p className="muted">Maç yükleniyor…</p>}
-      {replay && <MatchPlayer replay={replay} champions={champions} you={you} onFinished={onFinished} />}
+      {replay && (
+        <MatchPlayer replay={replay} champions={champions} you={you} onFinished={onFinished} header={header} onClose={onClose} />
+      )}
     </div>
   )
 }

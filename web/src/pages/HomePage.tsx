@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, ApiError } from '../api/http'
 import type { Format } from '../api/types'
+import { TeamNameField } from '../components/TeamNameField'
 import { WINS_TO_TAKE } from '../live/series'
-import { saveSession } from '../session'
+import { loadTeamName, saveSession, saveTeamName } from '../session'
 import { HomeBackdrop } from './HomeBackdrop'
 
 const FORMATS: { id: Format; label: string }[] = [
@@ -24,6 +25,7 @@ export function HomePage() {
   const navigate = useNavigate()
   const [format, setFormat] = useState<Format>('bo3')
   const [fearless, setFearless] = useState(false)
+  const [name, setName] = useState(loadTeamName)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,8 +35,9 @@ export function HomePage() {
     setBusy(true)
     setError(null)
     try {
-      const ticket = await api.createLobby(format, fearless)
+      const ticket = await api.createLobby(format, fearless, name)
       saveSession(ticket)
+      saveTeamName(name)
       navigate(`/l/${ticket.code}`)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Beklenmeyen bir hata oldu.')
@@ -72,6 +75,8 @@ export function HomePage() {
 
       <section className="card create">
         <h2>Yeni seri</h2>
+
+        <TeamNameField value={name} onChange={setName} />
 
         <fieldset className="formats">
           <legend>Format</legend>

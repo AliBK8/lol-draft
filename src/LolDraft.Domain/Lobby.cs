@@ -41,11 +41,14 @@ public sealed class Lobby
     // Koltuk anahtarlarının özeti (rejoin): her koltukta en fazla bir geçerli anahtar, kullanılınca yenisiyle değişir.
     private readonly Dictionary<TeamSlot, RejoinKey> _rejoinKeys = [];
 
-    private Lobby(LobbyCode code, Series series, PlayerId host, Instant now)
+    // Oyuncunun girerken verdiği takım adı; vermediyse koltuk adsız (arayüz "Sen" / "Rakip" yazar).
+    private readonly Dictionary<TeamSlot, TeamName> _names = [];
+
+    private Lobby(LobbyCode code, Series series, PlayerId host, TeamName? hostName, Instant now)
     {
         Code = code;
         Series = series;
-        Seat(TeamSlot.A, host, now);
+        Seat(TeamSlot.A, host, hostName, now);
         LastActivity = now;
         CreatedAt = now;
     }
@@ -56,11 +59,11 @@ public sealed class Lobby
     /// </summary>
     public static Result<Lobby> Create(
         LobbyCode code, PlayerId host, SeriesFormat format, bool fearless, IEnumerable<ChampionId> pool,
-        TeamSlot firstBlue, Instant now)
+        TeamSlot firstBlue, Instant now, TeamName? hostName = null)
     {
         var series = Series.Start(format, fearless, pool, firstBlue);
         return series.IsSuccess
-            ? Result<Lobby>.Ok(new Lobby(code, series.Value, host, now))
+            ? Result<Lobby>.Ok(new Lobby(code, series.Value, host, hostName, now))
             : Result<Lobby>.Fail(series.Error!);
     }
 
@@ -86,6 +89,9 @@ public sealed class Lobby
 
     public PlayerId? PlayerAt(TeamSlot seat) => _seats.TryGetValue(seat, out var player) ? player : null;
 
+    /// <summary>Koltuktaki takımın adı; oyuncu ad vermediyse ya da koltuk boşsa null.</summary>
+    public TeamName? NameOf(TeamSlot seat) => _names.TryGetValue(seat, out var name) ? name : null;
+
     /// <summary>Sıradaki draft için hazır olan koltuklar.</summary>
     public IReadOnlySet<TeamSlot> ReadySeats => _ready;
 
@@ -107,7 +113,7 @@ public sealed class Lobby
     }
 
     /// <summary>Oyuncuyu ilk boş koltuğa oturtur. Bağlanana kadar "yok" sayılır.</summary>
-    public Result<TeamSlot> Join(PlayerId player, Instant now)
+    public Result<TeamSlot> Join(PlayerId player, Instant now, TeamName? name = null)
     {
         if (SeatOf(player) is not null)
             return Result<TeamSlot>.Fail(LobbyErrors.AlreadyInLobby);
@@ -116,7 +122,7 @@ public sealed class Lobby
         {
             if (!_seats.ContainsKey(seat))
             {
-                Seat(seat, player, now);
+                Seat(seat, player, name, now);
                 LastActivity = now;
                 return Result<TeamSlot>.Ok(seat);
             }
@@ -319,9 +325,11 @@ public sealed class Lobby
         return false;
     }
 
-    private void Seat(TeamSlot seat, PlayerId player, Instant now)
+    private void Seat(TeamSlot seat, PlayerId player, TeamName? name, Instant now)
     {
         _seats[seat] = player;
+        if (name is { } given)
+            _names[seat] = given;
         _connections[seat] = 0;
         // Oturan oyuncu henüz bağlanmadı: bağlanana kadar "yok" (lobiyi açıp hiç gelmeyen için kapanış sayacı).
         _absentSince[seat] = now;

@@ -1,8 +1,10 @@
 import type { Champion, Side } from '../api/types'
+import { CoinIcon } from '../components/CoinIcon'
+import { SeriesChips, SeriesPips } from '../components/SeriesHeader'
+import { SIDE_TR, teamLabel, type SeriesHeader } from '../live/seriesHeader'
 import { clock } from './timeline'
 import { shortGold, type ChampionLine, type Scoreboard, type TeamLine } from './scoreboard'
 
-const SIDE_TR: Record<Side, string> = { blue: 'Mavi', red: 'Kırmızı' }
 /** Altın çubuğu bu farkta dolar (yarım çubuk = 10.000 altın önde). */
 const GOLD_BAR_FULL = 10000
 
@@ -28,34 +30,65 @@ function TeamStats({ team, side }: { team: TeamLine; side: Side }) {
   )
 }
 
-/** Yayın skor bandı: kill skoru ve saat, altında iki takımın kule/canavar sayısı ve önde olana doğru büyüyen altın çubuğu. */
-export function ScoreBand({ board, t, you }: { board: Scoreboard; t: number; you: Side | null }) {
-  const { blue, red } = board.teams
-  const diff = blue.gold - red.gold
+/**
+ * Yayın skor tabelası (§8.38): tek kutu değil, birbirine geçen üç parça. İki takım plakasının iç kenarı çapraz
+ * kesik, ortadaki saat parçası ters yamuk; kesikler paralel, aralarında hep aynı ince boşluk kalır.
+ * Plaka: takım adı + seri noktaları + "Sen", koparsa bağlantı uyarısı, kule/canavar sayıları; kill sayısı iç uçta,
+ * ortaya yakın, önde olanın altında altın farkı. Orta parça: saat, önde olana doğru büyüyen altın çubuğu, BO/Fearless.
+ * Paylaşım sayfasında header yok: renk adları yazılır, noktalar ve bağlantı yok.
+ */
+export function ScoreBand(props: { board: Scoreboard; t: number; you: Side | null; header?: SeriesHeader }) {
+  const { board, t, you, header } = props
+  const diff = board.teams.blue.gold - board.teams.red.gold
   const fill = Math.min(1, Math.abs(diff) / GOLD_BAR_FULL) * 50
   const rounded = Math.round(Math.abs(diff) / 100) * 100
-  return (
-    <div className="score-band">
-      <span className="score-team blue">
-        {SIDE_TR.blue}
-        {you === 'blue' && <small> (sen)</small>}
-      </span>
-      <span className="score-kills blue">{blue.kills}</span>
-      <span className="score-clock">{clock(t)}</span>
-      <span className="score-kills red">{red.kills}</span>
-      <span className="score-team red">
-        {you === 'red' && <small>(sen) </small>}
-        {SIDE_TR.red}
-      </span>
-
-      <TeamStats team={blue} side="blue" />
-      <div className="gold-bar" title="Altın farkı">
-        <span className={`gold-fill ${diff >= 0 ? 'blue' : 'red'}`} style={{ width: `${fill}%` }} />
-        <span className="gold-label">
-          {rounded === 0 ? 'Altın eşit' : `${diff > 0 ? 'Mavi' : 'Kırmızı'} +${rounded.toLocaleString('tr-TR')}`}
+  const label = (side: Side) => teamLabel(side, header)
+  // Altın farkı önde olanın plakasında, kill sayısının altında ("+3,4k"); eşitse (yüzlere yuvarlanmış 0) yok.
+  const leader: Side | null = rounded === 0 ? null : diff > 0 ? 'blue' : 'red'
+  const plate = (side: Side) => (
+    <div className={`hud-team ${side}`}>
+      <span className="hud-id">
+        <span className="hud-name">
+          <span className="hud-label">{label(side)}</span>
+          <SeriesPips side={side} header={header} />
+          {you === side && <span className="you-tag">Sen</span>}
         </span>
+        {/* Bağlantı sadece koparsa görünür (SeatPresence quiet); bağlıyken satır boş kalır, yer kaplamaz. */}
+        {header?.teams[side].presence}
+      </span>
+      <TeamStats team={board.teams[side]} side={side} />
+      <span className="hud-score">
+        <span className="hud-score-label" aria-hidden="true">
+          Kill
+        </span>
+        <span className="hud-kills" aria-label={`${label(side)} kill`}>
+          {board.teams[side].kills}
+        </span>
+        {/* Satır iki tarafta da var (gerideyse görünmez): iki kill sayısı aynı yükseklikte kalsın. */}
+        {leader === side ? (
+          <span className="hud-gold gold-amount" title={`${rounded.toLocaleString('tr-TR')} altın önde`}>
+            +<CoinIcon />
+            {shortGold(rounded)}
+          </span>
+        ) : (
+          <span className="hud-gold gold-amount placeholder" aria-hidden="true">
+            +<CoinIcon />0
+          </span>
+        )}
+      </span>
+    </div>
+  )
+  return (
+    <div className="hud">
+      {plate('blue')}
+      <div className="hud-center">
+        <span className="hud-clock">{clock(t)}</span>
+        <div className="gold-bar" title={leader ? `${label(leader)} ${rounded.toLocaleString('tr-TR')} altın önde` : 'Altın eşit'}>
+          <span className={`gold-fill ${diff >= 0 ? 'blue' : 'red'}`} style={{ width: `${fill}%` }} />
+        </div>
+        <SeriesChips header={header} />
       </div>
-      <TeamStats team={red} side="red" />
+      {plate('red')}
     </div>
   )
 }
@@ -76,10 +109,13 @@ export function TeamRoster({ lines, side, champions }: { lines: ChampionLine[]; 
               <span className="roster-label">{champions.get(c.id)?.name ?? c.id}</span>
             </span>
             <span className="roster-stats">
-              <b>
+              <b className="roster-kd" title="Kill / ölüm">
                 {c.kills}/{c.deaths}
               </b>
-              <span className="muted">{shortGold(c.gold)}</span>
+              <span className="gold-amount muted" title={`${c.gold.toLocaleString('tr-TR')} altın`}>
+                <CoinIcon />
+                {shortGold(c.gold)}
+              </span>
             </span>
           </span>
         </li>

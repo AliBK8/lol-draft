@@ -27,7 +27,9 @@ public sealed class CreateLobby(
         new("server_busy", "Sunucu şu an dolu, biraz sonra tekrar dene.");
 
     /// <param name="client">İstemcinin anahtarı (gateway'in yazdığı; IPv6'da /64): açık lobi sınırı buna göre sayılır.</param>
-    public async Task<Result<LobbyTicket>> Handle(SeriesFormat format, bool fearless, string client, CancellationToken ct)
+    /// <param name="name">Açanın takım adı (isteğe bağlı, API'de doğrulanmış).</param>
+    public async Task<Result<LobbyTicket>> Handle(
+        SeriesFormat format, bool fearless, string client, CancellationToken ct, TeamName? name = null)
     {
         var code = LobbyCode.FromBytes(random.Bytes(LobbyCode.ByteLength));
         var host = PlayerId.FromBytes(random.Bytes(PlayerId.ByteLength));
@@ -35,7 +37,7 @@ public sealed class CreateLobby(
         // Yazı tura: ilk maçta mavi kim? Açan A koltuğunda ama rengi şans belirler (çift bayt → A).
         var firstBlue = random.Bytes(1)[0] % 2 == 0 ? TeamSlot.A : TeamSlot.B;
 
-        var lobby = Lobby.Create(code, host, format, fearless, catalog.All, firstBlue, clock.Now);
+        var lobby = Lobby.Create(code, host, format, fearless, catalog.All, firstBlue, clock.Now, name);
         if (lobby.IsFailure)
             return Result<LobbyTicket>.Fail(lobby.Error!);
 

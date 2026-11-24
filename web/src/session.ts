@@ -81,6 +81,21 @@ function readRejoin(raw: string | null): StoredRejoin | null {
   }
 }
 
+// Son kullanılan takım adı (localStorage): bir sonraki lobide form hazır dolu gelir. Sır değil, sadece kolaylık.
+const teamNameKey = 'lol-draft:team-name'
+
+export function loadTeamName(): string {
+  return storage('localStorage')?.getItem(teamNameKey) ?? ''
+}
+
+export function saveTeamName(name: string): void {
+  const local = storage('localStorage')
+  if (!local) return
+  const trimmed = name.trim()
+  if (trimmed) local.setItem(teamNameKey, trimmed)
+  else local.removeItem(teamNameKey)
+}
+
 // Süresi geçmiş (ya da bozuk) koltuk anahtarlarını siler: kapanmış lobilerin anahtarı birikmesin.
 function pruneRejoinKeys(local: Storage, now: number): void {
   const stale: string[] = []

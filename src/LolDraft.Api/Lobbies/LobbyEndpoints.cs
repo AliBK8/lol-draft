@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using LolDraft.Api.Auth;
 using LolDraft.Api.Middleware;
 using LolDraft.Application.Lobbies;
@@ -13,6 +14,7 @@ namespace LolDraft.Api.Lobbies;
 internal static class LobbyEndpoints
 {
     private static readonly Error InvalidFormat = new("invalid_format", "Seri formatı bo1, bo3 ya da bo5 olmalı.");
+    private static readonly Error InvalidBody = new("invalid_body", "İstek gövdesi okunamadı.");
 
     public static void MapLobbyEndpoints(this IEndpointRouteBuilder app)
     {
@@ -32,20 +34,52 @@ internal static class LobbyEndpoints
     {
         if (Names.ParseFormat(request.Format) is not { } format)
             return Failure(InvalidFormat);
+        var name = OptionalName(request.Name);
+        if (name.IsFailure)
+            return Failure(name.Error!);
 
-        var ticket = await createLobby.Handle(format, request.Fearless, ClientKey(http), ct);
+        var ticket = await createLobby.Handle(format, request.Fearless, ClientKey(http), ct, name.Value);
         return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
     }
 
-    private static async Task<IResult> Join(string code, JoinLobby joinLobby, CancellationToken ct)
+    // Gövde isteğe bağlı: adsız katılma (eski istemci, geliştirme rakibi) gövdesiz ya da JSON olmayan başlıkla gelir.
+    // Çerçevenin gövde bağlaması JSON olmayanı 415 ile reddederdi; o yüzden gövde sadece JSON'sa okunur.
+    private static async Task<IResult> Join(string code, HttpRequest http, JoinLobby joinLobby, CancellationToken ct)
     {
         // Biçimi bozuk kod var olamaz; "yok" ile aynı cevabı alır.
         var lobbyCode = LobbyCode.Create(code);
         if (lobbyCode.IsFailure)
             return Failure(LobbyErrors.NotFound);
 
-        var ticket = await joinLobby.Handle(lobbyCode.Value, ct);
+        JoinRequest? request = null;
+        if (http.HasJsonContentType() && http.ContentLength is not 0)
+        {
+            try
+            {
+                request = await http.ReadFromJsonAsync<JoinRequest>(ct);
+            }
+            catch (JsonException)
+            {
+                return Failure(InvalidBody);
+            }
+        }
+
+        var name = OptionalName(request?.Name);
+        if (name.IsFailure)
+            return Failure(name.Error!);
+
+        var ticket = await joinLobby.Handle(lobbyCode.Value, ct, name.Value);
         return ticket.IsSuccess ? Results.Ok(TicketResponse.Of(ticket.Value)) : Failure(ticket.Error!);
+    }
+
+    // Takım adı isteğe bağlı: boş ya da sadece boşluk = ad yok (null); doluysa kurallara uymalı (TeamName).
+    private static Result<TeamName?> OptionalName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Result<TeamName?>.Ok(null);
+
+        var name = TeamName.Create(value);
+        return name.IsSuccess ? Result<TeamName?>.Ok(name.Value) : Result<TeamName?>.Fail(name.Error!);
     }
 
     private static async Task<IResult> Rejoin(string code, RejoinRequest request, RejoinLobby rejoinLobby, CancellationToken ct)
@@ -77,7 +111,9 @@ internal static class LobbyEndpoints
 
     private static IResult Failure(Error error) => ApiErrors.Failure(error);
 
-    internal sealed record CreateLobbyRequest(string? Format, bool Fearless);
+    internal sealed record CreateLobbyRequest(string? Format, bool Fearless, string? Name = null);
+
+    internal sealed record JoinRequest(string? Name);
 
     internal sealed record RejoinRequest(string? RejoinToken);
 

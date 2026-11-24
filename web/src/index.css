@@ -523,16 +523,65 @@ a {
 }
 
 /* --- 5c: maç oynatıcısı --- */
-.viewer-head {
-  justify-content: space-between;
-  align-items: center;
+/* Oynatıcı ızgarası (§8.39): kadrolar haritanın iki yanında ve tam boyunda (üst ve alt kenarları haritayla
+   hizalı), son olaylar şeridi haritanın altında, harita genişliğinde. Harita kare; kenarı = görünen yükseklik −
+   haritanın üstündeki ve altındaki her şey (--player-chrome: üst şerit 58 + sayfa boşluğu 24 + tabela ~72 + 14 +
+   olay şeridi ~92 + zaman çizelgesi 40 + alt boşluk 12 ≈ 312; pay ile 320). En az 320, en fazla 680 px.
+   Örnek: 1080p'de %125 yakınlaştırmayla görünen yükseklik ~730 → harita 410 px, zaman çizelgesi dahil her şey ekranda. */
+.player {
+  --player-chrome: 320px;
 }
 
 .player-main {
   display: grid;
-  grid-template-columns: 180px minmax(0, 600px) 180px;
+  grid-template-columns: minmax(160px, 220px) auto minmax(160px, 220px);
+  grid-template-areas:
+    'blue map red'
+    '. ticker .';
   justify-content: center;
+  gap: 8px 14px;
+}
+
+.player-main .map-stage {
+  grid-area: map;
+  width: clamp(320px, calc(100dvh - var(--player-chrome)), 680px);
+}
+
+.player-main > .roster.blue {
+  grid-area: blue;
+}
+
+.player-main > .roster.red {
+  grid-area: red;
+}
+
+/* Son olaylar şeridi: harita sütununu genişletmesin (uzun metin "…" ile kısalır); kendi genişliği hesaba girmez. */
+.ticker {
+  grid-area: ticker;
+  min-width: 0;
+  contain: inline-size;
+}
+
+/* Zaman çizelgesi ve (lobide) Kapat tek satır; oynatma düğmesi yok (§8.39). */
+.timeline-row {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  margin: 4px 0 12px;
+}
+
+.timeline-row .scrubber {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tüm olaylar (sayfanın altında): başında "Matematiği göster". */
+.full-log {
+  margin-top: 16px;
+}
+
+.full-log .check {
+  margin-bottom: 8px;
 }
 
 .map {
@@ -595,23 +644,6 @@ a {
   fill: var(--red);
 }
 
-
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: 12px 0;
-}
-
-.controls button.on {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.controls .check {
-  margin: 0 0 0 auto;
-}
 
 .report-grid {
   display: grid;
@@ -682,67 +714,57 @@ a {
 }
 
 /* --- Draft ekranı (§8.27): turnuva yayını havası --- */
-.draft-head {
-  display: grid;
-  grid-template-columns: 1fr auto auto 1fr;
-  grid-template-areas: 'blue status clock red' 'bar bar bar bar';
-  align-items: center;
-  gap: 4px 16px;
-  padding: 12px 16px 0;
-  background: linear-gradient(90deg, rgba(74, 144, 226, 0.14), var(--panel) 30%, var(--panel) 70%, rgba(226, 86, 74, 0.14));
-  border: 1px solid var(--line);
-  border-radius: var(--radius) var(--radius) 0 0;
+/* Draft tabelası (§8.41): maç tabelasıyla (.hud, §8.38-8.39) aynı parçalar. Takım plakasında ad satırı ve altında o
+   takımın 5 ban'ı (ayrı ban şeridi yok: her takımın ban'ı kendi adının altında); orta parçada faz, süre, sıra ve
+   süre çubuğu. Plaka düzeni maçtakinden farklı (kill sütunu yok): tek sütun, iki satır. */
+.hud-team.draft-plate,
+.hud-team.draft-plate.red {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'id'
+    'bans';
+  gap: 10px;
 }
 
-.draft-team {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.draft-plate .ban-row {
+  grid-area: bans;
+}
+
+.draft-plate.red .ban-row {
+  justify-self: end;
+}
+
+/* Sırası olmayanın adı soluk, sıradakininki tam ve hafif parlar. */
+.draft-team-label {
   opacity: 0.55;
   transition: opacity 0.2s, text-shadow 0.2s;
 }
 
-.draft-team small {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--muted);
-}
-
-.draft-team.blue {
-  grid-area: blue;
-  color: var(--blue);
-}
-
-.draft-team.red {
-  grid-area: red;
-  color: var(--red);
-  text-align: right;
-}
-
-.draft-team.active {
+.draft-plate.active .draft-team-label {
   opacity: 1;
   text-shadow: 0 0 14px currentColor;
 }
 
-.draft-status {
-  grid-area: status;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.2;
+/* Orta parça: üstte rozetler + faz, ortada süre, altında sıra ve plakanın tabanı boyunca süre çubuğu.
+   İki sınıf: dosyada sonra gelen ortak .hud-center kuralını ezsin. */
+.hud-center.draft-center {
+  gap: 4px;
+  min-width: 260px;
+  padding-bottom: 10px;
 }
 
 .draft-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .draft-turn {
+  font-size: 0.9rem;
   font-weight: 700;
 }
 
@@ -755,12 +777,12 @@ a {
 }
 
 .draft-clock {
-  grid-area: clock;
   min-width: 2ch;
-  font-size: 2.2rem;
+  font-size: 2.4rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  text-align: center;
 }
 
 .draft-clock.urgent {
@@ -768,12 +790,15 @@ a {
   animation: urgent 1s ease-in-out infinite;
 }
 
+/* Süre çubuğu: maçtaki altın çubuğu gibi ince; sıradakinin renginde, kendi tarafından boşalır. */
 .draft-bar-track {
-  grid-area: bar;
   display: flex;
+  width: 100%;
   height: 5px;
-  margin: 8px -16px 0;
+  margin-top: 2px;
   background: var(--line);
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 .draft-bar-fill {
@@ -794,18 +819,6 @@ a {
 
 .draft-bar-fill.urgent {
   background: var(--error);
-}
-
-.ban-strip {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 14px;
-  padding: 10px 16px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .ban-row {
@@ -860,22 +873,24 @@ a {
   filter: grayscale(0.5);
 }
 
+/* Pick yuvası (§8.42): maçtaki kadro şeridiyle aynı dil. Nötr zemin, dış kenarda sönük 3 px çizgi, iç ucu
+   çapraz kesik (12 px), köşe yuvarlaması yok; splash ve rol ikonu içeride. Takım rengi kenarda değil: hangi
+   tarafın olduğu ekrandaki yerinden ve tabeladan belli. Sıradaki yuvanın kenarı şeftali nabız atar (aşağıda). */
 .pick-card {
   position: relative;
   height: 76px;
   margin-bottom: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--panel);
-}
-
-.pick-card.blue {
-  border-left: 4px solid var(--blue);
+  border-left: 3px solid var(--line);
+  background: linear-gradient(90deg, var(--panel-2), rgba(20, 23, 53, 0.55));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
 }
 
 .pick-card.red {
-  border-right: 4px solid var(--red);
+  border-left: 0;
+  border-right: 3px solid var(--line);
+  background: linear-gradient(270deg, var(--panel-2), rgba(20, 23, 53, 0.55));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%);
 }
 
 .pick-art {
@@ -919,8 +934,21 @@ a {
   animation: pick-in 0.5s ease-out;
 }
 
+/* Sıradaki yuva: dış kenar çizgisi şeftali ile sönük arasında nabız atar, zemin hafif aydınlanır. (Eski dış
+   parıltı gölgesi kesik kenarda kırpılıyordu; "göz buraya" = şeftali.) */
 .pick-card.active {
-  animation: glow 1.4s ease-in-out infinite;
+  animation: pick-turn 1.4s ease-in-out infinite;
+}
+
+@keyframes pick-turn {
+  0%,
+  100% {
+    border-color: var(--line);
+  }
+  50% {
+    border-color: var(--pop);
+    filter: brightness(1.18);
+  }
 }
 
 .pick-card.active .pick-name {
@@ -1032,6 +1060,40 @@ a {
   .draft-clock.urgent {
     animation: none !important;
   }
+
+  /* Nabız yok: sıradaki yuvanın kenarı sabit şeftali. */
+  .pick-card.active {
+    border-color: var(--pop);
+  }
+}
+
+/* Masaüstü: draft ekrana sığar (§8.37). Alt bölümün yüksekliği = görünen yükseklik − üstündekiler (--draft-chrome:
+   üst şerit 58 + sayfa boşluğu 24 + draft tabelası ~108 (ban'lar plakalarda, §8.41) + 14 + alt boşluk 24 ≈ 228;
+   pay ile 240). 5 pick kartı bu yüksekliği paylaşır (en fazla 96 px), havuz aynı yükseklikte ve kendi içinde kayar.
+   Örnek: 1080p'de %125 yakınlaştırmayla görünen yükseklik ~730 → alt bölüm 490, kart 90 px, sayfa kaymaz. */
+@media (min-width: 761px) {
+  .draft {
+    --draft-chrome: 240px;
+    --draft-h: clamp(340px, calc(100dvh - var(--draft-chrome)), 600px);
+  }
+
+  .draft-main .pick-card {
+    height: min(96px, calc((var(--draft-h) - 40px) / 5));
+  }
+
+  .draft-main .pool {
+    display: flex;
+    flex-direction: column;
+    height: var(--draft-h);
+    min-height: 0;
+  }
+
+  .draft-main .pool-grid {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    align-content: start;
+  }
 }
 
 /* Dar ekran: takımlar üstte yan yana, havuz altta. */
@@ -1047,16 +1109,42 @@ a {
     grid-row: 2;
   }
 
-  .draft-head {
-    grid-template-columns: 1fr auto 1fr;
-    grid-template-areas: 'blue clock red' 'status status status' 'bar bar bar';
+  /* Tabela: orta parça üstte tam genişlik ve düz, iki plaka altında yan yana (maç tabelasının telefon düzeni). */
+  .draft-hud {
+    --cut: 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'center center'
+      'blue red';
+    row-gap: var(--seam);
   }
 
-  .draft-status {
-    align-items: center;
+  .draft-hud .hud-team.blue {
+    grid-area: blue;
   }
 
-  .draft-team {
+  .draft-hud .hud-team.red {
+    grid-area: red;
+  }
+
+  .draft-hud .hud-center {
+    grid-area: center;
+    min-width: 0;
+    margin-inline: 0;
+    padding: 6px 12px;
+    clip-path: none;
+  }
+
+  .draft-hud .hud-team {
+    padding: 8px calc(var(--cut) + 6px) 8px 8px;
+  }
+
+  .draft-hud .hud-team.red {
+    padding: 8px 8px 8px calc(var(--cut) + 6px);
+  }
+
+  /* Ortak ad kuralı (tabela bölümünde) dosyada sonra: seçici bir kademe güçlü. */
+  .draft-hud .draft-team-label {
     font-size: 1rem;
   }
 
@@ -1065,16 +1153,11 @@ a {
   }
 
   /* Boş yuvanın boyu satır içi stilde (ChampionIcon): dar ekranda küçülür. */
-  .ban-strip {
-    padding: 8px;
-    gap: 8px;
-  }
-
   .ban-row {
     gap: 3px;
   }
 
-  .ban-strip .champ {
+  .draft-hud .ban-row .champ {
     width: 28px !important;
     height: 28px !important;
   }
@@ -1242,86 +1325,267 @@ a {
 }
 
 /* --- Maç oynatıcısı (§8.28): yayın skor bandı, kadrolar, log kartları --- */
-.score-band {
+/* Yayın tabelası (§8.38): tek kutu değil, birbirine geçen üç parça. Takım plakalarının iç kenarı --cut kadar
+   çapraz kesik; orta parça ters yamuk, kesikleri plakalarınkine paralel. Orta parça iki yana --cut − --seam kadar
+   taşar (negatif kenar boşluğu): paralel kesikler arasında her yükseklikte --seam kadar boşluk kalır.
+   Köşeler düz ve kesik: yumuşak kart değil, yayın grafiği. Gölge parçaların toplamına (drop-shadow). */
+.hud {
+  --cut: 22px;
+  --seam: 6px;
   display: grid;
-  grid-template-columns: 1fr auto auto auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  margin-bottom: 14px;
+  filter: drop-shadow(0 10px 22px rgba(3, 4, 20, 0.55));
+}
+
+/* Takım plakası: iki tarafta da aynı nötr zemin ve şeftali üst çizgi (çerçeve rengi, simetrik; kullanıcı
+   2026-11-24: zemine yayılan mavi/kırmızı garip duruyordu). Takım rengi sadece yazıda: ad, kill, seri noktaları. */
+.hud-team {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    'bteam bkills clock rkills rteam'
-    'bstats bar bar bar rstats';
+    'id kills'
+    'stats kills';
   align-items: center;
   gap: 6px 18px;
-  margin-bottom: 12px;
-  padding: 10px 16px;
-  background: linear-gradient(90deg, rgba(74, 144, 226, 0.14), var(--panel) 30%, var(--panel) 70%, rgba(226, 86, 74, 0.14));
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  min-width: 0;
+  padding: 12px calc(var(--cut) + 16px) 10px 18px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--cut)) 100%, 0 100%);
 }
 
-.score-team {
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.score-team small {
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--muted);
-}
-
-.score-team.blue {
-  grid-area: bteam;
-  color: var(--blue);
-}
-
-.score-team.red {
-  grid-area: rteam;
-  color: var(--red);
+.hud-team.red {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'kills id'
+    'kills stats';
+  padding: 12px 18px 10px calc(var(--cut) + 16px);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--cut) 100%);
   text-align: right;
 }
 
-.score-kills {
-  font-size: 2rem;
+.hud-team::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--pop-grad);
+}
+
+.hud-id {
+  grid-area: id;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hud-team.red .hud-id {
+  align-items: flex-end;
+}
+
+.hud-label {
+  color: var(--blue);
+}
+
+.hud-team.red .hud-label {
+  color: var(--red);
+}
+
+/* Takım adı satırı: ad + seri noktaları (draft bandı da aynı kuralları kullanır). */
+.hud-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hud-label,
+.draft-team-label {
+  min-width: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-team.red .hud-name {
+  flex-direction: row-reverse;
+}
+
+/* Bantta bağlantı sadece koparsa görünür (§8.39): adın altında küçük kırmızı "Bağlı değil · hükmen N sn". */
+.hud-id .presence,
+.draft-team .presence {
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* "Sen" etiketi: hangi takım olduğun, sade bir hap. */
+.you-tag {
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* Bağlantı: nokta (yeşil bağlı, kırmızı kopuk); koptuysa yanında "Bağlı değil · hükmen N sn" (§8.37). */
+.presence {
+  display: inline-flex;
+  align-items: center;
+}
+
+.presence .dot {
+  margin-right: 4px;
+}
+
+.presence.on .dot {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
+.presence.off {
+  color: var(--error);
+}
+
+.presence.off .dot {
+  background: var(--error);
+}
+
+/* Seri noktaları (bo3 → 2 nokta): kazanılan maç dolu, takım renginde parlar. */
+.pips {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+}
+
+.pips i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  opacity: 0.6;
+}
+
+.pips.blue i.on {
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+  opacity: 1;
+}
+
+.pips.red i.on {
+  background: var(--red);
+  border-color: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  opacity: 1;
+}
+
+/* BO ve Fearless rozetleri bandın ortasında küçük. */
+.series-chips {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.series-chips .chip {
+  padding: 0 7px;
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
+/* Yazı ölçeği (§8.39): tabelada dört boy. Kill 2,4 rem, saat 1,5 rem, takım adı 1,1 rem, geri kalan
+   (kule/canavar sayıları 0,9; altın farkı, bağlantı, "Sen" ve rozetler ~0,7-0,75) küçük. */
+.hud-score {
+  grid-area: kills;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--blue);
+}
+
+.hud-team.red .hud-score {
+  color: var(--red);
+}
+
+.hud-kills {
+  font-size: 2.4rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
-.score-kills.blue {
-  grid-area: bkills;
-  color: var(--blue);
+/* Altın miktarı (§8.40): renksiz para ikonu + sayı ("◎ 12,7k"); ikon yazının renginde ve boyunda. */
+.gold-amount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
 }
 
-.score-kills.red {
-  grid-area: rkills;
-  color: var(--red);
+.gold-amount .coin {
+  flex: none;
+  opacity: 0.85;
 }
 
-.score-clock {
-  grid-area: clock;
-  min-width: 5ch;
-  font-size: 1.3rem;
+.hud-gold.placeholder {
+  visibility: hidden;
+}
+
+/* Kill sayısının üstündeki küçük etiket: büyük sayının ne olduğu ilk bakışta belli olsun. */
+.hud-score-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  line-height: 1;
+}
+
+/* Altın farkı: önde olanın kill sayısının altında ("+◎ 3,4k"). */
+.hud-gold {
+  font-size: 0.75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-align: center;
+}
+
+/* Orta parça: en koyu zemin (plakalardan ayrışsın), saat; altında altın çubuğu ve seri rozetleri. */
+.hud-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 220px;
+  margin-inline: calc(var(--seam) - var(--cut));
+  padding: 9px calc(var(--cut) + 18px) 8px;
+  background: #0b0d22;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% 100%, 0 100%);
+}
+
+.hud-clock {
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: 0.02em;
 }
 
 .team-stats {
+  grid-area: stats;
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  font-size: 0.9rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-.team-stats.blue {
-  grid-area: bstats;
-}
-
 .team-stats.red {
-  grid-area: rstats;
   justify-content: flex-end;
 }
 
@@ -1331,15 +1595,13 @@ a {
   gap: 3px;
 }
 
-/* Altın çubuğu: ortadan önde olan tarafa doğru dolar (yarım çubuk = 10.000 altın). */
+/* Altın çubuğu: ince çizgi, ortadan önde olan tarafa doğru dolar (yarım çubuk = 10.000 altın). */
 .gold-bar {
-  grid-area: bar;
   position: relative;
-  height: 20px;
-  min-width: 240px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  width: 100%;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
   overflow: hidden;
 }
 
@@ -1352,23 +1614,14 @@ a {
 
 .gold-fill.blue {
   right: 50%;
-  background: linear-gradient(270deg, var(--blue), rgba(74, 144, 226, 0.4));
+  background: linear-gradient(270deg, var(--blue), rgba(74, 144, 226, 0.5));
 }
 
 .gold-fill.red {
   left: 50%;
-  background: linear-gradient(90deg, var(--red), rgba(226, 86, 74, 0.4));
+  background: linear-gradient(90deg, var(--red), rgba(226, 86, 74, 0.5));
 }
 
-.gold-label {
-  position: relative;
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 18px;
-  text-align: center;
-  text-shadow: 0 1px 2px #000;
-}
 
 .roster {
   display: flex;
@@ -1379,24 +1632,34 @@ a {
   list-style: none;
 }
 
+/* Kadro satırı (§8.38, §8.39): çerçeveli kart değil, yayın şeridi. Nötr zemin, dış kenarda sönük 3 px çizgi
+   (şeftali sadece tabelanın üst çizgisinde: her yerde olunca "göz buraya" anlamını kaybediyordu), iç ucu çapraz
+   kesik; takım rengi yazıda. 5 satır haritanın boyunu eşit paylaşır. Ölünce zemin söner. */
 .roster li {
+  flex: 1 1 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 6px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.roster.blue li {
-  border-left: 3px solid var(--blue);
+  gap: 10px;
+  min-height: 0;
+  padding: 6px 18px 6px 6px;
+  border-left: 3px solid var(--line);
+  background: linear-gradient(90deg, var(--panel-2), rgba(20, 23, 53, 0.55));
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  transition: background 0.3s, border-color 0.3s;
 }
 
 .roster.red li {
   flex-direction: row-reverse;
-  border-right: 3px solid var(--red);
+  padding: 6px 6px 6px 18px;
+  border-left: 0;
+  border-right: 3px solid var(--line);
+  background: linear-gradient(270deg, var(--panel-2), rgba(20, 23, 53, 0.55));
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%);
   text-align: right;
+}
+
+.roster li.dead {
+  background: rgba(20, 23, 53, 0.4);
 }
 
 .roster-portrait {
@@ -1451,15 +1714,26 @@ a {
   flex-direction: row-reverse;
 }
 
+/* K/D ve altın iki sabit sütun (§8.40): 5 satırın hepsinde K/D aynı genişlikte ("10/12" sığar, rakamlar eşit
+   genişlikte), altın hep aynı x'ten başlar. Kırmızı ayna: altın solda, K/D sağda, ikisi de sağa yaslı. */
 .roster-stats {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 4.5ch auto;
+  justify-content: start;
+  align-items: center;
+  column-gap: 8px;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
 }
 
 .roster.red .roster-stats {
-  flex-direction: row-reverse;
+  grid-template-columns: auto 4.5ch;
+  justify-content: end;
+  justify-items: end;
+}
+
+.roster.red .roster-kd {
+  order: 2;
 }
 
 .roster li.dead .roster-name {
@@ -1558,6 +1832,44 @@ a {
   min-width: 0;
 }
 
+/* Son olaylar şeridi (§8.39): haritanın altında 3 ince satır, en yenisi altta kayarak gelir; eskiler soluklaşır.
+   Yükseklik sabit (3 satır): olay geldikçe sayfa zıplamaz. Uzun metin tek satırda "…" ile kısalır. */
+.ticker .log {
+  justify-content: flex-end;
+  gap: 3px;
+  height: calc(3 * 26px + 2 * 3px);
+  max-height: none;
+  overflow: hidden;
+  font-size: 0.8rem;
+}
+
+.ticker .log-card {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  gap: 8px;
+}
+
+.ticker .log-card:nth-last-child(3) {
+  opacity: 0.45;
+}
+
+.ticker .log-card:nth-last-child(2) {
+  opacity: 0.75;
+}
+
+.ticker .log-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticker .log-portrait,
+.ticker .log-icon {
+  width: 18px;
+  height: 18px;
+}
+
 @keyframes log-in {
   from {
     opacity: 0;
@@ -1579,40 +1891,69 @@ a {
 @media (max-width: 980px) {
   .player-main {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'blue red'
+      'map map'
+      'ticker ticker';
   }
 
   .player-main .map-stage {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    justify-self: center;
+    width: min(100%, 680px);
+  }
+
+  /* Kadrolar haritanın yanında değil: satırlar kendi boyunda. */
+  .roster li {
+    flex: none;
   }
 }
 
 @media (max-width: 560px) {
-  /* İkonlar ve altın çubuğu yan yana sığmaz: çubuk kendi satırına iner. */
-  .score-band {
-    grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr);
+  /* Telefon: orta parça üstte tam genişlik, iki plaka altında yan yana; kesikler küçülür, orta parça düz. */
+  .hud {
+    --cut: 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      'bteam bkills clock rkills rteam'
-      'bstats bstats . rstats rstats'
-      'bar bar bar bar bar';
-    gap: 6px 8px;
-    padding: 8px;
+      'center center'
+      'blue red';
+    row-gap: var(--seam);
   }
 
-  .score-team small {
-    display: none;
+  .hud-team.blue {
+    grid-area: blue;
   }
 
-  .score-team {
+  .hud-team.red {
+    grid-area: red;
+  }
+
+  .hud-center {
+    grid-area: center;
+    min-width: 0;
+    margin-inline: 0;
+    padding: 6px 12px;
+    clip-path: none;
+  }
+
+  .hud-team {
+    gap: 4px 8px;
+    padding: 8px calc(var(--cut) + 6px) 8px 8px;
+  }
+
+  .hud-team.red {
+    padding: 8px 8px 8px calc(var(--cut) + 6px);
+  }
+
+  .hud-meta {
+    font-size: 0.68rem;
+  }
+
+  .hud-label {
     font-size: 0.8rem;
   }
 
-  .score-kills {
-    font-size: 1.4rem;
-  }
-
-  .gold-bar {
-    min-width: 0;
+  .hud-kills {
+    font-size: 1.5rem;
   }
 
   .team-stats {
@@ -2583,21 +2924,29 @@ button.big {
   font-size: 0.9rem;
 }
 
-/* Seri bandı: A | skor | B. */
+/* Seri bandı: takım adı | skor | takım adı. Kutu yok: zeminin üstünde durur, altında sadece ortadan solan ince
+   bir çizgi (yayın alt yazısı gibi). Takımın bu maçtaki rengi adın dış kenarındaki şeritte. */
 .series-band {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 16px;
+  gap: 24px;
   align-items: center;
-  padding: 16px 18px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line);
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.14), var(--panel) 35%, var(--panel) 65%, rgba(168, 85, 247, 0.14));
-  box-shadow: var(--shadow);
+  padding: 6px 4px 18px;
+}
+
+.series-band::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--line) 20%, var(--line) 80%, transparent);
 }
 
 .series-band.compact {
-  padding: 8px 12px;
+  padding: 0 4px 10px;
 }
 
 .series-center {
@@ -2648,47 +2997,54 @@ button.big {
   text-align: right;
 }
 
-.seat-avatar {
+/* Takım rengi şeridi: maviyse mavi, kırmızıysa kırmızı, hafif parıltıyla. Seri bitince ya da koltuk boşken nötr. */
+.seat-stripe {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--panel-2);
-  border: 2px solid var(--line);
-  font-weight: 700;
-  font-size: 1.1rem;
+  align-self: stretch;
+  width: 4px;
+  min-height: 34px;
+  border-radius: 4px;
+  background: var(--line);
 }
 
-.seat-card.blue .seat-avatar {
-  border-color: var(--blue);
-  box-shadow: 0 0 14px rgba(74, 144, 226, 0.35);
+.seat-card.blue .seat-stripe {
+  background: var(--blue);
+  box-shadow: 0 0 12px rgba(74, 144, 226, 0.6);
 }
 
-.seat-card.red .seat-avatar {
-  border-color: var(--red);
-  box-shadow: 0 0 14px rgba(226, 86, 74, 0.35);
+.seat-card.red .seat-stripe {
+  background: var(--red);
+  box-shadow: 0 0 12px rgba(226, 86, 74, 0.6);
 }
 
-.seat-card.empty .seat-avatar {
-  border-style: dashed;
-  border-color: var(--line);
-  color: var(--muted);
-  box-shadow: none;
-}
-
-.series-band.compact .seat-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  font-size: 0.95rem;
+.seat-card.empty .seat-stripe {
+  background: repeating-linear-gradient(180deg, var(--line) 0 4px, transparent 4px 8px);
 }
 
 .seat-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* Takım adı: bandın ana yazısı. Uzun ad tek satırda "…" ile kısalır. */
+.seat-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.series-band.compact .seat-name {
+  font-size: 1.05rem;
+}
+
+.seat-card.empty .seat-name {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 /* Durum satırı düz metin akışı: dar ekranda "Bağlı değil · hükmen 76 sn" sözcük sözcük sarılır, parçalanmaz. */
@@ -2928,7 +3284,7 @@ button.copied {
       'center center'
       'a b';
     gap: 12px;
-    padding: 12px;
+    padding: 4px 0 12px;
   }
 
   .series-band > .seat-card:first-child {
@@ -2941,10 +3297,6 @@ button.copied {
 
   .series-center {
     grid-area: center;
-  }
-
-  .seat-card .side-chip {
-    display: none;
   }
 
   .invite-link {
@@ -2971,6 +3323,29 @@ button.copied {
   .home-backdrop img {
     transition: none;
   }
+}
+
+/* Takım adı alanı (lobi açma ve katılma): etiket üstte, açıklama altta. */
+.team-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.team-name-field > span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.team-name-field input {
+  padding: 10px 12px;
+  font-size: 1rem;
+}
+
+.team-name-field small {
+  font-size: 0.75rem;
 }
 
 /* Koltuktaki hükmen sayacı satır içinde: draft saatinin büyük yazısını almaz. */

@@ -514,3 +514,95 @@ Doğrulama: Motor 194 test (yeni: gank pencereleri ve dağılımı, objektif son
 | Geliştirme rakibi | `scripts/rakip.mjs` | Plan fazında uyumlu planlardan biri, yoksa rastgele. |
 
 Doğrulama: Motor 217 (yeni: parmak izi, `GamePlanTests` 22), Domain 129 (yeni `DraftPlanTests` 6; dört test plan fazından geçecek şekilde), API 97 (hub testi plan fazı, gizlilik, `invalid_plan`, replay'de planlar; lobi saati testi swap → plan → maç), Gateway 51. Web 61 (+2 plan yardımcıları) + tsc + lint. Uçtan uca gateway üzerinden: iki geliştirme rakibi bo1'i ban → pick → swap → plan → maç akışıyla bitirdi (Hızlı bitir uyumlu / Erken baskı nötr), replay `GET /api/matches/{id}` iki takımın planını ve uyumunu taşıyor. Plan ekranı tarayıcıda gözle kontrol edilmedi (kullanıcı bakacak).
+
+### 8.36 Uygulama: takım adı, kutusuz seri bandı, ekrana sığan harita
+
+**İstek (kullanıcı, 2026-11-24):** Seri bandındaki dikdörtgen ve A/B kutuları "yapay zekâ işi" duruyordu; yerine oyuncunun koyduğu takım adı. BO3 rozeti Fearless gibi şeftali. Maç ekranında harita aşağı kaydırmadan tamamen görünmüyordu (1080p, tarayıcı yakınlaştırmalı).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Takım adı (Domain) | `TeamName`, `Lobby.NameOf`, `LobbyErrors.InvalidTeamName` | İsteğe bağlı değer nesnesi: NFC, baş/son boşluk kırpılır, aradaki boşluk teke iner; 2-16 karakter; sadece harf (tüm diller), rakam, boşluk, `. - _ '`. Görünmez ve yön değiştiren karakterler (Cc/Cf: U+202E, U+200B, satır sonu) ve emoji harf olmadığı için dışarıda; rakibin ekranına çizilen metin olduğu için katı (§8.6). Ad koltukla birlikte oturmada verilir, sonra değişmez. Vermeyen adsız. |
+| Takım adı (API) | `POST /api/lobbies` `{ name }`, `POST .../join` `{ name }`, `SeatDto.name` | Boş ya da sadece boşluk = ad yok. Kurala uymayan `400 invalid_team_name`, koltuk alınmaz. Katılmada gövde isteğe bağlı ve sadece JSON başlığıyla okunur: gövdesiz ya da form başlıklı eski istek (geliştirme rakibi) adsız oturur, 415 almaz; bozuk JSON `400 invalid_body`. |
+| Takım adı (istemci) | `TeamNameField`, `HomePage`, `LobbyPage`, `session.ts` `loadTeamName` | Lobi açma ve katılma formlarında; son kullanılan ad `localStorage`'da (sır değil, kolaylık). Bant ve maç skor bandı adı yazar; ad yoksa bantta "Sen"/"Rakip", skor bandında "Mavi"/"Kırmızı". Paylaşım sayfası (`/m/{id}`) ad bilmez (replay'e yazılmadı: herkese açık linkte kullanıcı metni 180 gün durmasın). |
+| Seri bandı | `LobbyScreen` `SeatCard`, `index.css` `.series-band` | Kutu, gölge ve A/B kareleri yok; altta ortadan solan ince çizgi. Takımın bu maçtaki rengi adın dış kenarındaki 4 px'lik parlayan şeritte (boş koltukta kesik). Alt satır sadece gerektiğinde: bağlantı noktası, ad varsa "Sen"/"Rakip", koptuysa "Bağlı değil · hükmen N sn". BO3/BO5/BO1 rozeti `chip accent`. |
+| Ekrana sığan harita | `MatchPlayer`, `GameViewer`, `index.css` `.player` | Harita kare: kenarı `clamp(320px, 100dvh − --player-chrome, 680px)`; `--player-chrome` (330 px) haritanın üstü ve altındaki her şeyin toplamı (üst şerit, seri bandı, skor bandı, zaman çizelgesi, düğmeler). Yer açmak için oynatıcının kartı ve "Maç N / Kapat" başlık satırı kalktı; "Kapat" düğme satırının sonunda. Kadrolar haritanın yanında dikeyde ortalı. 980 px altı eskisi gibi (kadrolar üstte, harita tam genişlik). |
+
+Doğrulama: Domain 1 yeni test dosyası (`TeamNameTests`: kabul edilen ve temizlenen adlar, NFC eşitliği, 10 reddedilen biçim, lobi adı koltukta tutar; toplam 146). API 4 yeni test (adlar koltuklarda / vermeyen adsız, kurala uymayan ad 400 ve koltuk alınmaz, gövdesiz-form katılma adsız oturur, bozuk JSON 400; toplam 104). Web tsc + lint + 61 test. Uçtan uca gateway üzerinden: "  Kuzey   Kurtları " → "Kuzey Kurtları", "T1" koltuk B'de; `<b>` 400; form başlıklı gövdesiz katılma 200.
+
+### 8.37 Uygulama: tek bant (draft ve maç) ve ekrana sığan draft
+
+**İstek (kullanıcı, 2026-11-24):** Draft ve maç ekranında üstte seri bandı, altında da ekranın kendi mavi-kırmızı bandı vardı: takım adları iki kez yazılıyor, büyük yer kaplıyordu. Ban/pick ekranı da masaüstünde aşağı kaydırmadan sığmıyordu.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Tek bant | `LobbyScreen` (`ownBand`, `seriesHeader`, `SeatPresence`), `live/seriesHeader.ts`, `components/SeriesHeader.tsx` | Ban/pick ve maç izlerken seri bandı çizilmez; bilgisi o ekranın bandına `SeriesHeader` olarak geçer: renk → koltuk eşlemesiyle takım adı, görünür seri skoru (izlenmemiş maç sayılmaz), bağlantı. Swap ve plan fazında kendi bandı olmadığı için seri bandı ince hâliyle kalır; maçlar arası lobide tam hâli. |
+| Draft bandı | `DraftBoard` `draft-head` | Her yanda takım adı + seri noktaları; altında bağlantı noktası ve "Sen" hapı. Ortada BO/Fearless rozetleri faz yazısının yanında, "Sıra <takım adı>: BAN" ve süre. Adsız takımda renk adı. |
+| Maç bandı | `ScoreBand` | Aynı düzen: takım adı + noktalar, altında bağlantı ve "Sen"; rozetler saatin altında. Altın çubuğu önde olanın adını yazar. Paylaşım sayfasında seri bilgisi yok, renk adları. |
+| Seri noktaları | `SeriesPips` | Espor yayınındaki gibi: seriyi almak için gereken kadar nokta (bo3 → 2, bo5 → 3), kazanılan kadarı takım renginde dolu. Bo1'de yok. Skor sayısı yerine nokta: bandı büyütmeden okunur. |
+| Bağlantı | `SeatPresence` (`.presence`) | Nokta (yeşil/kırmızı); koptuysa yanında kırmızı "Bağlı değil · hükmen N sn". Seri bandı ve tek bant aynı parçayı kullanır (hükmen kuralı tek yerde). |
+| Draft ekrana sığar | `index.css` `.draft` (≥ 761 px) | Alt bölüm yüksekliği `clamp(340px, 100dvh − 265px, 600px)`; 5 pick kartı bunu paylaşır (en fazla 96 px), havuz aynı yükseklikte, ızgara kendi içinde kayar. 760 px altı eskisi gibi (sayfa kayar). Maç ekranında seri bandı kalktığı için `--player-chrome` 330 → 290 (harita büyüdü). |
+
+Doğrulama: Web 1 yeni test dosyası (`seriesHeader.test.ts`: ad / renk adı / seri bilgisi yok; toplam 63) + tsc + oxlint (uyarısız) + production build. Sunucu değişmedi.
+
+### 8.38 Uygulama: yayın tabelası ve kadro şeritleri
+
+**İstek (kullanıcı, 2026-11-24):** Maç ekranının üst bandı tek büyük dikdörtgende "yapay zekâ işi" duruyordu; parçalara ayrılmış, daha özgün bir tasarım. Kadro kartları da değişsin.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Tabela | `ScoreBand` (`.hud`, `.hud-team`, `.hud-center`) | LoL yayınlarının üst tabelası gibi, birbirine geçen üç parça. İki takım plakasının iç kenarı `--cut` (22 px) kadar çapraz kesik, ortadaki saat parçası ters yamuk; kesikler paralel. Orta parça iki yana `--cut − --seam` kadar taşar (negatif kenar boşluğu), böylece aralarında her yükseklikte `--seam` (6 px) boşluk kalır. Köşeler düz: yumuşak kart değil, yayın grafiği. Gölge üç parçanın toplamına (`filter: drop-shadow`; `box-shadow` `clip-path`'le kesilirdi). |
+| Takım plakası | `.hud-team` | Takım rengi dış kenardan içeri solar, üst kenarda 3 px takım rengi çizgi. Ad + seri noktaları, altında bağlantı ve "Sen", altında kule/canavar sayıları; kill sayısı (2,6 rem) iç uçta, ortaya yakın. Kırmızı ayna. |
+| Orta parça | `.hud-center` | En koyu zemin (`#0b0d22`, plakalardan ayrışsın): saat (1,7 rem), altında 6 px'lik ince altın çubuğu, önde olanın adıyla fark, BO/Fearless rozetleri. |
+| Kadro | `.roster li` | Çerçeveli kart yerine yayın şeridi: dış kenarda 3 px takım rengi, içeri solan zemin, iç ucu tabeladaki gibi 10 px çapraz kesik. Ölünce zemin söner. |
+| Telefon (≤ 560 px) | `index.css` | Orta parça üstte tam genişlik ve düz, iki plaka altında yan yana, kesikler 12 px. |
+
+Doğrulama: tsc + oxlint + 63 web testi + production build. Görünüm headless Chrome'la kayıtlı bir maçın paylaşım sayfasında 1536×730 ve 420×900'de çekilip gözle kontrol edildi (kesikler paralel, boşluk eşit). Telefonda sayfanın sağa taşması bu değişiklikten önce de var (eski hâlin görüntüsüyle karşılaştırıldı); ayrı iş.
+
+**Düzeltme (kullanıcı, 2026-11-24):** Plaka ve şeritlerin zeminine yayılan mavi/kırmızı garip duruyordu. Tek tarafa (sadece "sen") şeftali de dengesiz olurdu. Karar: iki tarafta da aynı nötr zemin (`--panel-2` → `--panel`), çerçeve çizgisi iki tarafta da şeftali (plakada üst çizgi `--pop-grad`, kadroda dış kenar `--pop`). Takım rengi sadece yazıda kalıyor: ad, kill sayısı, seri noktaları, K/D. Ölen şampiyonun şeridinde çizgi söner. Reddedildi: tamamen şeftali (takımlar ayırt edilemezdi, haritadaki mavi/kırmızıyla bağ kopardı).
+
+### 8.39 Uygulama: oynatıcı sadeleşmesi (tasarım turu)
+
+**Kavram:** Maç izleyen biri üç şey merak eder: kim önde, az önce ne oldu, nerede oluyor. Her öğe bu sorulardan birine cevap mı diye elendi; sonra hiyerarşi, gruplama, hizalama ve renk = anlam kuralına bakıldı (kullanıcıyla birlikte, 2026-11-24).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Kontroller yok | `MatchPlayer` | Duraklat, hız (1x/2x/4x), "Sona atla" ve "Baştan izle" kalktı (kullanıcı). Maç hep 1x akar, bitince durur; zaman çizelgesinde geri sarılınca kendiliğinden yeniden akar (döngü `state.finished`'a bağlı). "Kapat" çizelgenin sağında; "Matematiği göster" sayfanın altındaki tam olay listesinin başında. Karne artık tam listenin üstünde. |
+| Son olaylar şeridi | `MatchPlayer` `ticker`, `.ticker` | "Az önce ne oldu?" ekranda yoktu (log aşağıdaydı). Haritanın altında, harita genişliğinde 3 satır: en yenisi altta kayarak gelir, eskiler soluklaşır, uzun metin "…" ile kısalır, yükseklik sabit. Haritanın üstüne konmadı: alt kenarda bot koridoru ve üs var, savaşı örterdi. `contain: inline-size`: uzun metin harita sütununu genişletmez. |
+| Izgara | `.player-main` | Kadrolar dikeyde ortalı ve havadaydı. Artık haritanın tam boyunda: 5 satır yüksekliği eşit paylaşır, üst ve alt kenarlar haritayla hizalı. Alanlar `'blue map red' / '. ticker .'`; 980 px altı kadrolar üstte yan yana. `--player-chrome` 290 → 320 (şerit eklendi, düğme satırı kalktı). |
+| Renk = anlam | `.roster li` | 12 şeftali çizgi vardı; şeftali "göz buraya" anlamını yitirmişti. Şeftali sadece tabelanın üst çizgisinde; kadro kenarı sönük (`--line`). |
+| Tabela sadeleşti | `ScoreBand`, `SeatPresence quiet` | Bağlantı noktası sadece koparsa görünür (bağlıyken yeşil nokta bilgi taşımıyordu); "Sen" adın yanında, ayrı satır yok. Altın farkı önde olan takımın kill sayısının altında ("+3,4k"); ortada saat, çubuk, rozetler. Draft bandında da aynı ("Sen" adın yanında, bağlantı sadece koparsa). |
+| Yazı ölçeği | `index.css` `.hud-*` | 6 boy → 4: kill 2,4 rem, saat 1,5, takım adı 1,1, geri kalan küçük (0,9 sayılar, ~0,75 yardımcı). |
+
+Doğrulama: tsc + oxlint + 63 web testi + production build. Headless Chrome'la 1536×730 ve 980×900'de çekilip bakıldı (kadrolar harita boyunda ve hizalı, tabela sade, orta genişlikte kadrolar üstte). Headless'ta animasyon akmadığı için olay şeridinin dolu hâli görülmedi (saat 00:00); kullanıcının gözünde.
+
+### 8.40 Uygulama: altın ikonu, kill etiketi, kadro sütunları
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Altın ikonu | `components/CoinIcon.tsx`, `.gold-amount` | Kendi çizdiğimiz halkalı daire beğenilmedi (haritadaki inhibitöre de benziyordu). Yerine Lucide "coins" (iki üst üste madeni para; lucide-static 1.79.0, ISC lisansı, kaynak ve telif dosyanın başında). Satır içi SVG, renk ve boy yanındaki yazıdan (`currentColor`, 1.1em); renksiz bilerek (kadroda 10 kez tekrar eder). Kadroda `◎ 12,7k`, tabelada `+◎ 3,4k`; üstüne gelince tam miktar. |
+| Kill etiketi | `ScoreBand` `.hud-score-label` | Büyük sayının üstünde küçük "Kill". Kullanıcı "K/D" önerdi; takım sayısı sadece kill olduğu için (ölüm = rakibin kill'i) "Kill" yazıldı. |
+| Kill hizası | `.hud-gold.placeholder` | Altın farkı sadece öndekinde görünür; geride olan tarafta satır görünmez ama yer kaplar, iki kill sayısı aynı yükseklikte kalır. |
+| Kadro sütunları | `.roster-stats` | K/D ve altın iki sabit sütun: K/D 4,5ch ("10/12" sığar, rakamlar eşit genişlikte), altın 5 satırda da aynı x'ten başlar. Kırmızı ayna: altın solda, K/D sağda, sağa yaslı. |
+
+Doğrulama: tsc + oxlint + 63 web testi + build; headless Chrome 2× çözünürlükle bakıldı (sütunlar ve iki kill sayısı hizalı).
+
+### 8.41 Uygulama: draft tabelası (maçla aynı dil)
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Parçalar | `DraftBoard` (`.hud.draft-hud`, `.draft-plate`, `.draft-center`) | Eski dikdörtgen bant + altındaki ayrı ban kutusu yerine maç tabelasının parçaları: iki çapraz kesik takım plakası (nötr zemin, şeftali üst çizgi) ve ortada ters yamuk koyu saat parçası. `.hud` kuralları ortak; draft plakası tek sütun iki satır (kill sütunu yok). |
+| Ban'lar plakada | `BanRow` (`BanStrip` kalktı) | Her takımın 5 ban'ı kendi adının altında (gruplama: takımın ne yaptığı takımın yanında). Ayrı ban kutusu kalktığı için bant ~30 px kısaldı: `--draft-chrome` 265 → 240, pick kartları ve havuz büyüdü. Sıradaki yuva parlar, ön izleme orada; kırmızı ayna. |
+| Orta parça | `.draft-center` | Üstte BO/Fearless + faz, ortada büyük süre (2,4 rem, son 5 sn kırmızı nabız), altında sıradakinin renginde ince süre çubuğu ve "Sıra sende: BAN". |
+| Sıra | `.draft-plate.active` | Sırası olmayan takımın adı soluk, sıradakininki tam ve hafif parlar (önceki davranış). |
+| Telefon (≤ 760 px) | `index.css` | Orta parça üstte tam genişlik ve düz, iki plaka altında yan yana; ban yuvaları 28 px. |
+
+Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ve CSS'le sahte durumu çizen geçici bir önizleme sayfasında (sonra silindi) 1536×730 ve 420×800'de bakıldı. Telefondaki sağa taşma bu değişiklikten önce de var (havuzun filtre satırı; son commit'in hâliyle karşılaştırıldı).
+
+### 8.42 Uygulama: pick yuvaları şerit
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Şerit | `index.css` `.pick-card` | Maçtaki kadro şeridiyle (§8.38-8.39) aynı dil: nötr zemin, dış kenarda sönük 3 px çizgi, iç ucu 12 px çapraz kesik, köşe yuvarlaması yok. Eski mavi/kırmızı 4 px kenar ve çerçeve kalktı; takım ekrandaki yerinden, tabeladan ve adın renginden belli. Splash, maske ve rol ikonu aynı. |
+| Sıradaki yuva | `.pick-card.active` (`pick-turn`) | Eski dış parıltı (`box-shadow`) kesik kenarda kırpılıyordu. Yerine dış kenar çizgisi şeftali ile sönük arasında nabız atar, zemin hafif aydınlanır ("göz buraya" = şeftali). Hareket azaltma açıksa kenar sabit şeftali. |
+
+Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ile sahte pick durumunu (dolu yuvalar, sıradaki yuva, rakibin ön izlemesi) çizen geçici önizleme sayfasında 1536×730'da bakıldı; sayfa silindi.

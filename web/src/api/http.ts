@@ -42,15 +42,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  createLobby: (format: Format, fearless: boolean) =>
+  // Takım adı isteğe bağlı: boşsa sunucu adsız oturtur; kurala uymazsa invalid_team_name.
+  createLobby: (format: Format, fearless: boolean, name: string) =>
     request<Ticket>('/api/lobbies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format, fearless }),
+      body: JSON.stringify({ format, fearless, name }),
     }),
 
-  joinLobby: (code: string) =>
-    request<Ticket>(`/api/lobbies/${encodeURIComponent(code)}/join`, { method: 'POST' }),
+  joinLobby: (code: string, name: string) =>
+    request<Ticket>(`/api/lobbies/${encodeURIComponent(code)}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }),
 
   // Token yok, koltuk anahtarı var: aynı koltuğu geri al (§8.24). Anahtar gövdede (URL'de olsa loglara düşerdi).
   rejoinLobby: (code: string, rejoinToken: string) =>

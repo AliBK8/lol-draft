@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Champion, DraftPreview, DraftState, Role, Side } from '../api/types'
 import { ROLES } from '../api/types'
 import { ChampionIcon } from '../components/ChampionIcon'
+import { SeriesChips, SeriesPips } from '../components/SeriesHeader'
+import { teamLabel, type SeriesHeader } from '../live/seriesHeader'
 import { remainingMs } from '../live/clock'
 import { banSlots, DRAFT_ORDER, isMyTurn, latestBan, lineup, opponentChoice, ROLE_TR, unavailable } from '../live/draft'
 import type { ActionResult, HubMethod } from '../live/useLobbyConnection'
@@ -25,12 +27,14 @@ interface Props {
   opponentPreview: DraftPreview | null
   /** Seçimimi rakibe ön izleme olarak gönderir. */
   sendPreview: (champion: string | null) => void
+  /** Seri bilgisi (adlar, seri skoru, bağlantı): ayrı seri bandı yerine bu ekranın bandında (§8.37). */
+  header?: SeriesHeader
 }
 
 // Ban/pick (DESIGN.md §2, görünüm §8.27): turnuva yayını gibi. Üstte süre ve ban şeridi, iki yanda takımların pick
 // kartları, ortada havuz. Sıra sendeyse havuzdan seç (kendi yuvanda ön izleme, rakip de görür §8.32), onayla.
 // Kurallar sunucuda; burada tıklanamayanlar sadece görüntü. Maç başına bir kez takılır (LobbyScreen'de anahtar = maç numarası).
-export function DraftBoard({ draft, me, champions, offsetMs, act, opponentPreview, sendPreview }: Props) {
+export function DraftBoard({ draft, me, champions, offsetMs, act, opponentPreview, sendPreview, header }: Props) {
   // Ekran açıldığında görülen hamleler: ban animasyonu sadece bundan sonrakiler için (rejoin'de eskiler oynamaz).
   const [seenAtOpen] = useState(() => draft.actions.length)
   const flash = latestBan(draft.actions, seenAtOpen)
@@ -88,27 +92,46 @@ export function DraftBoard({ draft, me, champions, offsetMs, act, opponentPrevie
   }
 
   const next = DRAFT_ORDER[draft.actions.length]
+  // Takım plakası: sırası olanınki parlar (ad tam opak). Ban önizlemesi sadece sırası olanın yuvasında.
+  const plate = (side: Side) => (
+    <div className={`hud-team draft-plate ${side}${draft.turn === side ? ' active' : ''}`}>
+      <span className="hud-id draft-team">
+        <span className="hud-name">
+          <span className="hud-label draft-team-label">{teamLabel(side, header)}</span>
+          <SeriesPips side={side} header={header} />
+          {me === side && <span className="you-tag">Sen</span>}
+        </span>
+        {/* Bağlantı sadece koparsa (quiet): "Bağlı değil · hükmen N sn". */}
+        {header?.teams[side].presence}
+      </span>
+      <BanRow
+        side={side}
+        draft={draft}
+        champions={champions}
+        preview={draft.step === 'ban' && draft.turn === side ? shown : null}
+      />
+    </div>
+  )
   return (
     <div className="draft">
-      <div className={`draft-head ${draft.turn ?? ''}`}>
-        <span className={`draft-team blue${draft.turn === 'blue' ? ' active' : ''}`}>
-          {SIDE_TR.blue}
-          {me === 'blue' && <small> (sen)</small>}
-        </span>
-        <div className="draft-status">
-          <span className="draft-phase">{PHASE_TR[draft.phase] ?? draft.phase}</span>
+      {/* Yayın tabelası (§8.37, §8.41): maç ekranıyla aynı dil. İki takım plakası (ad + seri noktaları + "Sen",
+          koparsa bağlantı, altında o takımın 5 ban'ı) ve ortada ters yamuk saat parçası (rozetler + faz, süre, sıra,
+          süre çubuğu). Ayrı ban şeridi yok: ban'lar takımının plakasında. */}
+      <div className="hud draft-hud">
+        {plate('blue')}
+        <div className="hud-center draft-center">
+          <span className="draft-phase">
+            <SeriesChips header={header} />
+            {/* "Ban"/"Pick" İngilizce sözcük: sayfa Türkçe (lang=tr) olduğu için büyük harfe çevirme "PİCK" yapıyordu. */}
+            <span lang="en">{PHASE_TR[draft.phase] ?? draft.phase}</span>
+          </span>
+          <StepTimer deadline={draft.deadline} offsetMs={offsetMs} side={draft.turn} />
           <span className={`draft-turn ${draft.turn ?? ''}`}>
-            {myTurn ? 'Sıra sende' : `Sıra ${draft.turn ? SIDE_TR[draft.turn] : ''}`}: {next?.kind === 'ban' ? 'BAN' : 'PICK'}
+            {myTurn ? 'Sıra sende' : `Sıra ${draft.turn ? teamLabel(draft.turn, header) : ''}`}: {next?.kind === 'ban' ? 'BAN' : 'PICK'}
           </span>
         </div>
-        <span className={`draft-team red${draft.turn === 'red' ? ' active' : ''}`}>
-          {me === 'red' && <small>(sen) </small>}
-          {SIDE_TR.red}
-        </span>
-        <StepTimer deadline={draft.deadline} offsetMs={offsetMs} side={draft.turn} />
+        {plate('red')}
       </div>
-
-      <BanStrip draft={draft} champions={champions} preview={draft.step === 'ban' ? shown : null} />
 
       <div className="draft-main">
         <TeamColumn side="blue" draft={draft} champions={champions} preview={draft.turn === 'blue' ? shown : null} />
@@ -235,19 +258,9 @@ function StepTimer({ deadline, offsetMs, side }: { deadline: string | null; offs
 }
 
 /**
- * Ban şeridi (bandın altı): mavinin 5 ban'ı solda, mavinin üstünde; kırmızınınki sağda, ayna gibi (ilk ban en sağda).
- * Sıradaki ban yuvası parlar; sıradakinin ön izlemesi (benimki ya da rakibinki) orada yarı saydam görünür.
+ * Takımın 5 ban'ı (§8.41: kendi plakasında, adının altında). Kırmızı ayna gibi (ilk ban en sağda). Sıradaki ban
+ * yuvası parlar; sıradakinin ön izlemesi (benimki ya da rakibinki) orada yarı saydam görünür.
  */
-function BanStrip(props: { draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
-  return (
-    <div className="ban-strip">
-      {(['blue', 'red'] as const).map((side) => (
-        <BanRow key={side} side={side} {...props} preview={props.draft.turn === side ? props.preview : null} />
-      ))}
-    </div>
-  )
-}
-
 function BanRow(props: { side: Side; draft: DraftState; champions: Map<string, Champion>; preview: string | null }) {
   const { side, draft, champions, preview } = props
   const slots = banSlots(draft, side)

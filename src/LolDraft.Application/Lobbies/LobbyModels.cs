@@ -56,7 +56,7 @@ public sealed record LobbyView(
             [.. lobby.ReadySeats.Order()],
             [.. Enum.GetValues<TeamSlot>()
                 .Where(seat => lobby.PlayerAt(seat) is not null)
-                .Select(seat => new SeatView(seat, lobby.IsConnected(seat), lobby.AbsentSince(seat)))],
+                .Select(seat => new SeatView(seat, lobby.IsConnected(seat), lobby.AbsentSince(seat), lobby.NameOf(seat)))],
             series.CurrentDraft is { } draft ? DraftView.Of(draft, series.Locks, plans) : null,
             [.. series.Games],
             now);
@@ -107,9 +107,9 @@ public sealed record DraftView(
 
 /// <summary>
 /// Oturulmuş bir koltuk: oyuncu bağlı mı, değilse ne zamandan beri yok
-/// (arayüz hükmen sayacını gösterir: yok_olduğu_an + 2 dk − serverNow).
+/// (arayüz hükmen sayacını gösterir: yok_olduğu_an + 2 dk − serverNow), takım adı (verilmediyse null).
 /// </summary>
-public sealed record SeatView(TeamSlot Seat, bool Connected, Instant? AbsentSince);
+public sealed record SeatView(TeamSlot Seat, bool Connected, Instant? AbsentSince, TeamName? Name);
 
 /// <summary>Bir hamlenin sonucu: yeni durum ve hamle draft'ı bitirdiyse oynanan maç (yayınlanır: MatchReady).</summary>
 public sealed record LobbyUpdate(LobbyView View, Matches.MatchRecord? Match);

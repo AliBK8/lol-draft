@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using LolDraft.Api.Middleware;
 using LolDraft.Application.Lobbies;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -180,6 +181,60 @@ public sealed class LobbyEndpointsTests : IDisposable
 
         Assert.Single(responses, r => r.StatusCode == HttpStatusCode.OK);
         Assert.Equal(9, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+    }
+
+    // --- Takım adı ---
+
+    [Fact]
+    public async Task Takim_adlari_koltuklarda_gorunur_vermeyen_adsiz_kalir()
+    {
+        var host = await Read<Ticket>(await _client.PostAsJsonAsync("/api/lobbies", new { format = "bo3", fearless = false, name = "  Kuzey   Kurtları " }));
+        var guest = await Read<Ticket>(await _client.PostAsJsonAsync($"/api/lobbies/{host.Code}/join", new { name = "" }));
+
+        var seats = (await Read<JsonElement>(await SendGet(host.Code, guest.Token))).GetProperty("lobby").GetProperty("seats");
+
+        Assert.Equal("Kuzey Kurtları", seats[0].GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Null, seats[1].GetProperty("name").ValueKind);
+    }
+
+    // Eski istemci ve geliştirme rakibi gövdesiz katılır; JSON olmayan başlık da (ör. form) adsız katılma sayılır, 415 değil.
+    [Fact]
+    public async Task Govdesiz_ya_da_json_olmayan_katilma_adsiz_oturur()
+    {
+        var host = await Create();
+
+        var response = await _client.PostAsync($"/api/lobbies/{host.Code}/join", new FormUrlEncodedContent([]));
+
+        Assert.Equal("B", (await Read<Ticket>(response)).Seat);
+    }
+
+    [Fact]
+    public async Task Bozuk_json_govdeyle_katilma_400()
+    {
+        var host = await Create();
+
+        var response = await _client.PostAsync(
+            $"/api/lobbies/{host.Code}/join", new StringContent("{bozuk", Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_body", await ErrorCode(response));
+    }
+
+    [Theory]
+    [InlineData("a")]                      // çok kısa
+    [InlineData("Çok uzun bir takım adı")] // 16'dan uzun
+    [InlineData("<script>")]               // izin verilmeyen karakter
+    [InlineData("Ters‮yazı")]        // yön değiştiren görünmez karakter
+    public async Task Kurala_uymayan_takim_adi_400(string name)
+    {
+        var create = await _client.PostAsJsonAsync("/api/lobbies", new { format = "bo1", fearless = false, name });
+        var host = await Create();
+        var join = await _client.PostAsJsonAsync($"/api/lobbies/{host.Code}/join", new { name });
+
+        Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
+        Assert.Equal("invalid_team_name", await ErrorCode(create));
+        Assert.Equal(HttpStatusCode.BadRequest, join.StatusCode);
+        Assert.False((await GetLobby(host.Code, host.Token)).Lobby.IsFull); // reddedilen katılma koltuk almadı
     }
 
     // --- Lobi durumu ve yetki ---

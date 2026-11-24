@@ -74,6 +74,8 @@ export interface SeatState {
   connected: boolean
   /** Bağlı değilse ne zamandan beri (hükmen = absentSince + 2 dk). */
   absentSince: string | null
+  /** Oyuncunun girerken verdiği takım adı (sunucuda doğrulanmış); vermediyse null. */
+  name: string | null
 }
 
 export interface Game {
