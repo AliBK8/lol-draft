@@ -157,6 +157,16 @@ internal sealed partial class MatchRun
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
         var blue = AliveAt(TeamSide.Blue, t).Except(absent ?? []).ToList();
         var red = AliveAt(TeamSide.Red, t).Except(absent ?? []).ToList();
+
+        // Bir tarafta savaşacak kimse yoksa (hepsi ölü ya da split'te) kurallar hesaplanmaz, diğer taraf tavanla
+        // kazanır (%90, ihtimaller %10-%90). Eskiden kurallar boş takımın ortalamasını almaya çalışıp çöküyordu
+        // (savunanın beşi de ölüyken kuşatma).
+        if (blue.Count == 0 || red.Count == 0)
+        {
+            var blueWins = blue.Count == red.Count ? 0.5 : red.Count == 0 ? Probability.Max : Probability.Min;
+            return side == TeamSide.Blue ? blueWins : 1 - blueWins;
+        }
+
         var rules = TeamRules.Effects(kind, blue, red, minute, c => EffectivePower(c, minute, t));
         // Kurallar net toplamda tavanlı (TeamRules.CappedTotal): uç draft'ların cezaları sonsuz birikmesin.
         var ruleSum = rules.Sum(e => e.Signed);

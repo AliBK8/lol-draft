@@ -94,6 +94,12 @@ internal sealed record MatchDto(
             type = "objective", t = o.T, text = o.Text, objective = EngineNames.Objective(o.Objective),
             side = EngineNames.Side(o.Side), probability = o.Probability,
         },
+        InvadeEvent i => new
+        {
+            type = "invade", t = i.T, text = i.Text, side = EngineNames.Side(i.Side), camp = EngineNames.Camp(i.Camp),
+            invaders = i.InvaderIds, defenders = i.DefenderIds, stolen = i.Stolen, probability = i.Probability,
+            lead = i.Lead, tail = i.Tail,
+        },
         SiegeEvent s => new { type = "siege", t = s.T, text = s.Text, side = EngineNames.Side(s.Side), lead = s.Lead, tail = s.Tail },
         SplitEvent s => new
         {
@@ -170,6 +176,14 @@ internal static class EngineNames
         Engine.Events.Objective.Elder => "elder",
         Engine.Events.Objective.FinalFight => "finalFight",
         _ => throw new ArgumentOutOfRangeException(nameof(objective), objective, null),
+    };
+
+    public static string Camp(JungleCamp camp) => camp switch
+    {
+        JungleCamp.Raptors => "raptors",
+        JungleCamp.Wolves => "wolves",
+        JungleCamp.Krugs => "krugs",
+        _ => throw new ArgumentOutOfRangeException(nameof(camp), camp, null),
     };
 
     public static string EndKind(MatchEndKind kind) => kind == MatchEndKind.Siege ? "siege" : "finalFight";

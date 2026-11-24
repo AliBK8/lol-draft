@@ -1,9 +1,9 @@
 import type { Champion } from '../api/types'
 import { clock } from './timeline'
-import type { MatchEvent } from './types'
+import { winnerSide, type MatchEvent } from './types'
 
 /** Takım rengiyle vurgulanan büyük olaylar. */
-const BIG = new Set(['objective', 'nexus', 'tower', 'throw', 'skirmish', 'dragonSoul'])
+const BIG = new Set(['objective', 'nexus', 'tower', 'throw', 'skirmish', 'dragonSoul', 'invade'])
 
 const OBJECTIVE_ICON = { dragon: 'dragon', elder: 'dragon_elder', herald: 'riftherald', baron: 'baron' } as const
 
@@ -33,6 +33,9 @@ function EventIcon({ e, champions }: { e: MatchEvent; champions: Map<string, Cha
       return icon('nexus', 'nexus')
     case 'skirmish':
       return <span className="log-glyph">⚔</span>
+    case 'invade':
+      // İstilacı ormancının portresi.
+      return portrait(e.invaders[0])
     case 'throw':
       return <span className="log-glyph">!</span>
     default:
@@ -54,7 +57,7 @@ export function EventLog({ log, order, champions, showMath }: Props) {
   return (
     <ol className="log">
       {log.map((e) => {
-        const side = 'side' in e ? e.side : ''
+        const side = winnerSide(e) ?? ''
         return (
           <li key={order.get(e)} className={`log-card ${side}${BIG.has(e.type) ? ' big' : ''}`}>
             <span className="log-time">{clock(e.t)}</span>

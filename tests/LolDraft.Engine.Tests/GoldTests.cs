@@ -1,4 +1,4 @@
-using LolDraft.Engine.Events;
+﻿using LolDraft.Engine.Events;
 using LolDraft.Engine.Randomness;
 using LolDraft.Engine.Simulation;
 
@@ -137,10 +137,13 @@ public sealed class GoldTests
         }
     }
 
-    // Ezici draft'ta Mavi koridorcular her maçta daha çok CS keser; support hiç kesmez.
+    // Ezici draft'ta Mavi koridorcular her maçta daha çok CS keser; support hiç kesmez. Takım altınında da neredeyse
+    // her maçta önde; ama her maçta değil: geride olanın shutdown'larla geri dönüşü (DESIGN.md §1) ~%0,6 maçta 14. dk'da
+    // farkı çevirir (seed 92: 8. ve 10. dk'da iki 700'lük shutdown + Herald savaşı).
     [Fact]
     public void Ezilen_koridorcu_daha_az_cs_ve_farm_altini_alir()
     {
+        var goldAhead = 0;
         for (var seed = 0u; seed < MatchCount; seed++)
         {
             var input = TestTeams.Stomp(seed);
@@ -152,8 +155,11 @@ public sealed class GoldTests
             foreach (var i in (int[])[0, 1, 2, 3])
                 Assert.True(blue[i].Cs > red[i].Cs, $"seed {seed}, rol {i}: {blue[i].Cs} ≤ {red[i].Cs}");
             Assert.Equal((0, 0), (blue[4].Cs, red[4].Cs));
-            Assert.True(frame.TeamGold(TeamSide.Blue) > frame.TeamGold(TeamSide.Red));
+            if (frame.TeamGold(TeamSide.Blue) > frame.TeamGold(TeamSide.Red))
+                goldAhead++;
         }
+
+        Assert.True(goldAhead > MatchCount * 0.98, $"{goldAhead}/{MatchCount}");
     }
 
     // Defter olaylarla tutarlı: her kaynak, olay listesindeki karşılığının altını kadar.

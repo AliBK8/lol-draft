@@ -95,7 +95,8 @@ describe('konumlar', () => {
 
     for (const [id, c] of r) {
       const p = placement(replay.events, state, id, c.side, c.role, c.slot)
-      if (!p.dead) expect(Math.hypot(p.point[0] - pit[0], p.point[1] - pit[1])).toBeLessThan(60)
+      // Diziliş iki sıra: arka sıra ~56 birim geride, dar çukurda nehre taşar.
+      if (!p.dead) expect(Math.hypot(p.point[0] - pit[0], p.point[1] - pit[1])).toBeLessThan(90)
     }
   })
 

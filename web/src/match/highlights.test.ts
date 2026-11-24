@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import fixture from './__fixtures__/match.json'
 import { announcementAt, timelineMarkers } from './highlights'
 import { endTime } from './timeline'
-import type { Replay } from './types'
+import type { MatchEvent, Replay } from './types'
 
 // Gerçek bir maç (match.test.ts ile aynı belge).
 const replay = fixture as unknown as Replay
@@ -30,6 +30,17 @@ describe('duyuru bandı', () => {
     expect(a.title).toBe('EJDER')
     expect(a.side).toBe(dragon.side)
     expect(a.icon).toBe('dragon')
+  })
+
+  it('istila: çalınırsa istila edenin, püskürtülürse savunanın renginde', () => {
+    const invade = (stolen: boolean): MatchEvent => ({
+      type: 'invade', t: 250, text: 'İstila', side: 'blue', camp: 'krugs', invaders: ['a'], defenders: stolen ? [] : ['b'],
+      stolen, probability: stolen ? null : 0.4, lead: 16, tail: 4,
+    })
+    const stolen = announcementAt([invade(true)], 251, 40)!
+    expect([stolen.title, stolen.side]).toEqual(['ORMAN İSTİLASI', 'blue'])
+    const repelled = announcementAt([invade(false)], 251, 40)!
+    expect([repelled.title, repelled.side]).toEqual(['İSTİLA PÜSKÜRTÜLDÜ', 'red'])
   })
 
   it('maç sonunda nexus', () => {

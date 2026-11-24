@@ -5,6 +5,8 @@ import type { Role, Seat, Side } from '../api/types'
 export type Lane = 'top' | 'mid' | 'bot'
 export type River = 'top' | 'bottom'
 export type ObjectiveKind = 'dragon' | 'herald' | 'baron' | 'elder' | 'finalFight'
+/** İstilada çalınabilen kamplar (motorda JungleCamp). */
+export type InvadeCamp = 'raptors' | 'wolves' | 'krugs'
 
 interface Base {
   /** Oyun saniyesi. */
@@ -20,6 +22,21 @@ export type MatchEvent =
   | (Base & { type: 'move'; participants: string[]; lane: Lane | null; river: River | null; lead: number; tail: number })
   | (Base & { type: 'skirmish'; side: Side; probability: number; river: River; blueCount: number; redCount: number })
   | (Base & { type: 'objective'; objective: ObjectiveKind; side: Side; probability: number })
+  | (Base & {
+      type: 'invade'
+      /** İstila eden takım. */
+      side: Side
+      camp: InvadeCamp
+      invaders: string[]
+      /** Cevap verenler; boşsa kimse gelmedi. */
+      defenders: string[]
+      /** İstilacılar kampı aldı mı (cevapsız ya da çatışmayı kazandı). */
+      stolen: boolean
+      /** Çatışma olduysa istilacıların kazanma ihtimali. */
+      probability: number | null
+      lead: number
+      tail: number
+    })
   | (Base & { type: 'siege'; side: Side; lead: number; tail: number })
   | (Base & { type: 'split'; side: Side; lane: Lane; splitter: string; answerer: string | null })
   | (Base & { type: 'dragonSoul'; side: Side })
@@ -89,4 +106,14 @@ export interface Replay {
   events: MatchEvent[]
   goldFrames: GoldFrame[]
   report: { rules: RuleLine[]; carries: CarryLine[]; blue: TeamGold; red: TeamGold; offRoles: OffRoleLine[] }
+}
+
+/**
+ * Olayın rengi (log kartı, bant, harita işareti): olayı kazanan taraf. Çoğu olayda `side`; püskürtülen istilada
+ * savunan (`side` istila eden).
+ */
+export function winnerSide(e: MatchEvent): Side | null {
+  if (!('side' in e)) return null
+  if (e.type === 'invade' && !e.stolen) return e.side === 'blue' ? 'red' : 'blue'
+  return e.side
 }

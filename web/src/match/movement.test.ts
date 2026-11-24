@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import fixture from './__fixtures__/match.json'
 import { BASE, CAMPS, PIT, type Point } from './geometry'
 import { buildTracks, MAX_BOOST, poseAt, WALK_SPEED } from './movement'
+import { placement } from './positions'
 import { route, walkable } from './nav'
 import { endTime, roster, stateAt } from './timeline'
 import type { Replay } from './types'
@@ -58,16 +59,47 @@ describe('hareket', () => {
     }
   })
 
-  it('objektif anında yaşayanlar çukurda (zamanında yola çıktılar)', () => {
+  it('objektif anında yaşayanlar diziliş yerinde (zamanında yola çıktılar, uzaktan gelen hızlanarak)', () => {
     const objectives = replay.events.filter((e) => e.type === 'objective')
     expect(objectives.length).toBeGreaterThan(0)
     for (const e of objectives) {
-      if (e.type !== 'objective') continue
-      const state = stateAt(replay, e.t)
+      // Bekleme sırasındaki yer (olay anından itibaren hedef çarpışma yeri olur).
+      const before = stateAt(replay, e.t - 1)
       for (const [id, track] of tracks) {
-        if (state.dead.has(id)) continue
-        expect(distance(poseAt(track, e.t).point, PIT[e.objective]), `${id} @ ${e.objective} ${e.t}`).toBeLessThan(60)
+        if (before.dead.has(id) || stateAt(replay, e.t).dead.has(id)) continue
+        const c = players.get(id)!
+        const spot = placement(replay.events, before, id, c.side, c.role, c.slot).point
+        // Kıpırdanma payı (~4,3) + ızgara yuvarlaması.
+        expect(distance(poseAt(track, e.t).point, spot), `${id} @ ${e.type} ${e.t}`).toBeLessThan(8)
       }
+    }
+  })
+
+  it('savaş dizilişinde kimse üst üste binmez (ikon çapı 26)', () => {
+    const fights = replay.events.filter((e) => e.type === 'objective' || e.type === 'siege')
+    expect(fights.length).toBeGreaterThan(0)
+    for (const e of fights) {
+      for (const t of [e.t - 2, e.t + 1]) {
+        const state = stateAt(replay, t)
+        const spots = [...players]
+          .filter(([id]) => !state.dead.has(id))
+          .map(([id, c]) => [id, placement(replay.events, state, id, c.side, c.role, c.slot).point] as const)
+        for (let i = 0; i < spots.length; i++)
+          for (let k = i + 1; k < spots.length; k++)
+            expect(distance(spots[i][1], spots[k][1]), `${spots[i][0]} – ${spots[k][0]} @ ${e.type} ${t}`).toBeGreaterThanOrEqual(22)
+      }
+    }
+  })
+
+  it('savaş dizilişinde takımlar kendi tarafında: mavinin ağırlık merkezi mavi üsse daha yakın', () => {
+    for (const e of replay.events.filter((x) => x.type === 'objective')) {
+      const state = stateAt(replay, e.t - 2)
+      const mean = (side: 'blue' | 'red') => {
+        const pts = [...players].filter(([id, c]) => c.side === side && !state.dead.has(id))
+          .map(([id, c]) => placement(replay.events, state, id, c.side, c.role, c.slot).point)
+        return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length] as Point
+      }
+      expect(distance(mean('blue'), BASE.blue), `objektif ${e.t}`).toBeLessThan(distance(mean('red'), BASE.blue))
     }
   })
 

@@ -6,21 +6,52 @@ namespace LolDraft.Engine.Tests;
 public sealed class JungleTests
 {
     private const int MatchCount = 500;
-    private static readonly int[] GankMinutes = [3, 6, 9, 12, 18, 24];
+    // Gank pencereleri (dakika, dahil): MatchRun.Jungle.cs ile aynı.
+    private static readonly (int From, int To)[] GankWindows = [(4, 4), (6, 7), (9, 10), (12, 13), (17, 18), (23, 24)];
 
     private readonly IMatchSimulator _simulator = MatchEngine.CreateSimulator();
 
     [Fact]
-    public void Gank_sadece_belirli_dakikalarin_40_saniyesinde()
+    public void Gank_pencerelerde_ve_10_55_saniye_arasinda_her_pencerede_en_fazla_bir()
     {
-        var ganks = Matches().SelectMany(GankMoves).ToList();
-
-        Assert.NotEmpty(ganks);
-        Assert.All(ganks, g =>
+        foreach (var events in Matches())
         {
-            Assert.Contains((int)(g.T / 60) + 1, GankMinutes);
-            Assert.Equal(40, g.T % 60);
-        });
+            var ganks = GankMoves(events).ToList();
+            foreach (var g in ganks)
+            {
+                var minute = (int)(g.T / 60) + 1;
+                Assert.Contains(GankWindows, w => minute >= w.From && minute <= w.To);
+                Assert.InRange(g.T % 60, 10, 55);
+            }
+
+            foreach (var (from, to) in GankWindows)
+                Assert.True(ganks.Count(g => (int)(g.T / 60) + 1 >= from && (int)(g.T / 60) + 1 <= to) <= 1);
+        }
+    }
+
+    [Fact]
+    public void Gank_saati_tahmin_edilemez_saniyeler_dagilir()
+    {
+        var seconds = Matches().SelectMany(GankMoves).Select(g => (int)(g.T % 60)).ToList();
+
+        Assert.NotEmpty(seconds);
+        // 10-55 arası 46 tam saniye; 500 maçta en az 40'ı görülmeli ve hiçbiri ganklerin %10'unu geçmemeli.
+        Assert.True(seconds.Distinct().Count() >= 40);
+        Assert.True(seconds.GroupBy(s => s).Max(g => g.Count()) < seconds.Count * 0.1);
+    }
+
+    [Fact]
+    public void Ayni_dakikada_objektif_varsa_gank_objektif_savasindan_sonra()
+    {
+        foreach (var events in Matches())
+        {
+            var objectives = events.OfType<ObjectiveEvent>().ToList();
+            foreach (var g in GankMoves(events))
+            {
+                var sameMinute = objectives.Where(o => (int)(o.T / 60) == (int)(g.T / 60));
+                Assert.All(sameMinute, o => Assert.True(g.T - g.Lead >= o.T + 5, $"gank {g.T}, objektif {o.T}"));
+            }
+        }
     }
 
     [Fact]

@@ -1,8 +1,8 @@
 import type { Champion, Side } from '../api/types'
-import { BASE, INHIBITORS, MAP_IMAGE, MAP_SIZE, PIT, RIVER_SPOT, TOWERS } from './geometry'
+import { BASE, INHIBITORS, JUNGLE, MAP_IMAGE, MAP_SIZE, PIT, RIVER_SPOT, TOWERS } from './geometry'
 import type { Pose } from './movement'
 import type { MatchState } from './timeline'
-import type { Lane, MatchEvent } from './types'
+import { winnerSide, type Lane, type MatchEvent } from './types'
 
 const LANES: Lane[] = ['top', 'mid', 'bot']
 const SIDES: Side[] = ['blue', 'red']
@@ -150,6 +150,11 @@ function popOf(e: MatchEvent, placements: Props['placements']) {
     }
     case 'skirmish':
       return { x: RIVER_SPOT[e.river][0], y: RIVER_SPOT[e.river][1] - 10, text: 'Çatışma', side: e.side }
+    case 'invade': {
+      // Savunanın ormanındaki kamp; renk kazananın (püskürtülen istilada savunan).
+      const [x, y] = JUNGLE[e.side === 'blue' ? 'red' : 'blue'][e.camp]
+      return { x, y: y - 10, text: e.stolen ? 'İstila' : 'Püskürtüldü', side: winnerSide(e)! }
+    }
     case 'throw':
       return { x: 300, y: 300, text: 'Throw!', side: e.side }
     case 'dragonSoul':

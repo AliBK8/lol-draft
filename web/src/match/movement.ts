@@ -9,7 +9,7 @@
 //
 // Sadece bilinen olaylara bakar (karar anları gelince yeni olaylar eklenir, güzergâh o andan yeniden kurulur).
 import type { Side } from '../api/types'
-import { BASE, MAP_SIZE, type Point } from './geometry'
+import { BASE, WALK_SPEED, type Point } from './geometry'
 import { pathLength, route, settle } from './nav'
 import { placement, type PlacementKind } from './positions'
 import { endTime, roster, stateAt, type MatchState } from './timeline'
@@ -21,8 +21,8 @@ export interface Pose {
   dead: boolean
 }
 
-/** Yürüme hızı: LoL'de ~345 birim/sn; harita 14.990 birim = 600 → ~13,8 harita birimi/oyun sn. */
-export const WALK_SPEED = (345 * MAP_SIZE) / 14990
+// Yürüme hızı geometry.ts'te (ormancının programı da kullanır); testler buradan alır.
+export { WALK_SPEED }
 /** Olaya yetişemeyen bu kata kadar hızlanır (koşma, hayalet, hız iksiri). */
 export const MAX_BOOST = 2
 /** Recall kanalı (oyun sn): bu süre yerinde durur, sonra üsse ışınlanır. */

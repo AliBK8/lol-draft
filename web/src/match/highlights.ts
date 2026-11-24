@@ -1,7 +1,7 @@
 // Maçın büyük anları (UYGULAMA.md §8.29): duyuru bandı ve zaman çizelgesi işaretleri. Saf: T'den (ve oynatma
 // hızından) türetilir, zamanlayıcı yok; geri sarınca, atlayınca da doğru.
 import type { Side } from '../api/types'
-import type { MatchEvent } from './types'
+import { winnerSide, type MatchEvent } from './types'
 
 export interface Announcement {
   /** Olayın belgedeki sırası: bant bu anahtarla takılır (yeni an yeni animasyon). */
@@ -32,6 +32,8 @@ function headline(e: MatchEvent): Omit<Announcement, 'index' | 'side' | 'detail'
       }[e.objective]
     case 'dragonSoul':
       return { title: 'EJDER RUHU', icon: 'dragon' }
+    case 'invade':
+      return { title: e.stolen ? 'ORMAN İSTİLASI' : 'İSTİLA PÜSKÜRTÜLDÜ', icon: null }
     case 'throw':
       return { title: 'THROW!', icon: null }
     case 'nexus':
@@ -51,7 +53,8 @@ export function announcementAt(events: readonly MatchEvent[], t: number, window:
     if (e.t > t) continue
     if (t - e.t > window) break
     const head = headline(e)
-    if (head && 'side' in e) return { index: i, side: e.side, detail: e.text, ...head }
+    const side = winnerSide(e)
+    if (head && side) return { index: i, side, detail: e.text, ...head }
   }
   return null
 }

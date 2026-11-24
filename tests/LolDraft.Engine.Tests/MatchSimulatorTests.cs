@@ -22,6 +22,18 @@ public sealed class MatchSimulatorTests
         }
     }
 
+    // Uç durumlar çökmeden biter: ezici draft'ta savunanın beşi birden ölüyken kuşatma (boş takımın kuralları eskiden
+    // ortalama alırken çöküyordu), split'te savaşa kimsenin kalmaması. Ezici, eşit ve normal draft, çok seed.
+    [Fact]
+    public void Uc_durumlarda_cokmeden_biter()
+    {
+        for (uint seed = 0; seed < 3 * MatchCount; seed++)
+        {
+            foreach (var input in (MatchInput[])[TestTeams.Stomp(seed), TestTeams.Even(seed), TestTeams.Split(seed)])
+                Assert.IsType<NexusEvent>(_simulator.Simulate(input).Events[^1]);
+        }
+    }
+
     [Fact]
     public void Olaylar_zaman_sirasinda()
     {

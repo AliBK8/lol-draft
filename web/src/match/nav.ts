@@ -89,6 +89,55 @@ function nearestOpen(p: Point, margin = 1): number {
 const NEIGHBORS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.4142], [1, -1, 1.4142], [-1, 1, 1.4142], [-1, -1, 1.4142]] as const
 
 /**
+ * Diziliş (savaş, objektif, kuşatma): istenen noktalara en yakın, birbirinden en az `gap` uzak yürünebilir yerler.
+ * 1. Merkezden yürüyerek `reach` birim içinde ulaşılan hücreler aday (duvarın arkası, ormanın içi aday değil).
+ * 2. Noktalar verilen sırayla yerleşir: her biri adaylardan istenene en yakın, öncekilerden ≥ gap uzak olanı alır.
+ *    Yer kalmazsa aralık biraz daraltılır (dar çukurda üst üste binmekten iyidir).
+ * Örnek: ejder çukurunun içi ~40 birim; 10 ikon (26 birim) sığmaz, arka sıra çukurun ağzına, nehre taşar.
+ */
+export function formation(centerPoint: Point, desired: readonly Point[], gap: number, reach = 110): Point[] {
+  // Merkezden yürüme mesafesi (hücre × CELL) ile taşma: Dijkstra yerine katmanlı arama yeter (adım 1 ya da 1,41).
+  const start = nearestOpen(centerPoint, 2)
+  const dist = new Map<number, number>([[start, 0]])
+  const queue = [start]
+  for (let k = 0; k < queue.length; k++) {
+    const i = queue[k]
+    const x = i % N
+    const y = Math.floor(i / N)
+    for (const [dx, dy, w] of NEIGHBORS) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue
+      const j = ny * N + nx
+      const d = dist.get(i)! + w * CELL
+      if (!open[j] || d > reach || (dist.get(j) ?? Infinity) <= d) continue
+      dist.set(j, d)
+      queue.push(j)
+    }
+  }
+  // Aday: duvara en az 2 hücre uzak (beklerken kıpırdanma duvara taşmasın). Sıra hücre sırası: deterministik.
+  const candidates = [...dist.keys()].filter((i) => clearance[i] >= 2).sort((a, b) => a - b).map(center)
+
+  const placed: Point[] = []
+  for (const want of desired) {
+    let best: Point | undefined
+    for (let g = gap; !best && g >= gap * 0.5; g -= 4) {
+      let bestD = Infinity
+      for (const c of candidates) {
+        if (placed.some((p) => Math.hypot(p[0] - c[0], p[1] - c[1]) < g)) continue
+        const d = Math.hypot(c[0] - want[0], c[1] - want[1])
+        if (d < bestD) {
+          bestD = d
+          best = c
+        }
+      }
+    }
+    placed.push(best ?? settle(want))
+  }
+  return placed
+}
+
+/**
  * A*: adım bedeli = uzunluk × (1 + 2 / duvara uzaklık). Duvar dibi (uzaklık 1) ortadan (~4) iki kat pahalı:
  * yol ortaya çekilir ama kısa yoldan sapmaz. Çapraz adım iki duvarın arasından kayamaz.
  */

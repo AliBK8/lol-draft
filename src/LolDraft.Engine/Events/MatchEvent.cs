@@ -67,6 +67,32 @@ public sealed record SkirmishEvent(
     double T, string Text, TeamSide Side, double Probability, RiverSide River, int BlueCount, int RedCount)
     : MatchEvent(T, Text);
 
+/// <summary>
+/// Ormancı istilası (DESIGN.md §4.5 Orman): <paramref name="Side"/> rakibin ormanındaki <paramref name="Camp"/>'a girer.
+/// Cevap yoksa kampı çalar; cevap varsa çatışma olur (kill'ler ayrı <see cref="KillEvent"/>). Katılanlar olaydan
+/// <paramref name="Lead"/> sn önce kampa yürür, <paramref name="Tail"/> sn kalır.
+/// </summary>
+/// <param name="Side">İstila eden takım.</param>
+/// <param name="DefenderIds">Cevap veren rakipler; boşsa kimse gelmedi.</param>
+/// <param name="Stolen">İstilacılar kampı aldı mı (cevapsız ya da çatışmayı kazandı).</param>
+/// <param name="Probability">Çatışma olduysa istilacıların kazanma ihtimali (0.1-0.9); cevapsızsa boş.</param>
+public sealed record InvadeEvent(
+    double T, string Text, TeamSide Side, JungleCamp Camp, IReadOnlyList<string> InvaderIds,
+    IReadOnlyList<string> DefenderIds, bool Stolen, double? Probability, int Lead, int Tail)
+    : MatchEvent(T, Text)
+{
+    // Record eşitliği listeleri referansla karşılaştırır; içerikle karşılaştır (MoveEvent gibi).
+    public bool Equals(InvadeEvent? other) =>
+        other is not null
+        && base.Equals(other)
+        && Side == other.Side && Camp == other.Camp
+        && InvaderIds.SequenceEqual(other.InvaderIds) && DefenderIds.SequenceEqual(other.DefenderIds)
+        && Stolen == other.Stolen && Probability == other.Probability && Lead == other.Lead && Tail == other.Tail;
+
+    public override int GetHashCode() =>
+        HashCode.Combine(base.GetHashCode(), Side, Camp, InvaderIds.Count, DefenderIds.Count, Stolen, Lead, Tail);
+}
+
 /// <summary>Görünmez hareket ipucu: takım <paramref name="Lead"/> sn önce toplanır, <paramref name="Tail"/> sn kalır.</summary>
 public sealed record SiegeEvent(double T, string Text, TeamSide Side, int Lead, int Tail) : MatchEvent(T, Text);
 

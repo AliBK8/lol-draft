@@ -253,3 +253,9 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
   | Bel'Veth | orta 7 → 8, `aoe` 1 → 2 | %43,5 → %45,7 | objektif kontrolü (void) modelde yok; sadece orta güç %44,8'de bıraktı, E + ulti formu toplu hasar |
 
 - Sonrası: Mavi %50,0, süre 29,3, Engage %53,8 · Poke %50,5 · Pick %49,3 · Koruma %50,8 · Dive %49,4 · Split %47,3, erken comp %49,5 / 35'ten önce %32,2 ✓, scale comp kurtarıyor %32,6 ✓, kural farkı 10 %64,6, 12 %67,0. Kenarda, hata payından az: Alistar %55,1, Lucian %44,9 (önceki ölçümde %53,9 / ~%45; gürültü, dokunulmadı). Bilinçli: Draven %43,0, Pyke %41,6. Bandın dışında başka şampiyon yok.
+
+**Gank zamanı + ormancı istilası (2026-11-24, 170'lik havuz, 60.000 draft, §8.34)**
+- Motor değişikliği: gank pencerelerde rastgele saniyede (sabit 40. sn değil), maçların %20'sinde 4:05-4:40 istilası. Zar sırası değiştiği için aynı ölçüm eski motorla da koşturulup şampiyon şampiyon karşılaştırıldı (aynı draft seed'i).
+- Genel: Mavi %50,0 → %49,8, süre 29,3 → 29,6, kill 25,1 → 25,5. Kimlikler: Engage %53,8 → %53,3 · Poke %50,5 · Pick %49,3 → %49,8 · Koruma %50,8 → %51,0 · Dive %49,4 → %49,5 · Split %47,3. Erken comp %49,5 → %49,6 / 35'ten önce %31,3 ✓, scale comp kurtarıyor %32,6 → %33,7 ✓.
+- Rol başına ortalama değişim ≈ 0 (ormancı −0,02, top +0,09, mid −0,06, adc −0,03, sup +0,02); saçılma her rolde ±0,7-0,8, hata payı kadar. Aynı profilde ters yönler (Elise erken 9: −1,2; Lee Sin erken 9: +1,5): gürültü, sistematik etki yok.
+- Kenarda, hata payından az (dokunulmadı): Elise %45,9 → %44,7, Master Yi %45,4 → %44,6, Hwei %54,9 → %55,1, Alistar %55,1 → %55,5; Lucian %44,9 → %45,7 banda döndü. Bilinçli: Draven %41,6, Pyke %41,3.

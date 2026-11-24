@@ -1,4 +1,4 @@
-using LolDraft.Engine.Simulation;
+﻿using LolDraft.Engine.Simulation;
 using static LolDraft.Engine.AttackRange;
 using static LolDraft.Engine.ChampionClass;
 
@@ -57,7 +57,9 @@ public sealed class OffRoleTests
         var offRole = TopLaneScores(ChampionRole.Mid);
 
         Assert.True(offRole.Average() < inRole.Average() - 1, $"ortalama {inRole.Average():F2} → {offRole.Average():F2}");
-        Assert.True(StdDev(offRole) > StdDev(inRole) * 1.2, $"yayılım {StdDev(inRole):F2} → {StdDev(offRole):F2}");
+        // Gerçek oran ~1,20 (4.000 maçta 1,199); 400 maçta gürültü ±0,03. Eşik 1,2 iken test zar sırasına göre
+        // tutup tutmuyordu (gank zamanları değişince 1,197 çıktı); 1,12 oynaklığı ölçer, şansa bağlı değil.
+        Assert.True(StdDev(offRole) > StdDev(inRole) * 1.12, $"yayılım {StdDev(inRole):F2} → {StdDev(offRole):F2}");
     }
 
     [Fact]

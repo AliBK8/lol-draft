@@ -48,7 +48,10 @@ Temel ilkeler:
 | Şampiyon görselleri ve harita | Riot Data Dragon portreleri, betikle bir kez indirilir ve gateway'den sunulur; sayfa altında Riot'un fan projesi notu. (2026-11-12) Maç haritası da aynı yoldan: Summoner's Rift görseli (`map11.png`), kuleler ve çukurlar gerçek oyun koordinatlarından; kule ve nexus ikonları CommunityDragon'dan (2026-11-17, §7). | Reddedildi: tarayıcının doğrudan Riot'tan çekmesi (CSP'ye dış adres, oyuncunun IP'si Riot'a gider, yama sürümü kayar). Kısaltmalı daireler yerine gerçek portre: draft ekranında tanımak çok daha kolay. |
 | "Ban yok" ve boş ban görünümü | Ban adımında havuzun ilk kutusu "Ban yok" (seç, onayla); sonucu süre dolmasıyla aynı (şampiyonsuz ban), kayıtta zaman aşımı değil. Boş geçen ban şeritte ⊘ ile, oynanmamış yuvadan ayrı görünür (§8.33). (2026-11-23) | Sebep: AFK'da süresi dolan ban'lar oynanmamış yuva gibi görünüyordu; ban turu bitmemiş gibi durup pick'ler başlıyordu (kural doğruydu, görüntü yanlıştı). Reddedildi: tek tıkla "Ban yok" (yanlışlıkla geçilmesin, LoL'deki gibi seç + onayla). |
 | Draft'ta rakibin ön izlemesi | Sırası gelenin havuzda tıkladığı şampiyon (kilitlemeden) rakibin ekranında, o takımın sıradaki yuvasında yarı saydam görünür; ban ve pick adımında. Hamle değil, durumu değiştirmez; hamleyle aynı kurallarla doğrulanır, sadece rakibe gider. Mesaj limiti ayrı kovadan (§8.32, SISTEM §8.5). (2026-11-23) | Gerçek LoL'de rakip hover'ı görmez; burada turnuva yayınının görünümü seçildi (blöfe de kapı açar). Reddedildi: ön izlemenin hamle kovasını paylaşması (hızlı tıklayan kendi Pick'ini engelletirdi). |
-| Görsel tema ve yazı tipi | Koyu lacivert-mor tema, lavanta vurgu, yumuşak köşeli kutular; takım renkleri (mavi/kırmızı) temadan bağımsız. Yazı tipi Outfit, npm paketiyle kendi sunucumuzdan (§8.31). Kullanıcı beğenmezse yazı tipi değişir (tek satır). (2026-11-22) Renk dağılımı 45/45/10: lacivert + mor zemin, %10 şeftali vurgu sadece ana düğme ve seçili durumlarda (§8.31). (2026-11-23) | Reddedildi: Google Fonts'tan yüklemek (oyuncunun IP'si üçüncü tarafa gider; portrelerdeki kararın aynısı). Eski altın vurgulu gri-koyu tema ("çirkin ama çalışan", 5. adım) yerine. |
+| Görsel tema ve yazı tipi | Koyu lacivert-mor tema, lavanta vurgu, yumuşak köşeli kutular; takım renkleri (mavi/kırmızı) temadan bağımsız. Yazı tipi Outfit, npm paketiyle kendi sunucumuzdan (§8.31). Kullanıcı beğenmezse yazı tipi değişir (tek satır). (2026-11-22) Outfit kullanıcı onaylı (2026-11-24). Renk dağılımı 45/45/10: lacivert + mor zemin, %10 şeftali vurgu sadece ana düğme ve seçili durumlarda (§8.31). (2026-11-23) | Reddedildi: Google Fonts'tan yüklemek (oyuncunun IP'si üçüncü tarafa gider; portrelerdeki kararın aynısı). Eski altın vurgulu gri-koyu tema ("çirkin ama çalışan", 5. adım) yerine. |
+| Savaş dizilişi ve orman hareketi | Savaşta (objektif, son savaş, kuşatma, nehir çatışması, istila) iki takım olay noktasının iki yanında, iki sıra: ön sıra top, ormancı, support; arka sıra mid, adc. İkonlar kenar kenara; eksen her yer için yürünebilir alana göre seçilir. Ormancı kamptan kampa gerçek bir program izler (6 kamp, doğma süreleri; başlangıç tarafı ve temizleme hızı şampiyondan). İlk recall 6:00'dan sonra, yaklaşan savaştan önce recall yok (§8.34). (2026-11-24) | Sebep (kullanıcı): ejderde 5 kişi üst üste biniyordu (7 birim arayla tek çizgi), savaşta dağılmıyorlardı; iki ormancı aynı saniyelerde aynı sıradaki kampları dolaşıyordu. Reddedildi: sabit "kendi üssüne doğru" eksen (ejder çukurunun o yanı duvar, takımlar karışıyordu). |
+| Gank zamanı ve ormancı istilası | Gank sabit dakikaların 40. saniyesinde değil, pencerelerde (dk 4, 6-7, 9-10, 12-13, 17-18, 23-24) 10-55. saniyede. Her maçın %20'sinde 4:05-4:40'ta ormancı istilası: rakibin yeniden doğan küçük kampı, cevap yoksa çalınır, cevap varsa çatışma; kazanan 3 dk orman temposu alır (§4.5, §8.34). (2026-11-24) | Sebep (kullanıcı): gank'lar saat gibi işliyordu (2:40, 5:40, 8:40…), baskınlar hep aynı görünüyordu. İstila Dengeli'de de %20 (kullanıcı); "Ormancı istilası" planı kesinleştirir (§4.10). Kendi altını yok: çalınan kamp farm, "ormancı geride" orman akışına tempo (farm kuralı altına çevirir). |
+| Oyun planının draft'a uyumu | Planın bedeli hep tam; kazancı draft'a uyana ×1,25, nötre ×1, uymayana ×0,75 (§4.10). (2026-11-24) | Kullanıcı: uymayana ×0,5 fazla ezici, simetrik ×0,75 daha adil. Uymayan plan yine net küçük ceza (bedel tam, kazanç eksik); ayrı ceza kuralı gerekmez. |
 | Şampiyon havuzu | Aşamalı büyür: 40 → 80 (rol başına 16, faz H) → 125 (rol başına 25, parti 1) → 170 (parti 2: gerçek oyundaki hepsi, Locke, Zaahen ve Yunara hariç; kitleri bilinmeden etiketlenmez). Etiket taslağı Data Dragon / CommunityDragon'dan Claude çıkarır, güç eğrisi veri hattından, onay kullanıcıda; her aşamadan sonra `--check` ve denge ölçümü. K13 kombo tablosu her aşamada yeni ikililerle büyür. (2026-11-17) | Reddedildi: ~170'i bir kerede eklemek (yüzlerce etiket birden ölçülemez, sorunlu şampiyon gürültüde kaybolur). |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
@@ -138,7 +141,7 @@ Tek bir **toplam puan farkı** vardır (pozitif = Mavi önde). Toplam, kategoril
 ### 4.5 Dakika döngüsü (1..35)
 
 Her dakika iki aşamada oynanır:
-1. **Kayıt:** koridor ve orman akışı dakika başında puana yazılır. Diğer işler kendi saniyesiyle zaman çizelgesine kaydolur: sürpriz 5-25. sn, nehir çatışması 15-30. sn, anlatıcı 25-55. sn, objektif 30. sn, gank 40. sn, kuşatma 45. sn.
+1. **Kayıt:** koridor ve orman akışı dakika başında puana yazılır. Diğer işler kendi saniyesiyle zaman çizelgesine kaydolur: sürpriz 5-25. sn, nehir çatışması 15-30. sn, anlatıcı 25-55. sn, objektif 30. sn, gank kendi penceresinde 10-55. sn (aşağıda), istila 4:05-4:40, kuşatma 45. sn.
 2. **Çözüm:** işler saniye sırasıyla çözülür (eşit saniyede kayıt sırası). Her iş kendi saniyesindeki duruma bakar: kim yaşıyor, toplam puan. Savaş kill'leri de ayrı işlerdir: her kill kendi saniyesinde yaşayanlar arasından seçilir. Nexus düşünce kalan işler iptal edilir.
 
 **Koridor akışı** (her koridor, her dakika):
@@ -151,9 +154,14 @@ Her dakika iki aşamada oynanır:
 
 **Orman:**
 - Her dakika: `0.05 × (G_jg_Mavi − G_jg_Kırmızı) + N(0, 0.3)` → `orman`.
-- Gank dakikaları: 3, 6, 9, 12, 18, 24. Gank'ı atan taraf: `p_Mavi = clamp(1 / (1 + e^(−(G_jg farkı)/4)))`. Koridor rastgele.
+- Gank pencereleri (motor dakikası, dahil): 4, 6-7, 9-10, 12-13, 17-18, 23-24; her pencerede bir gank. Dakika ve saniye (10-55) pencerenin başında zarla seçilir; aynı dakikada objektif varsa saniye 50-55'e sıkışır (ormancı objektif savaşı bitmeden ayrılmasın). İlk pencere 3:10-3:55: ormancı ilk turunu ~3:15'te bitirir. (2026-11-24; eskiden sabit dk 3, 6, 9, 12, 18, 24'ün 40. sn'si: gank saat gibi işliyordu.) Gank'ı atan taraf: `p_Mavi = clamp(1 / (1 + e^(−(G_jg farkı)/4)))`. Koridor rastgele.
 - Lane fazında (<14 dk) ve koridor bot değilse support %45 ihtimalle gank'a katılır.
 - Başarı: tek başına %60, support'la %75. Başarı → `orman` ±4 (support'la ±5), koridor puanı ±3, kill. Başarısızlık → `orman` ∓2.
+- **Ormancı istilası** (2026-11-24, `MatchRun.Invade.cs`): maçların %20'sinde 4:05-4:40'ta (rakibin ilk turda temizlediği küçük kamplar ~2:15 sonra, tam bu aralıkta doğar). İstila eden taraf gank'la aynı eğriyle (güçlü erken ormancı daha olası); hedef rakibin kuşları, kurtları ya da kurbağası. İstilacı ormancı %50 ihtimalle yanına mid ya da support alır. Rakip ormancı müsaitse %60 cevap verir (o da %50 yardımcıyla).
+  - Cevap yok: kamp çalınır (istilacı ormancıya 4 CS = 80 altın).
+  - Cevap var: nehir çatışmasıyla aynı hesap (bölen 6, K7). Kaybedenden 1-2 kill; istilacılar kazanırsa kampı da alır.
+  - Kazanan 3 dk orman akışında ±1 tempo: kaybeden ormancı her farm diliminde %25 kaçırır, kazanan yarısını alır (3 dk'da ~6 CS kayıp, ~3 CS kazanç). Katılan mid/support o sırada koridorunda değil (minyon kaçırır, koridoru kuleye açık).
+  - "Ormancı istilası" planı (§4.10) bu ihtimali artırır; Dengeli'de %20.
 
 **Nehir çatışması** (aralıklar: dk 7-9, 12-14, 17-19, 25-27):
 - Aralığın başında %75 ihtimalle çatışma olacağına karar verilir; dakika aralık içinden eşit ihtimalle seçilir (her aralıkta en fazla bir). Saniye 15-30 arası.
@@ -235,6 +243,7 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 | `gankfail`, `throw` | side, lane? | |
 | `move` | parts[], lane? / loc?, lead, tail | Görünmez; hareket kısıtı |
 | `siege` | side, lead, tail | Görünmez; kuşatma toplanması |
+| `invade` | side (istila eden), camp, invaders[], defenders[], stolen, pct?, lead, tail | Ormancı istilası (§4.5); kill'ler ayrı `kill`. Renk kazananın: püskürtülürse savunan |
 | `nexus` | side, pct? | Maç sonu |
 
 `text` boş olan olaylar log'a yazılmaz, sadece hareketi yönlendirir.
@@ -260,7 +269,9 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 | Split | Yan koridor kule olayları artar | Takım savaşlarında 1 kişi geç gelir |
 | Hızlı bitir | Kuşatma eşiği düşer (45 → 35) | Throw cezası artar |
 
-- Draft'a uyum: draft'a uymayan plan küçük ceza, uyan küçük bonus (Kayle'li takımda "erken baskı" cezalı).
+- Draft'a uyum (2026-11-24, kullanıcıyla): bedel hep tam; kazanç uyana ×1,25, nötre ×1, uymayana ×0,75. Uymayan plan böylece net küçük ceza (Kayle'li takımda "erken baskı"); ayrı ceza kuralı yok.
+- "Dengeli" planı: düğmelere dokunmaz; plan seçmeyen ya da süreyi kaçıran Dengeli oynar. Dengeli × Dengeli maç plansız motorla bit bit aynı (test): denge ölçümleri geçerli kalır.
+- Ormancı istilası artık motorda (§4.5, Dengeli'de %20); plan bu ihtimali kesinleştirir.
 - Taş-kâğıt-makas: her planın karşıtı var; denge aracı plan × plan matrisini ölçer, **baskın plan olmamalı**.
 
 **② Karar anı** küçük bir iki kişilik oyun; sonuç iki seçimin kesişimi. Örnek, ejder:

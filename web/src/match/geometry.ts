@@ -6,6 +6,9 @@ import type { Lane, ObjectiveKind, River } from './types'
 export type Point = readonly [number, number]
 
 export const MAP_SIZE = 600
+
+/** Yürüme hızı: LoL'de ~345 birim/sn; harita 14.990 birim = 600 → ~13,8 harita birimi/oyun sn. */
+export const WALK_SPEED = (345 * MAP_SIZE) / 14990
 export const MAP_IMAGE = '/map/map11.png'
 
 // map11.png'nin kapsadığı Riot koordinatları (zone-painter ile aynı): x -120…14870, y -120…14980.
@@ -84,10 +87,29 @@ export const PIT: Record<ObjectiveKind, Point> = {
 /** Nehirdeki çatışma noktaları: mid ile çukur arası. */
 export const RIVER_SPOT: Record<River, Point> = { top: [245, 238], bottom: [355, 362] }
 
-/** Orman kampları (ormancı lane fazında bunlar arasında dolaşır): mavi buff, kurtlar, kuşlar, kırmızı buff. */
+/** Orman kampları (jungle.ts: ormancının programı). */
+export type CampKind = 'blue' | 'wolves' | 'raptors' | 'red' | 'gromp' | 'krugs'
+export const CAMP_KINDS: readonly CampKind[] = ['blue', 'wolves', 'raptors', 'red', 'gromp', 'krugs']
+
+// Mavi tarafın kampları (Riot koordinatı); kırmızı taraf haritanın merkezine göre aynası: (14800 − x, 14900 − y).
+const BLUE_CAMPS: Record<CampKind, readonly [number, number]> = {
+  blue: [3800, 7900],
+  wolves: [3800, 6500],
+  raptors: [7000, 5400],
+  red: [7700, 4000],
+  gromp: [2100, 8400],
+  krugs: [8400, 2700],
+}
+
+export const JUNGLE: Record<Side, Record<CampKind, Point>> = {
+  blue: Object.fromEntries(CAMP_KINDS.map((k) => [k, riot(...BLUE_CAMPS[k])])) as Record<CampKind, Point>,
+  red: Object.fromEntries(CAMP_KINDS.map((k) => [k, riot(14800 - BLUE_CAMPS[k][0], 14900 - BLUE_CAMPS[k][1])])) as Record<CampKind, Point>,
+}
+
+/** Kamplar liste olarak (mavi buff, kurtlar, kuşlar, kırmızı buff, gromp, kurbağa). */
 export const CAMPS: Record<Side, Point[]> = {
-  blue: [riot(3800, 7900), riot(3800, 6500), riot(7000, 5400), riot(7700, 4000)],
-  red: [riot(11000, 7000), riot(11000, 8400), riot(7800, 9500), riot(7100, 10900)],
+  blue: CAMP_KINDS.map((k) => JUNGLE.blue[k]),
+  red: CAMP_KINDS.map((k) => JUNGLE.red[k]),
 }
 
 const lengths = (path: readonly Point[]) =>
