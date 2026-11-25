@@ -631,6 +631,36 @@ Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `PlanBoard` ile sahte p
 | Konu | Nerede | Karar ve neden |
 |---|---|---|
 | Esneyen portre | `index.css` `.draft-plate .ban-slot` | Yuva `flex: 0 1 40px`, portre `width: 100%` + `aspect-ratio: 1` (boyut `ChampionIcon`'da satır içi olduğu için `!important`). Yer varsa 40 px, daralınca beşi birlikte küçülür, kare kalır; çapraz çizgi zaten yüzdeyle. Telefonda tavan 28 px (`flex-basis`), eskiden sabit 28 px'ti. |
+| Kırmızı ban satırı | `.draft-plate .ban-row` | Kırmızı satır içerik genişliğinde sağa yaslıydı (`justify-self: end`); portreler esneyince içerik genişliği sıfıra düşüp telefonda nokta gibi büzüldü. Artık tam genişlik; `row-reverse` olduğu için ban'lar yine sağdan başlar. (§8.45 ölçümünde yakalandı.) |
 | Telefonda tabela | `.hud.draft-hud` (≤ 760 px) | Telefon kuralı dosyada ortak `.hud` kuralından önce ve aynı güçteydi: `.hud`'un 3 sütunu onu eziyor, tabela yarım genişlikte kalıyordu (§8.41'den beri). İki sınıfla güçlendirildi; artık orta parça tam genişlik, iki plaka yarı yarıya. |
 
 Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ile 10 ban'lı sahte durumu çizen geçici önizleme sayfasında içerik 1068/960/880/790/760 px (masaüstü) ve 700/468 px (telefon) genişliğinde ban satırının sınırları plakanınkiyle ölçüldü: hepsinde ban'lar plakanın içinde. Görüntüyle de bakıldı; sayfa silindi.
+
+### 8.45 Uygulama: telefonda taşma (ölçüm + iç sıkışmalar)
+
+**Bulgu:** "Telefonda sayfa sağa taşıyor" (§8.38'den beri bilinen) büyük ölçüde ölçüm hatasıydı: headless Chrome `--window-size` 500 px'in altına inmiyor (420 istenince 504 açıyor), görüntü kırpılıp taşma gibi görünüyordu. Gerçek telefon öykünmesiyle (Chrome DevTools protokolü: `Emulation.setDeviceMetricsOverride`, `mobile: true`, dokunma) davet, lobi, draft ve maç (karne dahil) 320/360/390 px'te ölçüldü: hiçbirinde `scrollWidth` görüntü genişliğini aşmıyor. Draft gerçek lobiyle (geliştirme rakibi lobi açtı, öykünen tarayıcı katıldı), maç kayıtlı bir replay'de zaman çizelgesi sona çekilerek.
+
+Sayfa taşmıyordu ama dar telefonda iki iç sıkışma vardı:
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Tabela sayıları | `index.css` ≤ 560 px `.hud-team` | Kule/ejder/baron sayıları kill sütununun yanına sığmıyor, 360 px'te kırmızıda altın farkının üstüne biniyordu (mavide de, ama oradaki altın satırı görünmez yer tutucu). Telefonda plakanın altında kendi tam genişlik satırında (`'id kills' / 'stats stats'`, kırmızı ayna). |
+| Kadro boşlukları | ≤ 560 px `.roster li`, `.roster-stats` | Portre-yazı arası 10 → 6, iç kenar 18 → 14, sütun arası 8 → 5. 390 px'te K/D ve altın yan yana sığar. |
+| Kadro, dar telefon | ≤ 380 px `.roster-stats` | 360 px'te şerit ~150 px; altın yine kırpılıyordu ("10,("). Altın K/D'nin altına iner (iki tarafta da K/D üstte); şerit biraz uzar, hiçbir şey kırpılmaz. Tabelada sayı araları sıkışır, ikon 14 px (320'de baron kesiliyordu). |
+
+Doğrulama: tsc + oxlint + 63 web testi + build; yukarıdaki öykünmeyle 320/360/390 px görüntüleri gözle kontrol edildi. Ölçüm betiği repoya girmedi (geçici).
+
+### 8.46 Uygulama: süre dolunca seçili şampiyon kilitlenir
+
+**Sorun (kullanıcı, 2026-11-25):** Ban ya da pick'te şampiyon seçiliyken "Kilitle"ye basmadan süre dolunca seçili olan değil, ban'da boş ban, pick'te rastgele şampiyon geliyordu. LoL'de seçili duran (hover) kilitlenir.
+
+**Kavram:** Seçim zaten ön izleme olarak sunucuya gidiyordu (§8.32, en geç 300 ms'de bir, son seçim mutlaka gider), sunucu sadece doğrulayıp rakibe iletiyor, saklamıyordu. Artık sıradaki takımın son geçerli ön izlemesini adım numarasıyla hatırlıyor; süre dolunca önce ona bakıyor.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Hatırlama | `DraftSession._hover`, `Preview` | Geçerli ön izleme `(adım, şampiyon)` olarak tutulur; null şampiyon ("Ban yok" ya da bırakma) da kayıt. Adım numarası sayesinde hamle gelince eski adımınki kendiliğinden geçersiz (temizleme kodu yok). Sıra, hamleler ve süre değişmez (`On_izleme_durumu_degistirmez` testi aynen geçiyor). |
+| Zaman aşımı | `DraftSession.Timeout` | Ban ve pick adımında: ön izleme bu adımınsa ve şampiyon hâlâ uygunsa (`CheckChampion`) o kilitlenir (`byTimeout: true`). Yoksa eski kural: ban'da boş ban, pick'te sıralı uygun listeden zarla. Swap ve plan değişmedi. |
+| İstemci | — | Değişiklik yok: seçim zaten ön izleme olarak gidiyordu. |
+
+Doğrulama: Domain 4 yeni test (ban'da ön izlenen ban'lanır, pick'te ön izlenen seçilir, bırakılan ön izleme eski kurala döner, önceki adımın ön izlemesi sonraki adıma taşınmaz); bütün .NET testleri (150 + 104 + 51 + 217) geçti. Uçtan uca: geliştirme rakibinin açtığı lobide telefon öykünmesiyle, şampiyon seçip süre doldurularak: Aatrox seçiliyken süre doldu → Aatrox ban'landı; Ahri sonra Akali seçilip süre doldu → Akali (son seçilen) ban'landı, Ahri havuzda kaldı.
+

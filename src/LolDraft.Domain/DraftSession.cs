@@ -26,6 +26,11 @@ public sealed class DraftSession
     private bool _planning;
     private int _stepIndex;
 
+    // Sıradaki takımın son geçerli ön izlemesi (hangi adımda, hangi şampiyon). Süre dolunca hamle bu olur (LoL'deki
+    // gibi: seçili duran şampiyon kilitlenir). Adım numarasıyla tutulur: hamle gelince eski adımınki kendiliğinden
+    // geçersiz. Null şampiyon ("Ban yok" ya da seçimi bırakma) da kayıttır: süre dolunca boş ban / rastgele pick.
+    private (int Step, ChampionId? Champion)? _hover;
+
     private DraftSession(HashSet<ChampionId> pool, FearlessLocks locks, DraftTimings timings, Instant now)
     {
         _pool = pool;
@@ -102,8 +107,9 @@ public sealed class DraftSession
 
     /// <summary>
     /// Ön izleme (rakip görür, §8.32): sırası gelen takım bu şampiyonu şu an ban/pick edebilir mi? Hamleyle aynı
-    /// kurallar (faz, süre, sıra, şampiyon) ama hiçbir şey değişmez. Geçerliyse adımın numarası döner: istemci ön
+    /// kurallar (faz, süre, sıra, şampiyon); hamle, sıra ve süre değişmez. Geçerliyse adımın numarası döner: istemci ön
     /// izlemeyi sadece o adım sürerken gösterir, hamle gelince eskisi kendiliğinden düşer. Şampiyon null: temizlenir.
+    /// Geçerli ön izleme hatırlanır: süre dolarsa hamle o olur (§8.46, <see cref="Timeout"/>).
     /// </summary>
     internal Result<int> Preview(Side side, ChampionId? champion, Instant now)
     {
@@ -116,6 +122,7 @@ public sealed class DraftSession
         if (champion is { } value && CheckChampion(value) is { IsFailure: true } unavailable)
             return Result<int>.Fail(unavailable.Error!);
 
+        _hover = (_stepIndex, champion);
         return Result<int>.Ok(_stepIndex);
     }
 
@@ -171,8 +178,8 @@ public sealed class DraftSession
     }
 
     /// <summary>
-    /// Sunucu sayacı süre dolunca çağırır: ban adımında boş ban, pick adımında uygun
-    /// şampiyonlardan rastgele biri, swap'ta o anki dizilimler kabul edilir (plan fazı başlar), plan fazında seçmeyen
+    /// Sunucu sayacı süre dolunca çağırır: ban/pick adımında takımın o adımdaki son ön izlemesi (hâlâ uygunsa;
+    /// §8.46), yoksa ban'da boş ban, pick'te uygun şampiyonlardan rastgele biri; swap'ta o anki dizilimler kabul edilir (plan fazı başlar), plan fazında seçmeyen
     /// Dengeli oynar (draft biter).
     /// </summary>
     internal Result Timeout(Instant now, IDraftRandom random)
@@ -190,6 +197,15 @@ public sealed class DraftSession
                 Complete();
             else
                 StartPlan(now);
+            return Result.Ok();
+        }
+
+        // Seçili duran şampiyon kilitlenir. Ön izlemeden sonra uygunluğu değişmiş olamaz (adım değişmedi) ama ucuz
+        // bir güvence: uygun değilse eski kurala düşer.
+        if (_hover is { } hover && hover.Step == _stepIndex && hover.Champion is { } hovered
+            && CheckChampion(hovered).IsSuccess)
+        {
+            Apply(step, hovered, byTimeout: true, now);
             return Result.Ok();
         }
 

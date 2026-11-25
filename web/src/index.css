@@ -782,9 +782,8 @@ a {
   aspect-ratio: 1;
 }
 
-.draft-plate.red .ban-row {
-  justify-self: end;
-}
+/* Kırmızı satır da tam genişlik (justify-self: end değil): portreler esnediği için (§8.44) içerik kadar genişlikte
+   satır sıfıra çöküyordu. row-reverse olduğu için ban'lar yine sağdan başlar. */
 
 /* Sırası olmayanın adı soluk, sıradakininki tam ve hafif parlar. */
 .draft-team-label {
@@ -1996,6 +1995,35 @@ a {
     padding: 8px 8px 8px calc(var(--cut) + 6px);
   }
 
+  /* Kule/ejder/baron sayıları kill sütununun yanına sığmıyordu (360 px'te kırmızıda altın farkının üstüne
+     biniyordu): telefonda plakanın altında kendi tam genişlik satırında. */
+  .hud-team {
+    grid-template-areas:
+      'id kills'
+      'stats stats';
+  }
+
+  .hud-team.red {
+    grid-template-areas:
+      'kills id'
+      'stats stats';
+  }
+
+  /* Kadro şeridi ~160 px: boşluklar daralır ki K/D ve altın sütunu kırpılmasın. */
+  .roster li {
+    gap: 6px;
+    padding-right: 14px;
+  }
+
+  .roster.red li {
+    padding-right: 6px;
+    padding-left: 14px;
+  }
+
+  .roster-stats {
+    column-gap: 5px;
+  }
+
   .hud-meta {
     font-size: 0.68rem;
   }
@@ -2021,6 +2049,33 @@ a {
   .roster-portrait img {
     width: 32px;
     height: 32px;
+  }
+}
+
+/* Dar telefon (≤ 380 px, ör. 360'lık Android): şerit ~150 px; K/D ve altın yan yana sığmıyor (altın kırpılıyordu).
+   Altın K/D'nin altına iner, iki tarafta da K/D üstte. Tabelada sayılar sıkışır (320'de baron kesiliyordu). */
+@media (max-width: 380px) {
+  .roster-stats,
+  .roster.red .roster-stats {
+    grid-template-columns: auto;
+    row-gap: 1px;
+  }
+
+  .roster.red .roster-kd {
+    order: 0;
+  }
+
+  .team-stats {
+    gap: 2px;
+  }
+
+  .team-stat {
+    gap: 1px;
+  }
+
+  .team-stat img {
+    width: 14px;
+    height: 14px;
   }
 }
 

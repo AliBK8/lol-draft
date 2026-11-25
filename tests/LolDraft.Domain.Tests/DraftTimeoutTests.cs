@@ -47,6 +47,59 @@ public sealed class DraftTimeoutTests
         Assert.True(action.ByTimeout);
     }
 
+    // §8.46: süre dolunca seçili duran şampiyon (son ön izleme) kilitlenir, LoL'deki gibi.
+    [Fact]
+    public void Ban_adiminda_zaman_asimi_on_izlenen_sampiyonu_banlar()
+    {
+        var session = Start();
+        session.Preview(Side.Blue, Id("c30"), T0 + TimeSpan.FromSeconds(5));
+
+        session.Timeout(Expired, new FixedRandom(0));
+
+        var action = Assert.Single(session.Actions);
+        Assert.Equal(Id("c30"), action.Champion);
+        Assert.Equal(DraftActionKind.Ban, action.Kind);
+        Assert.True(action.ByTimeout);
+    }
+
+    [Fact]
+    public void Pick_adiminda_zaman_asimi_on_izlenen_sampiyonu_secer()
+    {
+        var session = Start();
+        PlaySteps(session, 6);
+        session.Preview(Side.Blue, Id("c30"), T0);
+
+        session.Timeout(Expired, new FixedRandom(0));
+
+        Assert.Equal(Id("c30"), session.Actions[^1].Champion);
+        Assert.Equal(DraftActionKind.Pick, session.Actions[^1].Kind);
+    }
+
+    [Fact]
+    public void On_izleme_birakilinca_zaman_asimi_eski_kurala_doner()
+    {
+        var session = Start();
+        session.Preview(Side.Blue, Id("c30"), T0);
+        session.Preview(Side.Blue, null, T0);   // "Ban yok" ya da seçimi bıraktı
+
+        session.Timeout(Expired, new FixedRandom(0));
+
+        Assert.Null(Assert.Single(session.Actions).Champion);
+    }
+
+    [Fact]
+    public void Onceki_adimin_on_izlemesi_sonraki_adima_tasinmaz()
+    {
+        var session = Start();
+        session.Preview(Side.Blue, Id("c30"), T0);
+        Assert.True(session.Ban(Side.Blue, Id("c01"), T0).IsSuccess);   // mavi başka şampiyonu ban'ladı
+
+        session.Timeout(Expired, new FixedRandom(0));   // kırmızının adımı, ön izlemesi yok
+
+        Assert.Null(session.Actions[^1].Champion);
+        Assert.Equal(Side.Red, session.Actions[^1].Side);
+    }
+
     [Fact]
     public void Zaman_asimi_pick_fearless_kilidini_atlar()
     {
