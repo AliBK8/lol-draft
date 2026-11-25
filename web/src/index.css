@@ -411,40 +411,70 @@ input:focus-visible {
   margin-bottom: 12px;
 }
 
-/* --- Oyun planı (§8.35): 7 kart, uyum rozeti, seç → kilitle --- */
+/* --- Oyun planı (§8.35, görünüm §8.43): draft tabelası + 7 şerit kart, uyum rozeti, seç → kilitle --- */
+/* Plakada seçim durumu: ban satırının yerinde. Seçmeyi bekleyen şeftali değil, sade; seçmiş olan yeşil. */
+.plan-status {
+  grid-area: bans;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.plan-status.done {
+  color: var(--ok);
+}
+
+.draft-plate.red .plan-status {
+  justify-self: end;
+}
+
 .plan-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;
   margin-bottom: 12px;
 }
 
+/* Kart: pick yuvası ve kadro şeridiyle aynı dil (§8.42): nötr zemin, solda 3 px çizgi, sağ alt köşe 12 px çapraz
+   kesik, yuvarlama yok. Ad + rozet, altında tek satırlık kazanç (▲) ve bedel (▼); tam metin title'da. clip-path
+   outline'ı kırptığı için seçim sol çizgi ve zeminle gösterilir. */
 .plan-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 14px;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 18px 10px 12px;
   text-align: left;
-  background: var(--panel);
-  border-radius: var(--radius-sm);
-  transition: transform 0.12s, border-color 0.12s;
+  border: 0;
+  border-left: 3px solid var(--pop-line);
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--panel-2), rgba(20, 23, 53, 0.55));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  transition: border-color 0.12s, background 0.12s;
 }
 
+/* Şeftali dokunuş (kullanıcı, 2026-11-25): sol çizgi her kartta yarı saydam şeftali; üstüne gelince ve seçilince
+   tam şeftali, seçilende zemine şeftali ışık. Kilitlenen daha parlak, diğerleri sönük. */
 .plan-card:not(:disabled):hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
+  border-left-color: var(--pop);
+  background: linear-gradient(90deg, #232859, rgba(20, 23, 53, 0.6));
 }
 
 .plan-card.selected {
-  border-color: var(--accent);
-  outline: 2px solid var(--accent);
+  border-left-color: var(--pop);
+  background: linear-gradient(90deg, var(--pop-soft), rgba(28, 32, 71, 0.75) 70%);
 }
 
-/* Kilitlenen plan: şeftali (göz buraya), diğerleri sönük. */
+.plan-card.selected strong {
+  color: var(--pop);
+}
+
 .plan-card.chosen {
-  border-color: var(--pop-line);
-  outline: 2px solid var(--pop);
-  background: var(--pop-soft);
+  border-left-color: var(--pop);
+  background: linear-gradient(90deg, rgba(255, 171, 122, 0.22), rgba(20, 23, 53, 0.55) 75%);
+}
+
+.plan-card.chosen strong {
+  color: var(--pop);
 }
 
 .plan-card:disabled:not(.chosen) {
@@ -458,14 +488,20 @@ input:focus-visible {
   gap: 8px;
 }
 
+.plan-gain,
+.plan-cost {
+  overflow: hidden;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .plan-gain {
   color: var(--ok);
-  font-size: 0.85rem;
 }
 
 .plan-cost {
   color: var(--error);
-  font-size: 0.85rem;
 }
 
 .plan-foot {
@@ -728,6 +764,22 @@ a {
 
 .draft-plate .ban-row {
   grid-area: bans;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Ban portreleri plakaya göre esner (en fazla 40 px, kare): dar pencerede (761-830 px, ya da laptopta yüksek
+   yakınlaştırma) 5 ban'ın 224 px'i plakaya sığmayıp kesik kenara taşıyordu. Boyut ChampionIcon'da satır içi
+   olduğu için !important. */
+.draft-plate .ban-slot {
+  flex: 0 1 40px;
+  min-width: 0;
+}
+
+.draft-plate .ban-slot .champ {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1;
 }
 
 .draft-plate.red .ban-row {
@@ -1109,8 +1161,9 @@ a {
     grid-row: 2;
   }
 
-  /* Tabela: orta parça üstte tam genişlik ve düz, iki plaka altında yan yana (maç tabelasının telefon düzeni). */
-  .draft-hud {
+  /* Tabela: orta parça üstte tam genişlik ve düz, iki plaka altında yan yana (maç tabelasının telefon düzeni).
+     İki sınıf: dosyada sonra gelen ortak .hud kuralı (3 sütun) bunu ezip tabelayı yarım genişlikte bırakıyordu. */
+  .hud.draft-hud {
     --cut: 12px;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
@@ -1157,9 +1210,8 @@ a {
     gap: 3px;
   }
 
-  .draft-hud .ban-row .champ {
-    width: 28px !important;
-    height: 28px !important;
+  .draft-hud .ban-slot {
+    flex-basis: 28px;
   }
 }
 

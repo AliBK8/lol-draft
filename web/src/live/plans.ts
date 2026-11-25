@@ -5,47 +5,56 @@ import type { DraftState, PlanFit, PlanId, Side } from '../api/types'
 export interface PlanCard {
   id: PlanId
   name: string
+  /** Kartta görünen kısa kazanç ve bedel (2-5 kelime, §8.43). Bedeli olmayan planda boş. */
   gain: string
   cost: string
+  /** Tam açıklama: kartın üstüne gelince (title). */
+  detail: string
 }
 
 export const PLANS: readonly PlanCard[] = [
-  { id: 'balanced', name: 'Dengeli', gain: 'Ayarlara dokunmaz.', cost: 'Bedeli yok. Süre dolarsa bu oynanır.' },
+  { id: 'balanced', name: 'Dengeli', gain: 'Ayarlara dokunmaz', cost: '', detail: 'Ayarlara dokunmaz, bedeli yok. Süre dolarsa bu oynanır.' },
   {
     id: 'dragonLate',
     name: 'Ejder & late',
-    gain: 'Ejder ve Elder savaşlarında güçlü, 25. dakikadan sonra güç +%6.',
-    cost: "Herald savaşında zayıf, ilk 20 dakika koridorlar geride.",
+    gain: 'Ejder, Elder, 25 dk sonrası',
+    cost: 'Herald, ilk 20 dk',
+    detail: 'Ejder ve Elder savaşlarında güçlü, 25. dakikadan sonra güç +%6. Herald savaşında zayıf, ilk 20 dakika koridorlar geride.',
   },
   {
     id: 'earlyPressure',
     name: 'Erken baskı',
-    gain: "14. dakikaya kadar koridorlar önde, 2 ek gank, erken çatışmada güçlü.",
-    cost: "20. dakikadan sonra güç −%6.",
+    gain: 'İlk 14 dk, 2 ek gank',
+    cost: '20 dk sonrası zayıf',
+    detail: '14. dakikaya kadar koridorlar önde, 2 ek gank, erken çatışmada güçlü. 20. dakikadan sonra güç −%6.',
   },
   {
     id: 'botPressure',
     name: 'Bot baskısı',
-    gain: "Lane fazında bot önde; gank'ların çoğu bot'a ve daha başarılı.",
-    cost: 'Top yalnız kalır: ilk 14 dakika geride.',
+    gain: "Bot koridoru, gank'lar",
+    cost: 'Top yalnız, ilk 14 dk',
+    detail: "Lane fazında bot önde; gank'ların çoğu bot'a ve daha başarılı. Top yalnız kalır: ilk 14 dakika geride.",
   },
   {
     id: 'split',
     name: 'Split',
-    gain: 'Split\'e rakip daha az cevap verir, düelloda güçlü; zayıf splitçi de gider.',
-    cost: 'Split olunca objektif savaşı 4\'e 5.',
+    gain: 'Split ve düello',
+    cost: "Objektifte 4'e 5",
+    detail: "Split'e rakip daha az cevap verir, düelloda güçlü; zayıf splitçi de gider. Split olunca objektif savaşı 4'e 5.",
   },
   {
     id: 'fastFinish',
     name: 'Hızlı bitir',
-    gain: 'Kuşatmaya daha az altın farkıyla ve daha sık gider.',
-    cost: 'Kuşatma daha zor tutulur, throw daha pahalı.',
+    gain: 'Erken ve sık kuşatma',
+    cost: 'Throw pahalı',
+    detail: 'Kuşatmaya daha az altın farkıyla ve daha sık gider. Kuşatma daha zor tutulur, throw daha pahalı.',
   },
   {
     id: 'invade',
     name: 'Ormancı istilası',
-    gain: '4. dakikada rakip ormana kesin istila, çatışmada güçlü.',
-    cost: 'Püskürtülürse ormancı uzun süre geride.',
+    gain: '4. dk kesin istila',
+    cost: 'Püskürtülürse geride',
+    detail: '4. dakikada rakip ormana kesin istila, çatışmada güçlü. Püskürtülürse ormancı uzun süre geride.',
   },
 ]
 

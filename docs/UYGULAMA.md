@@ -606,3 +606,31 @@ Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ve CSS'le 
 | Sıradaki yuva | `.pick-card.active` (`pick-turn`) | Eski dış parıltı (`box-shadow`) kesik kenarda kırpılıyordu. Yerine dış kenar çizgisi şeftali ile sönük arasında nabız atar, zemin hafif aydınlanır ("göz buraya" = şeftali). Hareket azaltma açıksa kenar sabit şeftali. |
 
 Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ile sahte pick durumunu (dolu yuvalar, sıradaki yuva, rakibin ön izlemesi) çizen geçici önizleme sayfasında 1536×730'da bakıldı; sayfa silindi.
+
+### 8.43 Uygulama: plan ekranı sade (tabela + şerit kart)
+
+**İstek (kullanıcı, 2026-11-24):** Plan kartlarında çok fazla yazı var; uyum rozeti kalsın. Üst bant da henüz tabela dilinde değildi.
+
+**Kavram:** 20 saniyede 7 kart × 2 cümle (~250 kelime) okunmuyordu. Kartta karar için gereken kadarı kalır (ad, uyum, bir satır kazanç, bir satır bedel); ayrıntı isteyen üstüne gelir.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Tabela | `PlanBoard` (`.hud.draft-hud`, `.plan-status`) | Draft tabelasının aynısı (§8.41): mavi solda, kırmızı sağda iki plaka (ad + seri noktaları + "Sen", koparsa bağlantı), ortada "Oyun planı · gizli", büyük süre ve 20 sn'lik süre çubuğu (`StepTimer` dışa açıldı, `totalSeconds`). Plakada ban satırının yerinde "Seçiyor…" / yeşil "Seçti ✓"; seçmeyi bekleyenin adı parlak. Alttaki "Rakip: seçti" satırı ve "Rakip planını maç sonunda görür…" cümlesi kalktı. Plan fazında seri bandı yok (`LobbyScreen` `ownBand`). |
+| Kısa metin | `live/plans.ts` (`gain`, `cost`, `detail`) | Kartta 2-5 kelimelik ▲ kazanç (yeşil) ve ▼ bedel (kırmızı), tek satır, taşarsa "…". Eski tam cümleler `detail`'de, kartın `title`'ı. Dengeli'de bedel satırı yok. |
+| Şerit kart | `index.css` `.plan-card` | Pick yuvasıyla aynı dil (§8.42): nötr zemin, solda 3 px çizgi, sağ alt köşe 12 px çapraz kesik, yuvarlama yok. `clip-path` outline'ı kırptığı için seçim sol çizgi + zeminle. |
+| Şeftali dokunuş | `.plan-card` (kullanıcı, 2026-11-25) | Sol çizgi her kartta yarı saydam şeftali (`--pop-line`); üstüne gelince tam şeftali; seçili kartta çizgi ve ad şeftali, zeminde soldan şeftali ışık; kilitlenen daha parlak, diğerleri sönük. Şeftali sadece kartlarda (süre çubuğu mor kaldı). |
+
+Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `PlanBoard` ile sahte plan durumunu çizen geçici önizleme sayfasında 1536×730'da ve 420 px'lik kutuda bakıldı (telefonda kartlar tek sütun; hiçbir öğe kutusundan taşmıyor, ölçüldü); sayfa silindi. Not: headless Chrome `--window-size=420` istense de pencereyi 504 px açıyor; önceki "telefonda sağa taşma" görüntülerinin bir kısmı bu olabilir, (b) işinde önce gerçek genişlikle ölçülmeli.
+
+### 8.44 Uygulama: dar ekranda ban'lar sığar
+
+**İstek (kullanıcı, 2026-11-25):** Çözünürlük düşünce draft tabelasındaki ban'lar ekrana sığmıyor.
+
+**Ölçüm:** Ban satırı sabitti: 5 × 40 px + aralar = 224 px; plakanın iç boşluğuyla ~280 px gerekiyordu. Masaüstü düzeni 761 px'e kadar sürdüğü için pencere ~760-830 px arasında (kaydırma çubuğuyla; örneğin 1366 px laptopta %150-175 yakınlaştırma) ban'lar plakanın kesik kenarına taşıyordu. Ayrıca telefon düzeninde tabela yarım genişlikte kalıyordu.
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Esneyen portre | `index.css` `.draft-plate .ban-slot` | Yuva `flex: 0 1 40px`, portre `width: 100%` + `aspect-ratio: 1` (boyut `ChampionIcon`'da satır içi olduğu için `!important`). Yer varsa 40 px, daralınca beşi birlikte küçülür, kare kalır; çapraz çizgi zaten yüzdeyle. Telefonda tavan 28 px (`flex-basis`), eskiden sabit 28 px'ti. |
+| Telefonda tabela | `.hud.draft-hud` (≤ 760 px) | Telefon kuralı dosyada ortak `.hud` kuralından önce ve aynı güçteydi: `.hud`'un 3 sütunu onu eziyor, tabela yarım genişlikte kalıyordu (§8.41'den beri). İki sınıfla güçlendirildi; artık orta parça tam genişlik, iki plaka yarı yarıya. |
+
+Doğrulama: tsc + oxlint + 63 web testi + build. Gerçek `DraftBoard` ile 10 ban'lı sahte durumu çizen geçici önizleme sayfasında içerik 1068/960/880/790/760 px (masaüstü) ve 700/468 px (telefon) genişliğinde ban satırının sınırları plakanınkiyle ölçüldü: hepsinde ban'lar plakanın içinde. Görüntüyle de bakıldı; sayfa silindi.

@@ -64,9 +64,9 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
   const pending = revealed < lobby.games.length ? revealed : null
   const viewing = draft ? null : (watching ?? pending)
   // Ban/pick ve maç ekranında ayrı seri bandı yok: adlar, seri skoru ve bağlantı o ekranın kendi bandında (§8.37).
-  // Swap ve plan fazında kendi bantları yok; seri bandı ince hâliyle kalır.
+  // Plan fazı da kendi tabelasında (§8.43). Swap fazında kendi bandı yok; seri bandı ince hâliyle kalır.
   const banPick = draft !== null && draft.phase !== 'swap' && draft.phase !== 'plan' && draft.phase !== 'completed'
-  const ownBand = banPick || viewing !== null
+  const ownBand = banPick || draft?.phase === 'plan' || viewing !== null
 
   return (
     <section className="lobby">
@@ -101,7 +101,16 @@ export function LobbyScreen({ code, session }: { code: string; session: Session 
       {draft?.phase === 'swap' && (
         <SwapBoard draft={draft} me={me} champions={champions} offsetMs={offsetMs} act={act} />
       )}
-      {draft?.phase === 'plan' && <PlanBoard key={lobby.gameNumber} draft={draft} me={me} offsetMs={offsetMs} act={act} />}
+      {draft?.phase === 'plan' && (
+        <PlanBoard
+          key={lobby.gameNumber}
+          draft={draft}
+          me={me}
+          header={seriesHeader(lobby, lobby.blueTeam, score, offsetMs)}
+          offsetMs={offsetMs}
+          act={act}
+        />
+      )}
       {viewing !== null && (
         <GameViewer
           key={lobby.games[viewing].match}

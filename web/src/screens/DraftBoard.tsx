@@ -233,8 +233,19 @@ function BanFlash({ champion, name, side }: { champion: string; name: string; si
   )
 }
 
-/** Kalan süre: büyük sayı ve sıradakinin renginde boşalan çubuk (son 5 sn kırmızı, nabız). */
-function StepTimer({ deadline, offsetMs, side }: { deadline: string | null; offsetMs: number; side: Side | null }) {
+/** Kalan süre: büyük sayı ve sıradakinin renginde boşalan çubuk (son 5 sn kırmızı, nabız). Plan fazı da kullanır
+ *  (§8.43: 20 sn, renksiz çubuk). */
+export function StepTimer({
+  deadline,
+  offsetMs,
+  side,
+  totalSeconds = STEP_SECONDS,
+}: {
+  deadline: string | null
+  offsetMs: number
+  side: Side | null
+  totalSeconds?: number
+}) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!deadline) return
@@ -246,7 +257,7 @@ function StepTimer({ deadline, offsetMs, side }: { deadline: string | null; offs
   if (ms === null) return null
   const seconds = Math.ceil(ms / 1000)
   const urgent = seconds <= 5
-  const fraction = Math.max(0, Math.min(1, ms / (STEP_SECONDS * 1000)))
+  const fraction = Math.max(0, Math.min(1, ms / (totalSeconds * 1000)))
   return (
     <>
       <span className={`draft-clock${urgent ? ' urgent' : ''}`}>{seconds}</span>
