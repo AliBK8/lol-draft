@@ -119,9 +119,12 @@ internal sealed partial class MatchRun
                           && _deaths.IsAlive(support, t)
                           && JungleRng.NextDouble() < SupportRoamChance;
 
-        // Gank'a giden support bot koridorundan çıkmış olur.
+        // Gank'a giden support bot koridorundan çıkmış olur. Harita düzeni ormancıyı bir koridora koymuşsa (Grup) ve
+        // gank başka koridoraysa ormancı da 20 sn grubunda yok (kule baskısında sayılmaz; DESIGN.md §4.11).
         if (withSupport)
             MarkAway([support], t + AwayAfterRoamSeconds);
+        if (Post(jungler) is { } post && post != lane)
+            MarkAway([jungler], t + AwayAfterRoamSeconds);
 
         string[] parts = withSupport ? [jungler.Id, support.Id] : [jungler.Id];
         _events.Add(new MoveEvent(t, "", parts, lane, River: null, GankMoveLead, GankMoveTail));

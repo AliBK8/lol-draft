@@ -3,8 +3,9 @@ using LolDraft.Engine.Events;
 namespace LolDraft.Engine.Simulation;
 
 /// <summary>
-/// Kule = fırsat: kuleye ancak koridorda rakip yokken vurulur. Rakip ya ölüdür ya da başka yerde meşguldür
-/// (nehir çatışması, objektif savaşı, kuşatma, gank'a giden support). Tek istisna K6 poke itişi (TryPokePush).
+/// Kule baskısı (DESIGN.md §4.11 C): anlatıcı dakikasında koridordaki kişi sayıları (harita düzenine göre, müsait
+/// olanlar: ölü ya da nehir çatışması, objektif, kuşatma, gank'taki yok) kule ihtimaline döner. Boş koridor ya da sayı
+/// üstünlüğü kule getirebilir; eşitlikte sadece K6 poke itişi (TryPokePush). Ayrıca savaş sonrası itiş ve split kulesi.
 /// </summary>
 internal sealed partial class MatchRun
 {
@@ -39,12 +40,27 @@ internal sealed partial class MatchRun
     private bool IsInLane(ChampionProfile champion, double t) =>
         _deaths.IsAlive(champion, t) && _awayUntil.GetValueOrDefault(champion.Id) <= t;
 
-    // Koridor fırsatı: harita düzenine göre (DESIGN.md §4.11) koridorda bizden biri var, onlardan kimse yok (ölü,
-    // uzakta ya da düzeni onu başka koridora koymuş). Örnek: rakip mid'de Grup, bizim top üstte → üst kule açık.
-    private bool HasTowerOpportunity(TeamSide side, Lane lane, double t) =>
-        PresentIn(side, lane, t).Count > 0
-        && PresentIn(side.Opponent(), lane, t).Count == 0
-        && _towersDestroyed[(int)side, (int)lane] < TowersPerLane;
+    // Kule baskısı (DESIGN.md §4.11 C): koridordaki kişi sayıları (harita düzenine göre, müsait olanlar) kule ihtimaline
+    // döner. Karşıda kimse yoksa 1 kişi %35, her ek kişi +%20 (en fazla %85); savunan varsa sadece sayı üstünlüğüyle,
+    // fark başına %15 (en fazla %60); eşitlik ya da azınlıkta kule yok. İçerideki kule daha zor: dış ×1, iç ×0,7,
+    // inhibitör ×0,5 (kapı yavaş açılır, kuşatma geç gelir).
+    // Örnekler: top tek başına boş koridorda dış kule %35, iç %24,5. Grup (5) tek savunana karşı mid'de dış %60, iç %42.
+    private const double EmptyLaneTowerChance = 0.2;
+    private const double EmptyLaneChancePerExtra = 0.15;
+    private const double EmptyLaneMaxChance = 0.6;
+    private const double OutnumberChancePerPlayer = 0.1;
+    private const double OutnumberMaxChance = 0.4;
+    private static readonly double[] TierFactor = [1, 0.5, 0.35];
+
+    internal static double TowerChance(int ours, int theirs, int tier)
+    {
+        if (ours == 0 || ours <= theirs)
+            return 0;
+        var chance = theirs == 0
+            ? Math.Min(EmptyLaneTowerChance + EmptyLaneChancePerExtra * (ours - 1), EmptyLaneMaxChance)
+            : Math.Min(OutnumberChancePerPlayer * (ours - theirs), OutnumberMaxChance);
+        return chance * TierFactor[tier];
+    }
 
     // Kuleyi yıkar: sıradaki kule (dış → iç → inhibitör).
     // scored: koridor fırsatı kendi puanını getirir (koridor kategorisine +4, inhibitör +6). Savaş sonrası kule ise
@@ -64,11 +80,19 @@ internal sealed partial class MatchRun
         if (minute < TowerMinMinute)
             return false;
 
+        // Önce önde olan taraf, sonra diğeri; zar sadece ihtimal varsa atılır (kule akışı, diğer zarları kaydırmaz).
         foreach (var side in (TeamSide[])[ahead, ahead.Opponent()])
         {
-            if (HasTowerOpportunity(side, lane, t))
+            var tier = _towersDestroyed[(int)side, (int)lane];
+            if (tier >= TowersPerLane)
+                continue;
+
+            var theirs = PresentIn(side.Opponent(), lane, t).Count;
+            var chance = TowerChance(PresentIn(side, lane, t).Count, theirs, tier);
+            if (chance > 0 && TowerRng.NextDouble() < chance)
             {
-                TakeTower(side, lane, t, $"{side.DisplayName()}, {LaneName(lane)} koridorda", scored: true);
+                var how = theirs == 0 ? "" : " sayı üstünlüğüyle";
+                TakeTower(side, lane, t, $"{side.DisplayName()}, {LaneName(lane)} koridorda{how}", scored: true);
                 return true;
             }
         }

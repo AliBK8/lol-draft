@@ -9,14 +9,14 @@ namespace LolDraft.Engine.Tests;
 /// önceki motorla bit bit aynı. Parmak izi plan kodundan önce alındı (2026-11-24, b49a6ac). Bu test kırılırsa ya Dengeli
 /// bir şeyi değiştirdi (hata) ya da motor bilerek değişti (o zaman parmak izi yenilenir ve denge yeniden ölçülür).
 /// Yenilemeler: 2026-11-27 alt sistem başına zar akışları (DESIGN.md §4.1; davranış aynı, zarlar başka akıştan);
-/// 2026-11-27 harita düzeni (§4.11, motor bilerek değişti).
+/// 2026-11-27 harita düzeni (§4.11, motor bilerek değişti); 2026-11-27 kule baskısı (§4.11 C).
 /// </summary>
 public sealed class BalancedPlanFingerprintTests
 {
     private const int MatchCount = 100;
 
     // Match, Even, Stomp, Split × 100 seed: olaylar (tip, saniye, metin), sonuç ve dakika kareleri.
-    private const string Expected = "50744F94CEDA86BD07CF8A6A91D89DE1FBB08015645D2174D559C6FDEF906DC7";
+    private const string Expected = "075919DDEEAED450ACC91553C23491600F9F00E713524CCA7CDC4406A2368F89";
 
     [Fact]
     public void Dengeli_x_Dengeli_plansiz_motorla_bit_bit_ayni()

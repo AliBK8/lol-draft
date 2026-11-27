@@ -222,8 +222,8 @@ Olay zamanı: dakikanın 25-55. saniyeleri arası rastgele. Bütçe sadece anlat
 
 Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü ya da meşgulse (aşağıda) o dakika solo kill / plaka / CS anlatımı olmaz; bütçe harcanmaz, birikir. Solo kill kurbanı da koridorda olmalı.
 
-**Kule = fırsat.** Kuleye ancak koridorda rakip yokken vurulur; koridorda önde olmak gerekmez.
-- **Koridor fırsatı:** harita düzenine göre (§4.11) koridorda bizden biri var, onlardan kimse yok (ölü, meşgul ya da düzeni onu başka koridora koymuş); kule kalmış. 14. dk'dan önce herkes kendi koridorunda (eski kural: kendi koridorcun var, karşındakiler yok). Meşgul: nehir çatışması, objektif savaşı ya da kuşatmaya katılan 25 sn, gank'a giden support 20 sn koridorunda sayılmaz (meşguliyet iş çözüldüğü anda bilinir). Puanı gerçektir: koridor kategorisine +4, inhibitör +6.
+**Kule = baskı** (2026-11-27, §4.11 C; eskiden "fırsat": rakip yoksa kesin düşerdi). Anlatıcı dakikasında koridordaki kişi sayıları kule ihtimaline döner; koridorda önde olmak gerekmez.
+- **Kule baskısı:** harita düzenine göre (§4.11) koridorda bizden ve onlardan kaç kişi müsait (ölü, meşgul ya da düzeni başka koridora koymuş olanlar sayılmaz). Karşıda kimse yoksa 1 kişi %20, her ek kişi +%15 (en fazla %60); savunan varsa sadece sayı üstünlüğüyle, fark başına %10 (en fazla %40); eşitlik ve azınlıkta yok. İç kule ×0,5, inhibitör ×0,35 (kapı yavaş açılır). Önce önde olan taraf denenir. Örnek: Grup (5) tek savunana karşı dış kule %40, iç %20. 14. dk'dan önce kule yok. Meşgul: nehir çatışması, objektif savaşı ya da kuşatmaya katılan 25 sn, gank'a giden support 20 sn koridorunda sayılmaz (meşguliyet iş çözüldüğü anda bilinir). Puanı gerçektir: koridor kategorisine +4, inhibitör +6.
 - **Savaş sonrası:** objektif savaşından 12 sn sonra kaybedenlerden en az 2 kişi ölüyse kazanan yakındaki kuleyi alır: ejder → bot, Herald → mid, Baron/Elder → en çok kulesi kalmış koridor. Ek puan yok: kazanılan savaşın görünür sonucu, puanı objektif değerinde (ek puan verince erken comp kartopu %52 → %61'e çıkıyordu).
 - Ölçüm (prototip takımları, 1000 maç): maç başı 4,3 kule (3,95 savaş sonrası, 0,33 koridor fırsatı); denge değişmedi (Mavi %51).
 - İleride: inhibitörü düşmemiş koridordan kuşatmaya gidilemesin (kuşatma ↔ kule bağı).
@@ -309,7 +309,7 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 
 **Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → harita düzeni (§4.11; karar anlarının çoğu bir düzen seçimi) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
 
-### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; A zar akışları ve B düzen uygulandı, §8.47-8.48)
+### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; A zar akışları, B düzen, C kule baskısı uygulandı, §8.47-8.49)
 
 **Sorun:** kimin nerede durduğunu motor söylemiyordu, ekran sabit kuralla tahmin ediyordu (§5.1: 14. dk'dan sonra bot ikilisi hep mid'de, 25'ten sonra top yanda). Alt koridor boşalıyor, her olay mid'de dönüyordu. Motor ise adc'yi 30. dakikada da bot koridorunda sayıyordu (kule fırsatı): ekran ile motor iki ayrı dünyaydı.
 
@@ -323,7 +323,7 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 | 1-3-1 | İki yan koridor, 3 kişi mid | Haritanın her yerinde baskı | Savaş 3'e 5 başlar; yanlardakiler arkadan kapatır |
 
 - **Sıklık:** 14. dakikadan sonra 2-3 dakikada bir, ayrıca her objektif ve kuşatmadan sonra (takımlar sürekli koşturmasın). Seçimi varsayılan olarak motor yapar, eğilimi plandan gelir (Split → 1-4 / 1-3-1, Hızlı bitir → Grup); F2'de bazı anlarda oyuncuya sorulur (ejder: savaş = grup çukura, takas = grup karşı koridora; geç oyun: split / grupla).
-- **Kule sonrası ilerleme:** koridordaki kişi farkı itiş baskısıdır; kule düşünce ön hat ilerler, sıradaki kule hedef olur. Kuşatma bir koridordan gider (`siege` olayına koridor).
+- **Kule sonrası ilerleme:** koridordaki kişi farkı itiş baskısıdır (§4.8 kule baskısı: boş koridor ya da sayı üstünlüğü ihtimal verir, içerideki kule daha zor); kule düşünce ekranda ön hat ilerler, sıradaki kule hedef olur. Kuşatma bir koridordan gider (`siege` olayına koridor). Grup'taki ormancı başka koridora gank atarsa 20 sn grubunda sayılmaz.
 - **Arkadan kapatma** (basit hâli; asıl hâli F3 mini savaşta veriyle): yan koridordaki oyuncu savaşa birkaç saniye geç ama rakibin arkasından katılır; ilk hedefi rakibin carry'si, savaş ihtimaline küçük katkı.
 - **Orman yakalaması:** yan koridordan dönen ya da rakip ormanında dolaşan konumlu hedef olur; yakalanma (§16.9) "nerede" bilgisini taşır. Takım arkadaşları yakındaysa cevap gelir, ormanda küçük çatışma çıkar.
 - **Uygulama sırası:** (A) zar akışları (§4.1) → (B) düzen motorda + `layout` olayı, ekran okur, kuşatmaya koridor → (C) kişi sayısı → kule baskısı ve ilerleme → (D) orman yakalaması, ormanda çatışma, arkadan kapatma → F2.
