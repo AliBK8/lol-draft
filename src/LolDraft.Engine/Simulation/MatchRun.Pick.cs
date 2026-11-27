@@ -25,6 +25,15 @@ internal sealed partial class MatchRun
     private const double EscapeBaseChance = 0.2;
     private const double EscapeChancePerMobility = 0.1;
 
+    // Konumlu yakalanma (DESIGN.md §4.11 D): ortak avcı %50, her yardımcı %50; savaş nehir çatışmasının hesabıyla
+    // (bölen 6), en fazla 2 kill. Katılanlar 12 sn önce yere yürür, 4 sn kalır.
+    private const double CatchPartnerChance = 0.5;
+    private const double CatchAnswerChance = 0.5;
+    private const double CatchFightDivisor = 6;
+    private const int CatchMaxKills = 2;
+    private const int CatchMoveLead = 12;
+    private const int CatchMoveTail = 4;
+
     // dk ≥ 15, objektif olmayan dakikalarda (objektifte herkes savaşta), 5-40. saniyede (45. sn kuşatmadan önce).
     // Zar sırası: kayıtta saniye; çözümde yakalanma, kaçma.
     private void ScheduleCatch(int minute)
@@ -62,8 +71,108 @@ internal sealed partial class MatchRun
         if (killer is null)
             return;
 
-        Kill(behind, killer, victim, t, $"{victim.Name} {CatchPlace(ahead, victim)} yakalandı, kill {killer.Name} aldı");
+        PlayLocatedCatch(behind, killer, victim, t);
     }
+
+    // Konumlu yakalanma (DESIGN.md §4.11 D). Zar sırası: ortak avcı gelir mi, (yer belirsizse) orman yarısı, her aday
+    // yardımcı için gelir mi, (savaş olursa) kazanan ve kill sayısı.
+    //   Yer: kurban koridorunda takım arkadaşlarıyla birlikteyse o koridorda; yalnızsa (1-4'ün splitçisi, 1-3-1'in
+    //   yanları) ya da ormancıysa avcının ormanında (koridoruna göre üst ya da alt yarı): dönerken / ward atarken avlanır.
+    //   Yardım: koridorda yakalanana o koridordaki takım arkadaşları, ormanda yakalanana kendi ormancısı, her biri %50.
+    //   Yardım gelirse küçük savaş (nehir çatışmasının hesabı, bölen 6, K7): kazanan kaybedenlerden 1-2 kill alır.
+    // Örnek: Fiora 1-4'te üstte tek; Kırmızı ormanında (kuşlar) Elise ve Lee Sin onu yakalar, yardıma gelen yok → kill.
+    // Örnek: Jinx mid'de grupla; yakalanırken Lulu ve Ornn yardıma gelir → koridorda 2v3, avcılar zor durumda.
+    private void PlayLocatedCatch(TeamSide hunter, ChampionProfile killer, ChampionProfile victim, double t)
+    {
+        var prey = hunter.Opponent();
+        var partner = SkirmishPriority(Team(hunter)).FirstOrDefault(c => c != killer && IsInLane(c, t));
+        var withPartner = partner is not null && CatchRng.NextDouble() < CatchPartnerChance;
+        ChampionProfile[] hunters = withPartner ? [killer, partner!] : [killer];
+
+        var spot = CatchSpot(hunter, victim, t, half: null);
+        var helpers = CatchHelpers(prey, victim, spot, t);
+        var place = Place(spot);
+
+        if (helpers.Count == 0)
+        {
+            _events.Add(new CatchEvent(t, "", hunter, victim.Id, [.. hunters.Select(c => c.Id)], [], spot.Lane, spot.Jungle,
+                spot.Camp, Probability: null, CatchMoveLead, CatchMoveTail));
+            MarkAway(hunters, t + AwayAfterRoamSeconds);
+            Kill(hunter, killer, victim, t, $"{victim.Name} {place} yakalandı, kill {killer.Name} aldı",
+                assists: withPartner ? [partner!] : []);
+            return;
+        }
+
+        // Yardım geldi: küçük savaş.
+        ChampionProfile[] defenders = [victim, .. helpers];
+        var minute = (int)(t / 60) + 1;
+        var (blue, red) = hunter == TeamSide.Blue ? (hunters, defenders) : (defenders, hunters);
+        var rules = TeamRules.Effects(FightKind.Skirmish, blue, red, minute, c => EffectivePower(c, minute, t));
+        var d = EffectivePower(blue, minute, t) - EffectivePower(red, minute, t) + rules.Sum(e => e.Signed);
+        var blueProbability = Probability.Clamp(Probability.Logistic(d / CatchFightDivisor));
+        var hunterProbability = hunter == TeamSide.Blue ? blueProbability : 1 - blueProbability;
+        var winner = CatchRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
+        var (winners, losers) = winner == hunter ? (hunters, defenders) : (defenders, hunters);
+
+        var names = string.Join(", ", helpers.Select(c => c.Name));
+        var text = $"{victim.Name} {place} yakalanmak üzereydi, {names} yardıma geldi: "
+                   + $"{blue.Length}v{red.Length}, {winner.DisplayName()} kazandı";
+        _events.Add(new CatchEvent(t, text, hunter, victim.Id, [.. hunters.Select(c => c.Id)], [.. helpers.Select(c => c.Id)],
+            spot.Lane, spot.Jungle, spot.Camp, hunterProbability, CatchMoveLead, CatchMoveTail));
+        MarkAway([.. hunters, .. defenders], t + AwayAfterFightSeconds);
+
+        var killCount = 1 + CatchRng.NextIndex(Math.Min(CatchMaxKills, losers.Length));
+        ScheduleKills(CatchRng, winner, winners, losers, killCount, t + 1,
+            (k, v) => $"{k.Name}, {v.Name} karakterini {place} indirdi");
+    }
+
+    private sealed record CatchLocation(Lane? Lane, TeamSide? Jungle, JungleCamp? Camp);
+
+    // Yer: kurban koridorunda müsait bir takım arkadaşıyla birlikteyse o koridor; değilse avcının ormanı. Orman yarısı
+    // koridordan (üst → üst yarı, alt → alt yarı); mid'de ya da ormancıysa zarla.
+    private CatchLocation CatchSpot(TeamSide hunter, ChampionProfile victim, double t, bool? half)
+    {
+        var prey = hunter.Opponent();
+        var post = Post(victim);
+        var together = post is { } lane
+                       && Team(prey).Champions.Any(c => c != victim && Post(c) == lane && IsInLane(c, t));
+        if (together)
+            return new CatchLocation(post, null, null);
+
+        var top = half ?? post switch
+        {
+            Lane.Top => true,
+            Lane.Bot => false,
+            _ => CatchRng.NextIndex(2) == 0,
+        };
+        return new CatchLocation(null, hunter, JungleHalfCamp(hunter, top));
+    }
+
+    // Bir takımın ormanının üst / alt yarısındaki istila kampı (harita: Mavi'nin üst yarısında kurtlar, alt yarısında
+    // kuşlar; Kırmızı'da tersi). Ekran savaşı o kampta gösterir.
+    private static JungleCamp JungleHalfCamp(TeamSide owner, bool top) =>
+        (owner == TeamSide.Blue) == top ? JungleCamp.Wolves : JungleCamp.Raptors;
+
+    // Yardıma gelebilecekler: koridorda yakalanana o koridordaki müsait takım arkadaşları, ormanda yakalanana müsait
+    // ormancısı (kurban kendisi değilse). Her biri %50 (zar takım sırasıyla, sadece aday varsa).
+    private List<ChampionProfile> CatchHelpers(TeamSide prey, ChampionProfile victim, CatchLocation spot, double t)
+    {
+        var team = Team(prey);
+        var candidates = spot.Lane is { } lane
+            ? team.Champions.Where(c => c != victim && Post(c) == lane && IsInLane(c, t)).ToList()
+            : team.Champions.Where(c => c == team.Jungle && c != victim && IsInLane(c, t)).ToList();
+        var helpers = new List<ChampionProfile>();
+        foreach (var candidate in candidates)
+        {
+            if (CatchRng.NextDouble() < CatchAnswerChance)
+                helpers.Add(candidate);
+        }
+
+        return helpers;
+    }
+
+    private string Place(CatchLocation spot) =>
+        spot.Lane is { } lane ? $"{LaneName(lane)} koridorda" : $"{spot.Jungle!.Value.DisplayName()} ormanında";
 
     // Objektif öncesi yakalama (faz H3, kullanıcıyla): draft'ın pick gücü objektife taşınır. Objektif savaşından
     // 8-25 sn önce (rastgele) pick toplamı fazla olan takım rakibinden birini yakalamayı dener:
@@ -103,8 +212,20 @@ internal sealed partial class MatchRun
         if (CatchRng.NextDouble() < EscapeChance(victim))
             return;
 
+        // Yer (DESIGN.md §4.11 D): avcının ormanında, objektifin yarısında (ejder/Elder alt, Herald/Baron üst; son savaş
+        // zarla). Yardım yok: objektife koşarken pusuya düşer (ayarı faz H3'te, cevapsız).
+        bool? half = objective switch
+        {
+            Objective.Dragon or Objective.Elder => false,
+            Objective.Herald or Objective.Baron => true,
+            _ => null,
+        };
+        var top = half ?? CatchRng.NextIndex(2) == 0;
+        var spot = new CatchLocation(null, hunter, JungleHalfCamp(hunter, top));
+        _events.Add(new CatchEvent(t, "", hunter, victim.Id, [killer.Id], [], null, hunter, spot.Camp, Probability: null,
+            CatchMoveLead, CatchMoveTail));
         Kill(hunter, killer, victim, t,
-            $"{BeforeObjective(objective)} öncesi pusu: {victim.Name} {CatchPlace(prey, victim)} yakalandı, kill {killer.Name} aldı");
+            $"{BeforeObjective(objective)} öncesi pusu: {victim.Name} {Place(spot)} yakalandı, kill {killer.Name} aldı");
     }
 
     private static string BeforeObjective(Objective objective) => objective switch
@@ -130,14 +251,5 @@ internal sealed partial class MatchRun
         foreach (var champion in Team(side).Champions)
             total += _gold.GoldAt(champion, t);
         return total;
-    }
-
-    private string CatchPlace(TeamSide side, ChampionProfile champion)
-    {
-        var team = Team(side);
-        if (champion == team.Jungle)
-            return "ormanda";
-        var lane = champion == team.Top ? Lane.Top : champion == team.Mid ? Lane.Mid : Lane.Bot;
-        return $"{LaneName(lane)} koridorda";
     }
 }

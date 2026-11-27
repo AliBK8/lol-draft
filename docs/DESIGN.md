@@ -248,6 +248,8 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 | `move` | parts[], lane? / loc?, lead, tail | Görünmez; hareket kısıtı |
 | `siege` | side, lead, tail, lane? | Görünmez; kuşatma toplanması. lane: girdiği koridor (§4.11), Nexus'a yürüyüşte boş |
 | `layout` | side, layout (`lanes` / `group` / `oneFour` / `oneThreeOne`), posts[5] | Görünmez; harita düzeni (§4.11). posts yuva sırasıyla koridor, null = ormanında |
+| `catch` | side (avcılar), victim, hunters[], helpers[], lane? / jungle? + camp?, probability?, lead, tail | Yakalanma (§4.11 D); kill'ler ayrı `kill`. Yardım geldiyse metinli savaş, yoksa metinsiz |
+| `flank` | side, objective, flankers[] | Görünmez; arkadan kapatma (§4.11 D) |
 | `invade` | side (istila eden), camp, invaders[], defenders[], stolen, pct?, lead, tail | Ormancı istilası (§4.5); kill'ler ayrı `kill`. Renk kazananın: püskürtülürse savunan |
 | `nexus` | side, pct? | Maç sonu |
 
@@ -309,7 +311,7 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 
 **Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → harita düzeni (§4.11; karar anlarının çoğu bir düzen seçimi) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
 
-### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; A zar akışları, B düzen, C kule baskısı uygulandı, §8.47-8.49)
+### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; A-D uygulandı, §8.47-8.50)
 
 **Sorun:** kimin nerede durduğunu motor söylemiyordu, ekran sabit kuralla tahmin ediyordu (§5.1: 14. dk'dan sonra bot ikilisi hep mid'de, 25'ten sonra top yanda). Alt koridor boşalıyor, her olay mid'de dönüyordu. Motor ise adc'yi 30. dakikada da bot koridorunda sayıyordu (kule fırsatı): ekran ile motor iki ayrı dünyaydı.
 
@@ -324,8 +326,8 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 
 - **Sıklık:** 14. dakikadan sonra 2-3 dakikada bir, ayrıca her objektif ve kuşatmadan sonra (takımlar sürekli koşturmasın). Seçimi varsayılan olarak motor yapar, eğilimi plandan gelir (Split → 1-4 / 1-3-1, Hızlı bitir → Grup); F2'de bazı anlarda oyuncuya sorulur (ejder: savaş = grup çukura, takas = grup karşı koridora; geç oyun: split / grupla).
 - **Kule sonrası ilerleme:** koridordaki kişi farkı itiş baskısıdır (§4.8 kule baskısı: boş koridor ya da sayı üstünlüğü ihtimal verir, içerideki kule daha zor); kule düşünce ekranda ön hat ilerler, sıradaki kule hedef olur. Kuşatma bir koridordan gider (`siege` olayına koridor). Grup'taki ormancı başka koridora gank atarsa 20 sn grubunda sayılmaz.
-- **Arkadan kapatma** (basit hâli; asıl hâli F3 mini savaşta veriyle): yan koridordaki oyuncu savaşa birkaç saniye geç ama rakibin arkasından katılır; ilk hedefi rakibin carry'si, savaş ihtimaline küçük katkı.
-- **Orman yakalaması:** yan koridordan dönen ya da rakip ormanında dolaşan konumlu hedef olur; yakalanma (§16.9) "nerede" bilgisini taşır. Takım arkadaşları yakındaysa cevap gelir, ormanda küçük çatışma çıkar.
+- **Arkadan kapatma** (basit hâli, uygulandı §8.50; asıl hâli F3 mini savaşta veriyle): 14. dk'dan sonra objektif savaşına çukurun öbür ucundaki yan koridordan gelen (ejder/Elder: üstteki, Herald/Baron: alttaki; takım başı en fazla 2) savaşa geç ama rakibin arkasından katılır: kişi başı d +1; takımı kazanırsa ilk kill onun, kurban rakibin en zengini ("X arkadan dolandı, Y düştü"). Son savaşta yok. Ekranda savaştan 9 sn öncesine kadar koridorunda, sonra koşarak rakibin arkasına (çukurdan rakip üsse doğru).
+- **Orman yakalaması** (uygulandı §8.50): yakalanma (§16.9) yer kazanır (`catch` olayı). Kurban koridorunda müsait takım arkadaşlarıyla birlikteyse o koridorda; yalnızsa (1-4'ün splitçisi, 1-3-1'in yanları) ya da ormancıysa avcının ormanında, koridoruna göre üst ya da alt yarıda (Mavi'nin üst yarısında kurtlar, alt yarısında kuşlar; Kırmızı'da tersi): split'in riski. Avcıya %50 bir takım arkadaşı eşlik eder. Yardım: koridordakine o koridordaki takım arkadaşları, ormandakine kendi ormancısı, her biri %50; gelirse küçük savaş (nehir çatışmasının hesabı, bölen 6, K7), kazanan 1-2 kill. Objektif öncesi pusu da yer kazanır (avcının ormanında, objektifin yarısında), yardım almaz.
 - **Uygulama sırası:** (A) zar akışları (§4.1) → (B) düzen motorda + `layout` olayı, ekran okur, kuşatmaya koridor → (C) kişi sayısı → kule baskısı ve ilerleme → (D) orman yakalaması, ormanda çatışma, arkadan kapatma → F2.
 
 ---

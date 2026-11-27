@@ -119,6 +119,19 @@ internal sealed record MatchDto(
             type = "split", t = s.T, text = s.Text, side = EngineNames.Side(s.Side), lane = EngineNames.Lane(s.Lane),
             splitter = s.SplitterId, answerer = s.AnswererId,
         },
+        // Yakalanma (DESIGN.md §4.11 D): yer ya koridor (lane) ya da bir takımın ormanında kamp (jungle + camp).
+        CatchEvent c => new
+        {
+            type = "catch", t = c.T, text = c.Text, side = EngineNames.Side(c.Side), victim = c.VictimId,
+            hunters = c.HunterIds, helpers = c.HelperIds, lane = EngineNames.Lane(c.Lane),
+            jungle = c.Jungle is { } j ? EngineNames.Side(j) : null, camp = c.Camp is { } camp ? EngineNames.Camp(camp) : null,
+            probability = c.Probability, lead = c.Lead, tail = c.Tail,
+        },
+        FlankEvent f => new
+        {
+            type = "flank", t = f.T, text = f.Text, side = EngineNames.Side(f.Side), objective = EngineNames.Objective(f.Objective),
+            flankers = f.FlankerIds,
+        },
         DragonSoulEvent d => new { type = "dragonSoul", t = d.T, text = d.Text, side = EngineNames.Side(d.Side) },
         ThrowEvent w => new { type = "throw", t = w.T, text = w.Text, side = EngineNames.Side(w.Side), probability = w.Probability },
         NexusEvent n => new { type = "nexus", t = n.T, text = n.Text, side = EngineNames.Side(n.Side), probability = n.Probability },

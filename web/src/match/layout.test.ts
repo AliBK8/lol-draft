@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import fixture from './__fixtures__/match.json'
 import { engagement } from './engagement'
-import { nearestOnLane, pathPoint, TOWER_S } from './geometry'
+import { BASE, JUNGLE, nearestOnLane, pathPoint, PIT, TOWER_S } from './geometry'
 import { placement, postsAt } from './positions'
 import { roster, stateAt } from './timeline'
 import type { Lane, MatchEvent, Replay } from './types'
@@ -56,6 +56,37 @@ describe('harita düzeni (DESIGN.md §4.11)', () => {
       for (let i = 0; i < ps.length; i++)
         for (let j = i + 1; j < ps.length; j++)
           expect(Math.hypot(ps[i].point[0] - ps[j].point[0], ps[i].point[1] - ps[j].point[1]), `@${t}`).toBeGreaterThan(13)
+  })
+
+  it('ormanda yakalanma: avcılar, kurban ve yardımcı o kampta savaş dizilişinde', () => {
+    const blue = [...roster(replay)].filter(([, c]) => c.side === 'blue').map(([id]) => id)
+    const red = [...roster(replay)].filter(([, c]) => c.side === 'red').map(([id]) => id)
+    const t = 20 * 60 + 20
+    const r = withEvent({
+      type: 'catch', t, text: '', side: 'red', victim: blue[0], hunters: [red[1], red[2]], helpers: [blue[1]],
+      lane: null, jungle: 'red', camp: 'raptors', probability: 0.5, lead: 12, tail: 4,
+    })
+    for (const id of [blue[0], blue[1], red[1], red[2]]) {
+      const c = roster(r).get(id)!
+      const busy = engagement(r.events, t, id, c.side, c.slot)
+      expect(busy?.kind, id).toBe('fight')
+      if (busy?.kind === 'fight') expect(busy.center).toEqual(JUNGLE.red.raptors)
+    }
+  })
+
+  it('arkadan gelen savaştan önce koridorunda kalır, sonra rakibin arkasına girer', () => {
+    const t = 21 * 60 + 30
+    const [id, c] = [...roster(replay)].find(([, x]) => x.side === 'blue' && x.slot === 0)!
+    const objective: MatchEvent = { type: 'objective', t, text: '', objective: 'dragon', side: 'blue', probability: 0.5 }
+    const flank: MatchEvent = { type: 'flank', t, text: '', side: 'blue', objective: 'dragon', flankers: [id] }
+    const events = [...replay.events.filter((e) => e.t < t), flank, objective, ...replay.events.filter((e) => e.t >= t)]
+    expect(engagement(events, t - 15, id, c.side, c.slot)).toBeUndefined()
+    const late = engagement(events, t - 5, id, c.side, c.slot)
+    expect(late?.kind).toBe('fight')
+    // Merkez çukurdan Kırmızı üssüne doğru: Kırmızı üssüne çukurdan daha yakın.
+    const center = late?.kind === 'fight' ? late.center : PIT.dragon
+    const toRed = (p: readonly [number, number]) => Math.hypot(p[0] - BASE.red[0], p[1] - BASE.red[1])
+    expect(toRed(center)).toBeLessThan(toRed(PIT.dragon))
   })
 
   it('kuşatma koridoruyla gelirse savunanın o koridordaki inhibitör kulesinin önünde', () => {

@@ -720,3 +720,25 @@ Doğrulama: 220 motor testi (3 yeni: aynı seed aynı akışlar, bir akış diğ
 **Teşhis yöntemi** (geçici test, repoya girmedi): kulenin kaynağı (savaş sonrası / boş koridor / üstünlük / split / poke) ve ilk kapının dakikası, aynı test takımlarıyla 3.000 maçta; B'den önceki motor ayrı bir git worktree'de aynı testle.
 
 **Ölçüm** (60.000 draft; A → B → C): kule 6,4 → 11,4 → **7,6**, kuşatmayla biten %49,0 → %57,5 → **%54,3** (24. dk %17,2 → %29,4 → %22,0), süre 29,6 → 28,4 → **28,9**, kill 25,5 → 24,2 → 24,5, ruh alınan maç %48,2 → %40,7 → %44,4. Kimlikler: Engage %54,1 · Poke %49,6 · Pick %50,6 · Koruma %51,0 · Dive %50,0 · Split %47,2. Erken comp %50,1 / 35'ten önce %33,7 ✓, scale comp kurtarıyor %33,2 ✓, 15. dk 3.000-4.999 önde %69,3. Kenarda: Alistar %56,2; bilinçli Pyke %42,9, Draven %41,9.
+
+### 8.50 Uygulama: konumlu yakalanma, ormanda savaş, arkadan kapatma (harita düzeni D)
+
+**Sorun:** yakalanma sadece bir kill'di: yeri yoktu (metin rolün sabit koridorunu söylüyordu), ekranda kimse kurbana yürümüyordu, ormanda savaş hiç çıkmıyordu; yan koridordaki oyuncunun objektif savaşına bir etkisi yoktu.
+
+**Kavram:** (D1) yakalanmanın yeri: kurban koridorunda takım arkadaşlarıyla birlikteyse o koridor, yalnızsa (1-4'ün splitçisi, 1-3-1'in yanları) ya da ormancıysa avcının ormanı (koridoruna göre üst / alt yarı); yakındakiler yardıma gelebilir, gelirse küçük savaş. (D2) objektif savaşına çukurun öbür ucundaki yan koridordan gelen arkadan kapatır. Örnek: 1-4'te Fiora üstte tek, Kırmızı ormanında kuşlarda Elise + Lee Sin onu yakalar, yardıma gelen yok → kill; aynı dakikada ejder savaşında Fiora üstte olduğu için Mavi d +1, Mavi kazanırsa "Fiora arkadan dolandı, Jinx düştü".
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Yer | `MatchRun.Pick.cs` (`CatchSpot`, `JungleHalfCamp`) | Mavi'nin ormanı: üst yarı kurtlar, alt yarı kuşlar; Kırmızı'nın tersi (kamp koordinatlarından). Mid'de ya da ormancıysa yarı zarla. Metin "Kırmızı ormanında" / "orta koridorda". |
+| Avcılar | `PlayLocatedCatch` | Katil (en yüksek pick'li müsait) + %50 bir müsait takım arkadaşı (asist). Düz yakalamada avcılar 20 sn koridorlarında yok. |
+| Yardım ve savaş | `CatchHelpers` | Koridordakine o koridordaki müsait takım arkadaşları, ormandakine kendi ormancısı; her biri %50. Gelirse nehir çatışmasının hesabı (bölen 6, K7), kazanan 1-2 kill, herkes 25 sn meşgul; log satırı "X Kırmızı ormanında yakalanmak üzereydi, Y yardıma geldi: 2v2, Mavi kazandı". |
+| Objektif öncesi pusu | `PlayPreObjectiveCatch` | Yer: avcının ormanı, objektifin yarısında (ejder/Elder alt, Herald/Baron üst). Yardım yok (ayarı faz H3'te). |
+| Arkadan kapatma | `MatchRun.Objectives.cs` (`Flankers`, `ScheduleFightKills` opener) | 14. dk'dan sonra, ejder/Elder'de üstte, Herald/Baron'da altta duran (takım başı ≤ 2): d kişi başı +1; kazanırsa ilk kill (t+2) onun, kurban kaybedenlerin en zengini. Son savaşta yok. İlk deneme 14. dk'dan önce de çalışıyordu (lane fazında top her ejderde "arkadan geliyordu"); düzen kavramı gibi 14. dk'ya bağlandı. Açılış kill'inin lambda'sı ilerleyen değişkeni yakalıyordu (kill t+3,5'e kayıyordu): değer kopyası. |
+| Sözleşme | `MatchReplay.cs`, `types.ts` | `catch` (victim, hunters, helpers, lane / jungle + camp, probability, lead, tail) ve `flank` (objective, flankers). Ekleme; sürüm 1. |
+| Ekran | `engagement.ts` | `catch`: katılanlar ormandaysa o kampta savaş dizilişinde, koridordaysa ön hatta. `flank`: arkadan gelen savaştan 9 sn öncesine kadar koridorunda kalır, sonra (yetişemezse hızlanarak) çukurdan rakip üsse doğru 45 birimlik noktaya: geç ve arkadan. |
+
+**Testler:** motorda 3 yeni (`LocatedCatchTests`: yer kuralı, ormanda savaş oluyor, savaş kill'leri katılanlar arasında; yalnız yan koridorcu rakip ormanında yakalanır; arkadan kapatma 14. dk'dan sonra, çukurun öbür ucundan, açılış kill'i arkadan gelenin). Değişen: kule testinin "uzakta" yardımcısı `catch`'i biliyor; lane fazı altın testi 14. dk karesinden 13. dk karesine (13:30'daki Herald savaşı artık düzen dönemine ait). Parmak izi yenilendi. Ön yüzde 2 yeni (ormanda yakalanmada herkes kampta; arkadan gelen önce koridorda, sonra rakibin arkasında).
+
+**Ölçüm** (60.000 draft; C → D): Mavi %50,0, süre 28,9 → 28,2, kill 24,5 → 24,3, kule 7,6 → 7,4, kuşatmayla biten %54,3 → %60,6, **yakalanma 1,43 → 0,86 (ödül 497 → 392)**, 15. dk 5.000+ önde %79,7 → **%82,5**, 3.000-4.999 %69,3 → %71,7. Kimlikler Engage %54,7 · Poke %49,6 · Pick %50,3 · Koruma %50,7 · Dive %50,0 · Split %46,9. Erken comp %51,1 / 35'ten önce %37,5 ✓, scale comp kurtarıyor %33,2 → %29,9 ✓. Kenarda: Alistar %55,7; bilinçli Draven %42,4, Pyke %41,7.
+
+**Açık (kullanıcıyla):** yakalanma geride olanın geri dönüş aracıydı (§16.9, faz D'de önde olanı köreltmek için); yardım gelince seyrekleşti ve kartopu büyüdü (5.000+ önde %82,5, hedef %70-80). Deneme (10.000 draft, ±1,4): yardım %50 → %25 → yakalanma 1,09, 5.000+ önde %81,7, kuşatmayla biten %58,1: tek başına yetmiyor. Diğer aday: arkadan kapatmanın "ilk kill carry'ye" kuralı (objektifi genelde önde olan kazanır, carry'nin shutdown'ı da ona gider). Kod ölçülmüş hâlinde (%50) bırakıldı.

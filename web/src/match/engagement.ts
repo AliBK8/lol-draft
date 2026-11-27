@@ -3,7 +3,7 @@
 // yerde: iki katman aynı pencereleri görür.
 import type { Side } from '../api/types'
 import { BASE, JUNGLE, pathPoint, PIT, RIVER_SPOT, TOWER_S, type Point } from './geometry'
-import type { Lane, MatchEvent } from './types'
+import type { Lane, MatchEvent, ObjectiveKind } from './types'
 
 export type Engagement =
   /** Savaş dizilişi (objektif, kuşatma, nehir çatışması, istila): merkez ve olayın saniyesi. */
@@ -46,6 +46,17 @@ function siegeCenter(attacker: Side, lane?: Lane | null): Point {
   return [bx + d * 95, by - d * 95]
 }
 
+// Arkadan gelen savaştan en fazla bu kadar sn önce yola çıkar (yetişemezse hızlanır: geç ve koşarak gelir).
+const FLANK_LATE = 9
+
+/** Arkadan gelenin savaş noktası: çukurdan rakibin üssüne doğru 45 birim (rakibin arkası). */
+function flankCenter(objective: ObjectiveKind, side: Side): Point {
+  const [px, py] = PIT[objective]
+  const [bx, by] = BASE[other(side)]
+  const len = Math.hypot(bx - px, by - py) || 1
+  return [px + ((bx - px) / len) * 45, py + ((by - py) / len) * 45]
+}
+
 /** T anında şampiyonu meşgul eden olay (ölüm hariç: ölüyü konum katmanı ayrıca bilir). */
 export function engagement(
   events: readonly MatchEvent[],
@@ -57,6 +68,14 @@ export function engagement(
   for (const e of events) {
     if (e.t > t + 25) break
     switch (e.type) {
+      case 'flank':
+        // Arkadan kapatma (§4.11 D): yan koridordan geç çıkar (olaydan 22-9 sn önce hâlâ koridorunda), savaşa rakibin
+        // arkasından girer. Olay objektifle aynı saniyede ve ondan önce listede: objektif penceresini bu karşılar.
+        if (e.flankers.includes(champion) && t >= e.t - 22 && t <= e.t + 5) {
+          if (t < e.t - FLANK_LATE) return undefined
+          return { kind: 'fight', t: e.t, center: flankCenter(e.objective, e.side) }
+        }
+        break
       case 'objective':
         if (t >= e.t - 22 && t <= e.t + 5) return { kind: 'fight', t: e.t, center: PIT[e.objective] }
         break
@@ -73,6 +92,14 @@ export function engagement(
         // İstila: rakibin kampında (savunanın ormanı), iki tarafın katılanları savaş dizilişinde.
         if ((e.invaders.includes(champion) || e.defenders.includes(champion)) && t >= e.t - e.lead && t <= e.t + e.tail)
           return { kind: 'fight', t: e.t, center: JUNGLE[other(e.side)][e.camp] }
+        break
+      case 'catch':
+        // Yakalanma (§4.11 D): avcılar, kurban ve yardıma gelenler yerde: ormandaysa o kampta, koridordaysa ön hatta.
+        if ((e.hunters.includes(champion) || e.helpers.includes(champion) || e.victim === champion)
+          && t >= e.t - e.lead && t <= e.t + e.tail) {
+          if (e.jungle && e.camp) return { kind: 'fight', t: e.t, center: JUNGLE[e.jungle][e.camp] }
+          if (e.lane) return { kind: 'lane', t: e.t, lane: e.lane }
+        }
         break
       case 'split':
         if ((e.splitter === champion || e.answerer === champion) && t >= e.t - 20 && t <= e.t + 4)

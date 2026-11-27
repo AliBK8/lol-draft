@@ -273,6 +273,11 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 - Motor değişikliği: boş koridorda kule kesin değil, kişi sayısına göre ihtimal; savunan varken sayı üstünlüğü de kule getirir; iç ve inhibitör daha zor.
 - Mavi %49,8, süre 28,9, kill 24,5, kule 7,6 (A'da 6,4, B'de 11,4), kuşatmayla biten %54,3 (A %49,0, B %57,5). Kimlikler: Engage %54,1 · Poke %49,6 · Pick %50,6 · Koruma %51,0 · Dive %50,0 · Split %47,2. Erken comp %50,1 / 35'ten önce %33,7 ✓, scale comp kurtarıyor %33,2 ✓. Kenarda: Alistar %56,2; bilinçli Draven %41,9, Pyke %42,9. Yeni temel bu ölçüm.
 
+**Konumlu yakalanma + arkadan kapatma, harita düzeni D (2026-11-27, 170'lik havuz, 60.000 draft, §8.50)**
+- Motor değişikliği: yakalanmanın yeri ve yardımı (gelirse küçük savaş), objektif savaşında çukurun öbür ucundan arkadan kapatma (d +1, ilk kill carry'ye).
+- Mavi %50,0, süre 28,2, kill 24,3, kule 7,4, kuşatmayla biten %60,6 (C %54,3), yakalanma 0,86 (C 1,43), 15. dk 5.000+ önde %82,5 (C %79,7; hedef %70-80 ✗). Kimlikler: Engage %54,7 · Poke %49,6 · Pick %50,3 · Koruma %50,7 · Dive %50,0 · Split %46,9. Erken comp %51,1 / 35'ten önce %37,5 ✓, scale comp kurtarıyor %29,9 ✓.
+- Açık: kartopu (yukarıda); %25 yardım denemesi (10.000 draft) 5.000+ önde %81,7, yetmedi. Sıradaki ayar adayları: yardım ihtimali, arkadan kapatmanın açılış kill'i, yakalanma ihtimali.
+
 **Oyun planı turları (2026-11-24, 170'lik havuz, 60.000 draft, `--plans`, §8.35)**
 - Yöntem: her draft çifti rastgele bir plan çiftiyle ayna; hücre başına ~2.400 maç (±2), Dengeli'ye karşı uyum dilimleri ±2,5-3,7.
 - Tur 1 (ilk değerler, bedel hep tam, kazanç ×1,25/×0,75): Split %45,6 (takım savaşı cezası, split olunca bedel iki kez); uyum görünmüyor (uyan/uymayan farkı 1-3 puan); uyum eşikleri havuza göre kaymış (Ejder & late draft'ların %44'üne, Erken baskı %14'üne uyuyordu).

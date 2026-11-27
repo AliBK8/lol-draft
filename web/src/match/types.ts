@@ -50,6 +50,24 @@ export type MatchEvent =
       posts: (Lane | null)[]
     })
   | (Base & { type: 'split'; side: Side; lane: Lane; splitter: string; answerer: string | null })
+  | (Base & {
+      /** Yakalanma (DESIGN.md §4.11 D): yer koridor (lane) ya da bir takımın ormanında kamp (jungle + camp). */
+      type: 'catch'
+      /** Avcıların takımı. */
+      side: Side
+      victim: string
+      hunters: string[]
+      /** Kurbanın yardıma gelen takım arkadaşları; boşsa düz yakalanma (log satırı kill'in kendisi). */
+      helpers: string[]
+      lane: Lane | null
+      jungle: Side | null
+      camp: InvadeCamp | null
+      probability: number | null
+      lead: number
+      tail: number
+    })
+  /** Arkadan kapatma (§4.11 D), görünmez: objektif savaşına çukurun öbür ucundan geç gelenler. */
+  | (Base & { type: 'flank'; side: Side; objective: ObjectiveKind; flankers: string[] })
   | (Base & { type: 'dragonSoul'; side: Side })
   | (Base & { type: 'throw'; side: Side; probability: number })
   | (Base & { type: 'nexus'; side: Side; probability: number | null })

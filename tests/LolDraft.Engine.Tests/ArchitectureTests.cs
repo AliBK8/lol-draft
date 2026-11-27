@@ -29,7 +29,7 @@ public sealed class ArchitectureTests
             "SkirmishEvent", "SplitEvent", "RiverSide", "ThrowEvent", "DragonSoulEvent", "GoldFrame", "ChampionGold",
             "DraftReport", "RuleImpact", "RuleContext", "CarryReport", "TeamGoldReport",
             "ChampionRole", "OffRoleReport", "InvadeEvent", "JungleCamp", "GamePlan", "PlanFit",
-            "LayoutEvent", "MapLayout",
+            "LayoutEvent", "MapLayout", "CatchEvent", "FlankEvent",
         ];
 
         var exported = typeof(IMatchSimulator).Assembly.GetExportedTypes().Select(t => t.Name);

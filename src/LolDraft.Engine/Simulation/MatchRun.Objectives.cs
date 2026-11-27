@@ -90,8 +90,18 @@ internal sealed partial class MatchRun
         if (split is not null)
             PlaySplit(split, minute, t);
 
+        // Arkadan kapatma (DESIGN.md §4.11 D): çukurun öbür ucundaki yan koridordan gelenler.
+        var blueFlank = Flankers(TeamSide.Blue, objective, minute, t, absent);
+        var redFlank = Flankers(TeamSide.Red, objective, minute, t, absent);
+        foreach (var (side, flankers) in ((TeamSide, List<ChampionProfile>)[])[(TeamSide.Blue, blueFlank), (TeamSide.Red, redFlank)])
+        {
+            if (flankers.Count > 0)
+                _events.Add(new FlankEvent(t, "", side, objective, [.. flankers.Select(c => c.Id)]));
+        }
+
         var blueProbability = FightProbability(TeamSide.Blue, minute, t, kind, absent,
-            report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective, objective: objective);
+            report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective, objective: objective,
+            flank: FlankBonus * (blueFlank.Count - redFlank.Count));
         var winner = ObjectiveRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
 
@@ -110,7 +120,8 @@ internal sealed partial class MatchRun
         // Savaşa iki takımın yaşayanları gelir (split'tekiler hariç); bir süre koridorlarında değiller.
         var losers = AliveAt(winner.Opponent(), t).Except(absent).ToList();
         MarkAway([.. AliveAt(winner, t).Except(absent), .. losers], t + AwayAfterFightSeconds);
-        ScheduleFightKills(ObjectiveRng, winner, t, MaxKills(objective), absent);
+        var winnerFlank = winner == TeamSide.Blue ? blueFlank : redFlank;
+        ScheduleFightKills(ObjectiveRng, winner, t, MaxKills(objective), absent, opener: winnerFlank.FirstOrDefault());
 
         if (objective != Objective.FinalFight)
         {
@@ -130,14 +141,59 @@ internal sealed partial class MatchRun
     // Savaş kill'leri (DESIGN.md §4.5): kazananın yaşayanları kaybedenin yaşayanlarından 1..max kişi keser.
     // Katılımcılar ve kill sayısı savaş anında belirlenir; kill'ler 1.5 sn arayla t+2'den başlar.
     // absent: savaşta olmayanlar (split).
-    private void ScheduleFightKills(IRandomSource rng, TeamSide winner, double t, int maxKills, IReadOnlyCollection<ChampionProfile>? absent = null)
+    // opener: arkadan dolanan (DESIGN.md §4.11 D); varsa ilk kill onun, kurban kaybedenlerin en zengini (carry).
+    private void ScheduleFightKills(IRandomSource rng, TeamSide winner, double t, int maxKills,
+        IReadOnlyCollection<ChampionProfile>? absent = null, ChampionProfile? opener = null)
     {
         var winners = AliveAt(winner, t).Except(absent ?? []).ToList();
         var losers = AliveAt(winner.Opponent(), t).Except(absent ?? []).ToList();
         var killCount = Math.Min(losers.Count, 1 + rng.NextIndex(maxKills));
+        var firstT = t + 2;
 
-        ScheduleKills(rng, winner, winners, losers, killCount, t + 2,
+        if (opener is not null && killCount > 0)
+        {
+            // Değer kopyası: firstT aşağıda ilerliyor, lambda değişkeni değil anı yakalasın.
+            var openT = firstT;
+            At(openT, () =>
+            {
+                var victim = losers.Where(c => _deaths.IsAlive(c, openT)).MaxBy(c => _gold.GoldAt(c, openT));
+                if (victim is null || !_deaths.IsAlive(opener, openT))
+                    return;
+                Kill(winner, opener, victim, openT, $"{opener.Name} arkadan dolandı, {victim.Name} düştü",
+                    assists: winners.Where(c => c != opener && _deaths.IsAlive(c, openT)).ToList());
+            });
+            killCount--;
+            firstT += KillInterval;
+        }
+
+        ScheduleKills(rng, winner, winners, losers, killCount, firstT,
             (killer, victim) => $"Takım savaşında {victim.Name} düştü, kill {killer.Name} aldı");
+    }
+
+    // Arkadan kapatma (DESIGN.md §4.11 D, basit hâli; asıl hâli F3 mini savaşta): objektif savaşına çukurun öbür ucundaki
+    // yan koridordan (ejder/Elder: üst; Herald/Baron: alt) gelen, savaşa geç ama rakibin arkasından katılır. Kişi başı
+    // savaş d'sine +1 (takım başı en fazla 2 kişi); takımı kazanırsa ilk kill onun, kurban rakibin en zengini.
+    // Bedeli: savaşa kadar o koridorda durur (düzen onu oraya koymuş: grup bir kişi eksik dizilir). Son savaşta ve
+    // 14. dakikadan önce yok.
+    // Örnek: 1-4'te Fiora üstte, ejder savaşı: Mavi d +1; Mavi kazanırsa "Fiora arkadan dolandı, Jinx düştü".
+    private const double FlankBonus = 1;
+    private const int MaxFlankers = 2;
+
+    private List<ChampionProfile> Flankers(TeamSide side, Objective objective, int minute, double t,
+        IReadOnlyCollection<ChampionProfile> absent)
+    {
+        // Düzenler gibi 14. dakikadan sonra (lane fazında herkes kendi koridorunda, top ejdere gelmez sayılmaz).
+        if (minute < LayoutMinMinute)
+            return [];
+        Lane? far = objective switch
+        {
+            Objective.Dragon or Objective.Elder => Lane.Top,
+            Objective.Herald or Objective.Baron => Lane.Bot,
+            _ => null,
+        };
+        if (far is null)
+            return [];
+        return [.. Team(side).Champions.Where(c => Post(c) == far && _deaths.IsAlive(c, t) && !absent.Contains(c)).Take(MaxFlankers)];
     }
 
     // Takım savaşı ihtimali (DESIGN.md §16.7):
@@ -152,7 +208,8 @@ internal sealed partial class MatchRun
     // report: gerçek savaşsa karneye yazılacağı yer (split kararındaki "savaş olsa" hesabı yazılmaz).
     // objective: objektif savaşıysa hangisi (oyun planının ejder ve Herald düğmeleri için).
     private double FightProbability(TeamSide side, int minute, double t, FightKind kind,
-        IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null, Objective? objective = null)
+        IReadOnlyCollection<ChampionProfile>? absent = null, RuleContext? report = null, Objective? objective = null,
+        double flank = 0)
     {
         var siege = kind == FightKind.Siege;
         var soulBonus = _soul is { } soul ? soul.Sign() * SoulFightBonus : 0;
@@ -178,6 +235,9 @@ internal sealed partial class MatchRun
         var plan = PlanFightBonus(TeamSide.Blue, kind, objective) - PlanFightBonus(TeamSide.Red, kind, objective);
         if (plan != 0)
             d += plan;
+        // Arkadan kapatma (Mavi'nin gözünden, kişi başı ±1; MatchRun.Objectives Flankers). Sıfırsa eklenmez.
+        if (flank != 0)
+            d += flank;
         // Kuşatmada side = saldıran; savunan kule altında savaşır (MatchRun.Siege.cs). Hızlı bitir planıyla saldıranın
         // kuşatması daha zor tutulur (savunana +3, uyumla ölçekli).
         if (siege)

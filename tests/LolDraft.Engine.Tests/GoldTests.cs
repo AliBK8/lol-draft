@@ -147,7 +147,9 @@ public sealed class GoldTests
         {
             var input = TestTeams.Stomp(seed);
             var run = new MatchRun(input);
-            var frame = run.Play().GoldFrames.First(f => f.Minute == 14);
+            // Lane fazı: 13. dakikanın sonu (13:00). 14. dakika harita düzenine ait (13:01'den itibaren; Herald savaşı
+            // 13:30'da, arkadan kapatmayla, DESIGN.md §4.11): ezen takımın ormancısı orada ölüp farm kaçırabilir.
+            var frame = run.Play().GoldFrames.First(f => f.Minute == 13);
             var blue = frame.Champions.Take(5).ToList();
             var red = frame.Champions.Skip(5).ToList();
 

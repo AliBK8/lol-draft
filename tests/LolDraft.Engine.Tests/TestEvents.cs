@@ -14,7 +14,12 @@ internal static class TestEvents
         events.OfType<MoveEvent>().Any(m =>
             m.ParticipantIds.Contains(id) && m.T <= t && t < m.T + (m.River is null ? 20 : 25))
         || events.Any(e => (e is ObjectiveEvent || (e is SiegeEvent && e.T % 60 == 45)) && e.T <= t && t < e.T + 25
-                           && !IsDead(events, id, e.T));
+                           && !IsDead(events, id, e.T))
+        // Yakalanma (DESIGN.md §4.11 D): tek başına yakalamada avcılar 20 sn; yardım gelip savaş olduysa herkes 25 sn.
+        || events.OfType<CatchEvent>().Any(c => c.T <= t
+            && (c.HelperIds.Count == 0
+                ? c.HunterIds.Contains(id) && t < c.T + 20
+                : (c.HunterIds.Contains(id) || c.HelperIds.Contains(id) || c.VictimId == id) && t < c.T + 25));
 
     public static bool IsAbsent(IReadOnlyList<MatchEvent> events, string id, double t) =>
         IsDead(events, id, t) || IsAway(events, id, t);

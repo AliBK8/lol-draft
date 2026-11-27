@@ -118,6 +118,43 @@ public sealed record LayoutEvent(double T, string Text, TeamSide Side, MapLayout
 public sealed record SplitEvent(double T, string Text, TeamSide Side, Lane Lane, string SplitterId, string? AnswererId)
     : MatchEvent(T, Text);
 
+/// <summary>
+/// Yakalanma (DESIGN.md §4.11 D): <paramref name="Side"/> takımının avcıları <paramref name="VictimId"/>'yi bir yerde
+/// yakalar: koridorda (<paramref name="Lane"/>) ya da bir takımın ormanında (<paramref name="Jungle"/>, kampı
+/// <paramref name="Camp"/>). Kurbanın yakındaki takım arkadaşları yardıma gelirse (<paramref name="HelperIds"/>) küçük bir
+/// savaş olur. Kill'ler ayrı <see cref="KillEvent"/>. Katılanlar olaydan <paramref name="Lead"/> sn önce yere yürür.
+/// </summary>
+/// <param name="Text">Savaş olduysa log satırı; düz yakalanmada boş (log satırı kill'in kendisi).</param>
+/// <param name="Probability">Savaş olduysa avcıların kazanma ihtimali; yoksa boş.</param>
+public sealed record CatchEvent(
+    double T, string Text, TeamSide Side, string VictimId, IReadOnlyList<string> HunterIds, IReadOnlyList<string> HelperIds,
+    Lane? Lane, TeamSide? Jungle, JungleCamp? Camp, double? Probability, int Lead, int Tail)
+    : MatchEvent(T, Text)
+{
+    // Record eşitliği listeleri referansla karşılaştırır; içerikle karşılaştır (MoveEvent gibi).
+    public bool Equals(CatchEvent? other) =>
+        other is not null && base.Equals(other) && Side == other.Side && VictimId == other.VictimId
+        && HunterIds.SequenceEqual(other.HunterIds) && HelperIds.SequenceEqual(other.HelperIds)
+        && Lane == other.Lane && Jungle == other.Jungle && Camp == other.Camp && Probability == other.Probability
+        && Lead == other.Lead && Tail == other.Tail;
+
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Side, VictimId, HunterIds.Count, Lane, Jungle, Camp);
+}
+
+/// <summary>
+/// Görünmez (DESIGN.md §4.11 D): objektif savaşına çukurun öbür ucundaki yan koridordan gelenler; savaşa geç ve rakibin
+/// arkasından katılırlar.
+/// </summary>
+public sealed record FlankEvent(double T, string Text, TeamSide Side, Objective Objective, IReadOnlyList<string> FlankerIds)
+    : MatchEvent(T, Text)
+{
+    public bool Equals(FlankEvent? other) =>
+        other is not null && base.Equals(other) && Side == other.Side && Objective == other.Objective
+        && FlankerIds.SequenceEqual(other.FlankerIds);
+
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Side, Objective, FlankerIds.Count);
+}
+
 /// <summary>4. ejderi alan takım ejder ruhunu kazanır; ardından Elder doğar.</summary>
 public sealed record DragonSoulEvent(double T, string Text, TeamSide Side) : MatchEvent(T, Text);
 
