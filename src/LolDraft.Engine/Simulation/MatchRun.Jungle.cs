@@ -106,8 +106,9 @@ internal sealed partial class MatchRun
         var jungler = team.Jungle;
         var support = team.Support;
 
-        // Koridorda yaşayan ilk rakip hedeftir; kimse yoksa ya da ormancı ölüyse gank olmaz.
-        var victim = LaneChampions(side.Opponent(), lane).FirstOrDefault(c => _deaths.IsAlive(c, t));
+        // Koridorda yaşayan ilk rakip hedeftir; kimse yoksa ya da ormancı ölüyse gank olmaz. Koridorda kim var, harita
+        // düzenine göre (DESIGN.md §4.11; 14. dk'dan önce herkes kendi koridorunda, bot'ta önce adc).
+        var victim = Team(side.Opponent()).Champions.FirstOrDefault(c => Post(c) == lane && _deaths.IsAlive(c, t));
         if (victim is null || !_deaths.IsAlive(jungler, t))
             return;
 

@@ -65,6 +65,7 @@ internal sealed partial class MatchRun
         for (var minute = 1; _end is null; minute++)
         {
             // 1) Kayıt: sabit akışlar (koridor, orman) dakika başında puana yazılır; olaylar saniyesine kaydolur.
+            ScheduleLayout(minute);
             ScheduleLanes(minute);
             ScheduleJungle(minute);
             ScheduleSkirmish(minute);

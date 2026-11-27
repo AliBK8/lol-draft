@@ -87,8 +87,11 @@ internal sealed partial class MatchRun
     private void PlaySurprise(Lane lane, double t)
     {
         var side = LaneRng.NextDouble() < 0.5 ? TeamSide.Blue : TeamSide.Red;
+        // Harita düzeni (DESIGN.md §4.11): sürpriz kahramanın durduğu koridorda, orada olan rakiplere karşı olur
+        // (14. dk'dan önce herkes kendi koridorunda: eski kural).
         var hero = LaneChampions(side, lane).FirstOrDefault(c => IsInLane(c, t));
-        var rivals = LaneChampions(side.Opponent(), lane).Where(c => IsInLane(c, t)).ToList();
+        var place = hero is null ? lane : Post(hero) ?? lane;
+        var rivals = LaneChampions(side.Opponent(), lane).Where(c => IsInLane(c, t) && Post(c) == place).ToList();
         if (hero is null || rivals.Count == 0)
             return;
 
@@ -102,8 +105,8 @@ internal sealed partial class MatchRun
             : $"Sürpriz: {victim.Name} riskli bir dive denedi, {hero.Name} onu indirdi";
 
         // Metinsiz işaret (haritada "Sürpriz" rozeti); log satırı kill olayının kendisi.
-        _events.Add(new SurpriseEvent(t, "", side, lane, value));
-        Kill(side, hero, victim, t, text, lane);
+        _events.Add(new SurpriseEvent(t, "", side, place, value));
+        Kill(side, hero, victim, t, text, place);
     }
 
     // Anlatıcı (DESIGN.md §4.8): bütçenin işaretine göre önde olan taraf için en fazla bir olay.
@@ -128,13 +131,16 @@ internal sealed partial class MatchRun
 
         // Anlatıcı koridorda olanı anlatır: kahraman ölü ya da başka yerde meşgulse kill/plaka yok.
         // Bütçe harcanmaz, birikmeye devam eder; kahraman dönünce anlatılır (puan zaten Δ ile eklendi).
+        // Harita düzeni (DESIGN.md §4.11): solo kill kahramanın durduğu koridorda, orada olan rakibe; rakibi başka
+        // koridordaysa (ör. bizim adc 1-4'te mid'de, onlarınki altta) bütçe birikir.
+        var place = Post(lead) ?? lane;
         if (IsInLane(lead, t))
         {
-            var rivalsInLane = rivals.Where(c => IsInLane(c, t)).ToList();
+            var rivalsInLane = rivals.Where(c => IsInLane(c, t) && Post(c) == place).ToList();
             if (size >= SoloKillCost && rivalsInLane.Count > 0)
             {
                 var victim = rivalsInLane[LaneRng.NextIndex(rivalsInLane.Count)];
-                Kill(side, lead, victim, t, $"{lead.Name} {LaneName(lane)} koridorda öne çıktı, {victim.Name} düştü", lane);
+                Kill(side, lead, victim, t, $"{lead.Name} {LaneName(place)} koridorda öne çıktı, {victim.Name} düştü", place);
                 budget -= side.Sign() * SoloKillCost;
                 return;
             }
@@ -167,7 +173,10 @@ internal sealed partial class MatchRun
 
         lastCs = minute;
         var (leadCs, rivalCs) = side == TeamSide.Blue ? (blueCs, redCs) : (redCs, blueCs);
-        _events.Add(new CsEvent(t, $"{lead.Name} {LaneName(lane)} koridorda CS farkı açıyor ({leadCs} - {rivalCs})", side, lane));
+        // CS farkı birikmiş bir eşleşme bilgisi, bir an değil: olayın koridoru rol eşleşmesi (alt = adc'ler). Kahraman
+        // harita düzeniyle (DESIGN.md §4.11) başka koridordaysa metin yer söylemez.
+        var where = Post(lead) == lane ? $" {LaneName(lane)} koridorda" : "";
+        _events.Add(new CsEvent(t, $"{lead.Name}{where} CS farkı açıyor ({leadCs} - {rivalCs})", side, lane));
     }
 
     // Koridordaki şampiyonlar; ilk sıradaki koridorun "yüzü" (bot'ta adc).

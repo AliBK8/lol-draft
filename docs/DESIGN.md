@@ -223,7 +223,7 @@ Olay zamanı: dakikanın 25-55. saniyeleri arası rastgele. Bütçe sadece anlat
 Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü ya da meşgulse (aşağıda) o dakika solo kill / plaka / CS anlatımı olmaz; bütçe harcanmaz, birikir. Solo kill kurbanı da koridorda olmalı.
 
 **Kule = fırsat.** Kuleye ancak koridorda rakip yokken vurulur; koridorda önde olmak gerekmez.
-- **Koridor fırsatı:** kendi koridorcun yaşıyor ve koridorda; karşısındaki herkes ölü ya da meşgul; kule kalmış. Meşgul: nehir çatışması, objektif savaşı ya da kuşatmaya katılan 25 sn, gank'a giden support 20 sn koridorunda sayılmaz (meşguliyet iş çözüldüğü anda bilinir). Puanı gerçektir: koridor kategorisine +4, inhibitör +6.
+- **Koridor fırsatı:** harita düzenine göre (§4.11) koridorda bizden biri var, onlardan kimse yok (ölü, meşgul ya da düzeni onu başka koridora koymuş); kule kalmış. 14. dk'dan önce herkes kendi koridorunda (eski kural: kendi koridorcun var, karşındakiler yok). Meşgul: nehir çatışması, objektif savaşı ya da kuşatmaya katılan 25 sn, gank'a giden support 20 sn koridorunda sayılmaz (meşguliyet iş çözüldüğü anda bilinir). Puanı gerçektir: koridor kategorisine +4, inhibitör +6.
 - **Savaş sonrası:** objektif savaşından 12 sn sonra kaybedenlerden en az 2 kişi ölüyse kazanan yakındaki kuleyi alır: ejder → bot, Herald → mid, Baron/Elder → en çok kulesi kalmış koridor. Ek puan yok: kazanılan savaşın görünür sonucu, puanı objektif değerinde (ek puan verince erken comp kartopu %52 → %61'e çıkıyordu).
 - Ölçüm (prototip takımları, 1000 maç): maç başı 4,3 kule (3,95 savaş sonrası, 0,33 koridor fırsatı); denge değişmedi (Mavi %51).
 - İleride: inhibitörü düşmemiş koridordan kuşatmaya gidilemesin (kuşatma ↔ kule bağı).
@@ -246,7 +246,8 @@ Anlatıcı koridorda olanı anlatır: koridorun yüzü (bot'ta adc) o an ölü y
 | `surprise` | side, lane, val | Metinsiz işaret (haritada rozet); log satırı aynı saniyedeki `kill` ("Sürpriz: …") |
 | `gankfail`, `throw` | side, lane? | |
 | `move` | parts[], lane? / loc?, lead, tail | Görünmez; hareket kısıtı |
-| `siege` | side, lead, tail | Görünmez; kuşatma toplanması |
+| `siege` | side, lead, tail, lane? | Görünmez; kuşatma toplanması. lane: girdiği koridor (§4.11), Nexus'a yürüyüşte boş |
+| `layout` | side, layout (`lanes` / `group` / `oneFour` / `oneThreeOne`), posts[5] | Görünmez; harita düzeni (§4.11). posts yuva sırasıyla koridor, null = ormanında |
 | `invade` | side (istila eden), camp, invaders[], defenders[], stolen, pct?, lead, tail | Ormancı istilası (§4.5); kill'ler ayrı `kill`. Renk kazananın: püskürtülürse savunan |
 | `nexus` | side, pct? | Maç sonu |
 
@@ -308,7 +309,7 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 
 **Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → harita düzeni (§4.11; karar anlarının çoğu bir düzen seçimi) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
 
-### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; uygulama sırada)
+### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; A zar akışları ve B düzen uygulandı, §8.47-8.48)
 
 **Sorun:** kimin nerede durduğunu motor söylemiyordu, ekran sabit kuralla tahmin ediyordu (§5.1: 14. dk'dan sonra bot ikilisi hep mid'de, 25'ten sonra top yanda). Alt koridor boşalıyor, her olay mid'de dönüyordu. Motor ise adc'yi 30. dakikada da bot koridorunda sayıyordu (kule fırsatı): ekran ile motor iki ayrı dünyaydı.
 
@@ -341,7 +342,7 @@ Bu kurallar **hedefi** verir; şampiyon hedefine haritada yürür (2026-11-19, �
 3. **Kuşatma / son savaş** → savunan base'in önündeki savaş noktası.
 4. **Move olayı** (gank, çatışma) → ilgili koridor noktası ya da nehir konumu (14 sn önce, 4 sn sonra).
 5. **Recall** → her şampiyon ~270 sn'de bir, 14 sn base'te (şampiyona göre kaydırılmış).
-6. **Faz yeri:**
+6. **Faz yeri:** 14. dk'dan sonra motorun `layout` olayı (§4.11): rol, düzenin koridoruna; aynı koridordaki takım arkadaşları yan yana, ormancı sadece Grup'ta koridorda. Düzeni olmayan eski kayıtlarda aşağıdaki sabit kural:
    - <14 dk: koridorunda; cephe = `0.5 + clamp(koridor puanı / 30, ±0.28)` yolun oranı. Ormancı kendi kampları arasında 18 sn'de bir dolaşır.
    - 14-25 dk: bot duo mid'e geçer; top kendi koridorunda; ormancı nehir ile kamplar arasında gidip gelir.
    - ≥25 dk: top yan koridorda split, diğer dördü mid'de grup.

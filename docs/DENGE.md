@@ -264,6 +264,11 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 - Motor değişikliği: alt sistem başına zar akışı (DESIGN.md §4.1); davranış aynı, her maç farklı.
 - Mavi %50,0, süre 29,6, kill 25,5. Kimlikler: Engage %53,6 · Poke %50,7 · Pick %49,6 · Koruma %50,8 · Dive %49,3 · Split %47,2. Erken comp %48,8 / 35'ten önce %30,1 ✓, scale comp kurtarıyor %34,7 ✓. Önceki temelle farklar hata payı içinde. Kenarda: Alistar %56,1, Lucian %44,8; bilinçli Draven %41,8, Pyke %41,9. Yeni temel bu ölçüm.
 
+**Harita düzeni B (2026-11-27, 170'lik havuz, 60.000 draft, §8.48)**
+- Motor değişikliği: düzen (Koridorlar / Grup / 1-4 / 1-3-1) kule fırsatını, koridor kill'lerini, gank hedefini ve kuşatmanın koridorunu belirler; ekonomi rol çiftleri olarak aynı.
+- Mavi %49,8, süre 28,4, kill 24,2, kule 6,4 → 11,4, kuşatmayla biten %49,0 → %57,5 (24. dk %29,4). Kimlikler: Engage %53,9 · Poke %50,7 → %48,6 · Pick %50,6 · Koruma %51,1 · Dive %50,6 · Split %47,8. Erken comp %49,9 / 35'ten önce %35,0 ✓, scale comp kurtarıyor %33,1 ✓. Kenarda: Alistar %55,8; bilinçli Draven %42,1, Pyke %42,4.
+- Açık: kule ve kuşatma sıklığı (C adımında kişi sayısı → kule baskısıyla ayarlanacak).
+
 **Oyun planı turları (2026-11-24, 170'lik havuz, 60.000 draft, `--plans`, §8.35)**
 - Yöntem: her draft çifti rastgele bir plan çiftiyle ayna; hücre başına ~2.400 maç (±2), Dengeli'ye karşı uyum dilimleri ±2,5-3,7.
 - Tur 1 (ilk değerler, bedel hep tam, kazanç ×1,25/×0,75): Split %45,6 (takım savaşı cezası, split olunca bedel iki kez); uyum görünmüyor (uyan/uymayan farkı 1-3 puan); uyum eşikleri havuza göre kaymış (Ejder & late draft'ların %44'üne, Erken baskı %14'üne uyuyordu).

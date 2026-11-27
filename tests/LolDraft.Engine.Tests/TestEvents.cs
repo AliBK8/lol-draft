@@ -27,6 +27,19 @@ internal static class TestEvents
         _ => [team.Bot, team.Support],
     };
 
+    // Harita düzeni (DESIGN.md §4.11): takımın t anındaki son LayoutEvent'i; yoksa standart yerleşim.
+    private static readonly Lane?[] StandardPosts = [Lane.Top, null, Lane.Mid, Lane.Bot, Lane.Bot];
+
+    public static IReadOnlyList<Lane?> PostsAt(IReadOnlyList<MatchEvent> events, TeamSide side, double t) =>
+        events.OfType<LayoutEvent>().LastOrDefault(l => l.Side == side && l.T <= t)?.Posts ?? StandardPosts;
+
+    // Düzene göre t anında koridorda duran şampiyonlar (ölü ya da meşgul olsa da).
+    public static IReadOnlyList<ChampionProfile> PostedIn(IReadOnlyList<MatchEvent> events, TeamDraft team, TeamSide side, Lane lane, double t)
+    {
+        var posts = PostsAt(events, side, t);
+        return [.. team.Champions.Where((_, i) => posts[i] == lane)];
+    }
+
     // Objektiften 12 sn sonraki kuleler anlatıcıdan değil, savaş sonrası itişten gelir.
     public static HashSet<double> PostFightTimes(IReadOnlyList<MatchEvent> events) =>
         events.OfType<ObjectiveEvent>().Select(o => o.T + 12).ToHashSet();

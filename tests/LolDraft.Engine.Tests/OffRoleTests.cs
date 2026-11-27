@@ -1,4 +1,5 @@
-﻿using LolDraft.Engine.Simulation;
+﻿using LolDraft.Engine.Events;
+using LolDraft.Engine.Simulation;
 using static LolDraft.Engine.AttackRange;
 using static LolDraft.Engine.ChampionClass;
 
@@ -53,8 +54,8 @@ public sealed class OffRoleTests
     [Fact]
     public void Rol_disi_koridor_ortalamada_geride_ama_daha_oynak()
     {
-        var inRole = TopLaneScores(ChampionRole.Top);
-        var offRole = TopLaneScores(ChampionRole.Mid);
+        var inRole = TopLaneFlows(ChampionRole.Top);
+        var offRole = TopLaneFlows(ChampionRole.Mid);
 
         Assert.True(offRole.Average() < inRole.Average() - 1, $"ortalama {inRole.Average():F2} → {offRole.Average():F2}");
         // Gerçek oran ~1,20 (4.000 maçta 1,199); 400 maçta gürültü ±0,03. Eşik 1,2 iken test zar sırasına göre
@@ -72,10 +73,19 @@ public sealed class OffRoleTests
         Assert.InRange(rate, 0.15, 0.48);   // %35 ceza: geride ama şansı var
     }
 
-    private List<double> TopLaneScores(ChampionRole blueTopNatural) =>
+    // Top koridor akışı: maç sonu top puanından puanlı kuleler çıkarılır (koridor fırsatı, poke, split: +4, inhibitör +6;
+    // savaş sonrası kulenin puanı yok). Harita düzeni (DESIGN.md §4.11) 14. dk'dan sonra kuleleri iki tarafa da
+    // dağıtınca kule puanı oynaklığı örtüyordu (oran ~1,20 → 1,05); geriye koridor akışı Δ'larının toplamı kalır.
+    private List<double> TopLaneFlows(ChampionRole blueTopNatural) =>
     [
-        .. Enumerable.Range(0, MatchCount)
-            .Select(seed => _simulator.Simulate(EvenWithBlueTop(blueTopNatural, (uint)seed)).Breakdown[ScoreCategory.Top]),
+        .. Enumerable.Range(0, MatchCount).Select(seed =>
+        {
+            var result = _simulator.Simulate(EvenWithBlueTop(blueTopNatural, (uint)seed));
+            var towers = result.Events.OfType<TowerEvent>()
+                .Where(w => w.Lane == Lane.Top && !w.Text.Contains("savaşın ardından"))
+                .Sum(w => (w.Side == TeamSide.Blue ? 1 : -1) * (w.Tier == 2 ? 6 : 4));
+            return result.Breakdown[ScoreCategory.Top] - towers;
+        }),
     ];
 
     private static double StdDev(List<double> values)

@@ -125,9 +125,22 @@ public sealed class GamePlanTests
     {
         static (double Answered, double Towers) Rates(IEnumerable<MatchResult> results)
         {
-            var list = results.ToList();
-            var splits = list.SelectMany(r => r.Events.OfType<SplitEvent>()).Where(s => s.Side == TeamSide.Blue).ToList();
-            var towers = list.SelectMany(r => r.Events.OfType<TowerEvent>()).Count(w => w.Side == TeamSide.Blue && w.Text.Contains("split'te"));
+            // Sadece koridorda hâlâ kule varken yapılan split'ler: harita düzeni (DESIGN.md §4.11) yan koridorun kulesini
+            // split'ten önce de düşürebilir; ölçülen split'in kendisinin kule getirmesi.
+            var splits = new List<SplitEvent>();
+            var towers = 0;
+            foreach (var r in results)
+            {
+                foreach (var s in r.Events.OfType<SplitEvent>().Where(s => s.Side == TeamSide.Blue))
+                {
+                    if (r.Events.OfType<TowerEvent>().Count(w => w.Side == TeamSide.Blue && w.Lane == s.Lane && w.T < s.T) >= 3)
+                        continue;
+                    splits.Add(s);
+                    towers += r.Events.OfType<TowerEvent>().Count(w => w.Side == TeamSide.Blue && w.Text.Contains("split'te")
+                                                                    && w.T > s.T && w.T <= s.T + 10);
+                }
+            }
+
             return (splits.Count(s => s.AnswererId is not null) / (double)splits.Count, towers / (double)splits.Count);
         }
 

@@ -39,10 +39,11 @@ internal sealed partial class MatchRun
     private bool IsInLane(ChampionProfile champion, double t) =>
         _deaths.IsAlive(champion, t) && _awayUntil.GetValueOrDefault(champion.Id) <= t;
 
-    // Koridor fırsatı: kendi koridorcun koridorda, karşısındaki herkes ölü ya da uzakta.
+    // Koridor fırsatı: harita düzenine göre (DESIGN.md §4.11) koridorda bizden biri var, onlardan kimse yok (ölü,
+    // uzakta ya da düzeni onu başka koridora koymuş). Örnek: rakip mid'de Grup, bizim top üstte → üst kule açık.
     private bool HasTowerOpportunity(TeamSide side, Lane lane, double t) =>
-        IsInLane(LaneChampions(side, lane)[0], t)
-        && LaneChampions(side.Opponent(), lane).All(c => !IsInLane(c, t))
+        PresentIn(side, lane, t).Count > 0
+        && PresentIn(side.Opponent(), lane, t).Count == 0
         && _towersDestroyed[(int)side, (int)lane] < TowersPerLane;
 
     // Kuleyi yıkar: sıradaki kule (dış → iç → inhibitör).
@@ -75,14 +76,14 @@ internal sealed partial class MatchRun
         return TryPokePush(lane, t);
     }
 
-    // K6 poke itişi (TeamRules.PokePushChance): fırsat yoksa poke'u fazla olan taraf, kendi koridorcusu koridordaysa
+    // K6 poke itişi (TeamRules.PokePushChance): fırsat yoksa poke'u fazla olan taraf, kendinden biri (düzene göre) koridordaysa
     // savunan oradayken de kuleyi alabilir. Zar sadece şartlar tutunca atılır.
     private bool TryPokePush(Lane lane, double t)
     {
         foreach (var side in (TeamSide[])[TeamSide.Blue, TeamSide.Red])
         {
             var chance = TeamRules.PokePushChance(Team(side).Champions, Team(side.Opponent()).Champions);
-            if (chance <= 0 || !IsInLane(LaneChampions(side, lane)[0], t) || _towersDestroyed[(int)side, (int)lane] >= TowersPerLane)
+            if (chance <= 0 || PresentIn(side, lane, t).Count == 0 || _towersDestroyed[(int)side, (int)lane] >= TowersPerLane)
                 continue;
 
             if (TowerRng.NextDouble() < chance)

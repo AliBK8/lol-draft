@@ -103,7 +103,17 @@ internal sealed record MatchDto(
             invaders = i.InvaderIds, defenders = i.DefenderIds, stolen = i.Stolen, probability = i.Probability,
             lead = i.Lead, tail = i.Tail,
         },
-        SiegeEvent s => new { type = "siege", t = s.T, text = s.Text, side = EngineNames.Side(s.Side), lead = s.Lead, tail = s.Tail },
+        SiegeEvent s => new
+        {
+            type = "siege", t = s.T, text = s.Text, side = EngineNames.Side(s.Side), lead = s.Lead, tail = s.Tail,
+            lane = EngineNames.Lane(s.Lane),
+        },
+        // Harita düzeni (DESIGN.md §4.11): posts takım sırasıyla koridor, null = ormanında.
+        LayoutEvent l => new
+        {
+            type = "layout", t = l.T, text = l.Text, side = EngineNames.Side(l.Side), layout = EngineNames.Layout(l.Layout),
+            posts = l.Posts.Select(EngineNames.Lane).ToArray(),
+        },
         SplitEvent s => new
         {
             type = "split", t = s.T, text = s.Text, side = EngineNames.Side(s.Side), lane = EngineNames.Lane(s.Lane),
@@ -183,6 +193,15 @@ internal static class EngineNames
         Engine.Events.Objective.Elder => "elder",
         Engine.Events.Objective.FinalFight => "finalFight",
         _ => throw new ArgumentOutOfRangeException(nameof(objective), objective, null),
+    };
+
+    public static string Layout(MapLayout layout) => layout switch
+    {
+        MapLayout.Lanes => "lanes",
+        MapLayout.Group => "group",
+        MapLayout.OneFour => "oneFour",
+        MapLayout.OneThreeOne => "oneThreeOne",
+        _ => throw new ArgumentOutOfRangeException(nameof(layout), layout, null),
     };
 
     public static string Camp(JungleCamp camp) => camp switch

@@ -78,7 +78,7 @@ internal sealed partial class MatchRun
         // Başarı ihtimali = takım savaşı ihtimali (Baron buff'ı kuşatmada +4, K6 poke), önde olanın tarafından.
         var probability = FightProbability(attacker, minute, t, FightKind.Siege, report: RuleContext.Siege);
 
-        _events.Add(new SiegeEvent(t, "", attacker, Lead: 20, Tail: 4));
+        _events.Add(new SiegeEvent(t, "", attacker, Lead: 20, Tail: 4, SiegeLane(attacker)));
         MarkAway([.. AliveAt(attacker, t), .. AliveAt(defender, t)], t + AwayAfterFightSeconds);
 
         if (SiegeRng.NextDouble() < probability)
@@ -108,4 +108,14 @@ internal sealed partial class MatchRun
     // Kapıya dayanmak: en az bir koridorda dış ve iç kule yıkılmış.
     private bool AtTheGates(TeamSide side) =>
         Lanes.Any(lane => _towersDestroyed[(int)side, (int)lane] >= SiegeTowersInLane);
+
+    // Kuşatmanın koridoru (DESIGN.md §4.11): Grup düzenindeki takım grubun koridorundan girer (kapısı açıksa); yoksa en
+    // çok kulesi yıkılmış açık koridor (eşitlikte mid, top, bot). Sadece görüntü ve hareket: ihtimal değişmez.
+    private Lane SiegeLane(TeamSide side)
+    {
+        var open = ((Lane[])[Lane.Mid, Lane.Top, Lane.Bot]).Where(l => _towersDestroyed[(int)side, (int)l] >= SiegeTowersInLane).ToList();
+        if (_layout[(int)side] == MapLayout.Group && _posts[(int)side][0] is { } group && open.Contains(group))
+            return group;
+        return open.MaxBy(l => _towersDestroyed[(int)side, (int)l]);
+    }
 }

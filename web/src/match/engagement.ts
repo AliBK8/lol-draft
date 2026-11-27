@@ -2,7 +2,7 @@
 // katmanı (positions.ts) bunu noktaya çevirir, ormancının programı (jungle.ts) "meşgul mü"yu sorar. Kurallar tek
 // yerde: iki katman aynı pencereleri görür.
 import type { Side } from '../api/types'
-import { BASE, JUNGLE, PIT, RIVER_SPOT, type Point } from './geometry'
+import { BASE, JUNGLE, pathPoint, PIT, RIVER_SPOT, TOWER_S, type Point } from './geometry'
 import type { Lane, MatchEvent } from './types'
 
 export type Engagement =
@@ -34,9 +34,14 @@ function fightSoon(events: readonly MatchEvent[], from: number, span: number): b
   return false
 }
 
-/** Kuşatmanın merkezi: savunanın üssünün önü. */
-function siegeCenter(attacker: Side): Point {
-  const [bx, by] = BASE[other(attacker)]
+/**
+ * Kuşatmanın merkezi: koridoru biliniyorsa (§4.11) o koridorda savunanın inhibitör kulesinin hemen önü (saldıranın
+ * tarafına doğru); bilinmiyorsa (eski kayıt, Nexus'a yürüyüş) savunanın üssünün önü.
+ */
+function siegeCenter(attacker: Side, lane?: Lane | null): Point {
+  const defender = other(attacker)
+  if (lane) return pathPoint(lane, TOWER_S[defender][lane][2] + (defender === 'blue' ? 0.04 : -0.04))
+  const [bx, by] = BASE[defender]
   const d = attacker === 'red' ? 1 : -1
   return [bx + d * 95, by - d * 95]
 }
@@ -56,7 +61,7 @@ export function engagement(
         if (t >= e.t - 22 && t <= e.t + 5) return { kind: 'fight', t: e.t, center: PIT[e.objective] }
         break
       case 'siege':
-        if (t >= e.t - e.lead && t <= e.t + e.tail) return { kind: 'fight', t: e.t, center: siegeCenter(e.side) }
+        if (t >= e.t - e.lead && t <= e.t + e.tail) return { kind: 'fight', t: e.t, center: siegeCenter(e.side, e.lane) }
         break
       case 'move':
         if (e.participants.includes(champion) && t >= e.t - e.lead && t <= e.t + e.tail) {

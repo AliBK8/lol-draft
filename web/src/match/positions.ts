@@ -129,7 +129,23 @@ export function laneFront(state: MatchState, lane: Lane): number {
   return Math.max(0.2, Math.min(0.8, 0.5 + shift))
 }
 
-/** Rolün koridoru (ormancı hariç). Geç oyunda dağılım değişir: bot ikilisi mid'e, top yan koridorda. */
+/**
+ * Takımın t anındaki düzeni (DESIGN.md §4.11): son `layout` olayının yerleşimi. Yoksa (14. dk'dan önce ya da düzen
+ * gelmeden önceki kayıt) undefined: rolün eski kuralı (homeLane) geçerli.
+ */
+export function postsAt(events: readonly MatchEvent[], side: Side, t: number): (Lane | null)[] | undefined {
+  let posts: (Lane | null)[] | undefined
+  for (const e of events) {
+    if (e.t > t) break
+    if (e.type === 'layout' && e.side === side) posts = e.posts
+  }
+  return posts
+}
+
+/**
+ * Rolün koridoru (ormancı hariç), düzen bilinmiyorsa. Lane fazında herkes kendi koridorunda; düzensiz eski kayıtlarda
+ * geç oyun sabit kuralla: bot ikilisi mid'e, top yan koridorda.
+ */
 function homeLane(role: Role, side: Side, minute: number): Lane {
   if (role === 'top') return minute >= 25 ? (side === 'blue' ? 'top' : 'bot') : 'top'
   if (role === 'mid') return 'mid'
@@ -172,7 +188,9 @@ export function placement(
   }
 
   const minute = t / 60
-  if (role === 'jungle') {
+  // Harita düzeni (§4.11): motorun söylediği koridor. Ormancı sadece Grup'ta koridora çıkar.
+  const posts = postsAt(events, side, t)
+  if (role === 'jungle' && !posts?.[slot]) {
     const target = jungleTarget(events, champion, side, slot, t)
     switch (target.kind) {
       case 'base': {
@@ -193,7 +211,21 @@ export function placement(
     }
   }
 
-  const lane = homeLane(role, side, minute)
+  const lane = posts?.[slot] ?? homeLane(role, side, minute)
+  if (posts) {
+    // Koridordaki takım arkadaşları yan yana (yuva sırasıyla), ikide bir biraz geride: Grup'ta beş ikon üst üste binmez.
+    // Yan kayma koridorun o noktadaki dik yönünde (düz kısımlarda koridordan taşmasın).
+    const mates = posts.flatMap((p, i) => (p === lane ? [i] : []))
+    const k = mates.indexOf(slot)
+    const perp = mates.length > 1 ? (k - (mates.length - 1) / 2) * 10 : 0
+    const back = (role === 'support' && mates.length === 2 ? 0.065 : 0.035) + (mates.length > 2 ? (k % 2) * 0.03 : 0)
+    const s = laneFront(state, lane) - o * back
+    const [x, y] = pathPoint(lane, s)
+    const [ax, ay] = pathPoint(lane, s - 0.01)
+    const [bx, by] = pathPoint(lane, s + 0.01)
+    const len = Math.hypot(bx - ax, by - ay) || 1
+    return at(x - ((by - ay) / len) * perp, y + ((bx - ax) / len) * perp)
+  }
   const back = role === 'support' ? 0.065 : role === 'bot' && minute >= 14 ? 0.05 : 0.035
   const [x, y] = pathPoint(lane, laneFront(state, lane) - o * back)
   // Mid'de toplanan ikili yan yana; lane fazında destek biraz arkada.

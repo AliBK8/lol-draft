@@ -58,6 +58,12 @@ internal sealed record PlanKnobs
     /// <summary>İstila çatışmasında d + (bu takım istila ediyorsa).</summary>
     public double InvadeFightBonus { get; init; }
 
+    /// <summary>Harita düzeninde (DESIGN.md §4.11) 1-4 ve 1-3-1 ağırlığı × (1 + bu).</summary>
+    public double SplitLayoutTilt { get; init; }
+
+    /// <summary>Harita düzeninde Grup ağırlığı × (1 + bu).</summary>
+    public double GroupLayoutTilt { get; init; }
+
     // ---- Ayrık kazançlar (ölçeklenmez: açık ya da kapalı) ----
 
     /// <summary>Split etiketi 1 olan da split'e gidebilir (normalde ≥ 2).</summary>
@@ -137,12 +143,14 @@ internal sealed record PlanKnobs
         GamePlan.Split => new()
         {
             SplitAnyTag = true, AnswerChanceCut = 0.15, DuelBonus = 2,
+            SplitLayoutTilt = 1,
         },
         // Hızlı bitir: kuşatmaya daha az farkla ve daha sık gider; tutulursa daha pahalı.
         GamePlan.FastFinish => new()
         {
             SiegeLeadDiscount = 0.3, SiegeCooldownCut = 1,
             SiegeDefenseExtra = 3, ThrowExtraKills = 1,
+            GroupLayoutTilt = 1,
         },
         // Ormancı istilası: istila kesin ve bu takımdan, çatışmada önde; püskürtülürse ormancı çok geride
         // (rakibin temposu 1 yerine 2,5).
@@ -206,6 +214,10 @@ internal sealed class TeamTactics
     public double DuelBonus => Knobs.DuelBonus * Gain;
     public double SiegeLeadFactor => 1 - Knobs.SiegeLeadDiscount * Gain;
     public double InvadeFightBonus => Knobs.InvadeFightBonus * Gain;
+
+    // Düzen eğilimi: Split planında 1-4 / 1-3-1 ağırlığı ×2 (uyanda ×2,25, uymayanda ×1,75); Dengeli'de ×1.
+    public double SplitLayoutFactor => 1 + Knobs.SplitLayoutTilt * Gain;
+    public double GroupLayoutFactor => 1 + Knobs.GroupLayoutTilt * Gain;
 
     public double HeraldFightPenalty => Knobs.HeraldFightPenalty * Cost;
     public double TeamFightPenalty => Knobs.TeamFightPenalty * Cost;

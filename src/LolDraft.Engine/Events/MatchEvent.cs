@@ -94,7 +94,22 @@ public sealed record InvadeEvent(
 }
 
 /// <summary>Görünmez hareket ipucu: takım <paramref name="Lead"/> sn önce toplanır, <paramref name="Tail"/> sn kalır.</summary>
-public sealed record SiegeEvent(double T, string Text, TeamSide Side, int Lead, int Tail) : MatchEvent(T, Text);
+/// <param name="Lane">Kuşatmanın girdiği koridor (DESIGN.md §4.11); son savaştan sonra Nexus'a yürüyüşte boş.</param>
+public sealed record SiegeEvent(double T, string Text, TeamSide Side, int Lead, int Tail, Lane? Lane = null) : MatchEvent(T, Text);
+
+/// <summary>
+/// Görünmez: <paramref name="Side"/> takımının yeni harita düzeni (DESIGN.md §4.11). Ekran rolü koridora bununla çevirir.
+/// </summary>
+/// <param name="Posts">Takım sırasıyla (top, jungle, mid, bot, support) koridor; boşsa ormanında (ormancı, Grup hariç).</param>
+public sealed record LayoutEvent(double T, string Text, TeamSide Side, MapLayout Layout, IReadOnlyList<Lane?> Posts)
+    : MatchEvent(T, Text)
+{
+    // Record eşitliği listeyi referansla karşılaştırır; içerikle karşılaştır (MoveEvent gibi).
+    public bool Equals(LayoutEvent? other) =>
+        other is not null && base.Equals(other) && Side == other.Side && Layout == other.Layout && Posts.SequenceEqual(other.Posts);
+
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Side, Layout, Posts.Count);
+}
 
 /// <summary>
 /// Split (DESIGN.md §16.8 K12): objektif savaşı sırasında <paramref name="SplitterId"/> yan koridorda baskı kurar.

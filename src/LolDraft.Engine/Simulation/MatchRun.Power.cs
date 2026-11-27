@@ -20,6 +20,9 @@ internal sealed partial class MatchRun
     // Şampiyon → takımı (planın güç çarpanı için).
     private readonly Dictionary<string, TeamSide> _sideOf = [];
 
+    // Şampiyon → takımdaki yuvası (0 top … 4 support; harita düzeni için).
+    private readonly Dictionary<string, int> _slotOf = [];
+
     // Kurucu çağırır: oynanan yuva TeamDraft sırasıdır (top, jungle, mid, bot, support = ChampionRole sırası).
     private void AssignRoles()
     {
@@ -29,6 +32,7 @@ internal sealed partial class MatchRun
             {
                 _rolePenalty[team.Champions[i].Id] = OffRole.Penalty(team.Champions[i], (ChampionRole)i);
                 _sideOf[team.Champions[i].Id] = side;
+                _slotOf[team.Champions[i].Id] = i;
             }
         }
     }

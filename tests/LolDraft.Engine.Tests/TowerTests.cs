@@ -54,7 +54,7 @@ public sealed class TowerTests
             foreach (var tower in events.OfType<TowerEvent>().Where(t => !postFight.Contains(t.T) && !IsPokePush(t)))
             {
                 Assert.True(tower.T >= 13 * 60, "koridor kulesi 14. dakikadan önce düşemez");
-                Assert.All(Rivals(tower), rival => Assert.True(TestEvents.IsAbsent(events, rival.Id, tower.T),
+                Assert.All(Rivals(events, tower), rival => Assert.True(TestEvents.IsAbsent(events, rival.Id, tower.T),
                     $"{rival.Name} {tower.T} sn'de koridorda ama kule düştü"));
                 count++;
             }
@@ -84,8 +84,12 @@ public sealed class TowerTests
 
     private static bool IsPokePush(TowerEvent tower) => tower.Text.Contains("poke'la");
 
-    private IReadOnlyList<ChampionProfile> Rivals(TowerEvent tower) =>
-        TestEvents.LaneChampions(tower.Side == TeamSide.Blue ? _red : _blue, tower.Lane);
+    // Rakip koridorcular: harita düzenine göre (DESIGN.md §4.11) o an o koridorda duran rakipler.
+    private IReadOnlyList<ChampionProfile> Rivals(IReadOnlyList<MatchEvent> events, TowerEvent tower)
+    {
+        var rivalSide = tower.Side == TeamSide.Blue ? TeamSide.Red : TeamSide.Blue;
+        return TestEvents.PostedIn(events, rivalSide == TeamSide.Blue ? _blue : _red, rivalSide, tower.Lane, tower.T);
+    }
 
     private IEnumerable<IReadOnlyList<MatchEvent>> Matches()
     {

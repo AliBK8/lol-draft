@@ -7,6 +7,8 @@ export type River = 'top' | 'bottom'
 export type ObjectiveKind = 'dragon' | 'herald' | 'baron' | 'elder' | 'finalFight'
 /** İstilada çalınabilen kamplar (motorda JungleCamp). */
 export type InvadeCamp = 'raptors' | 'wolves' | 'krugs'
+/** Harita düzeni (motorda MapLayout, DESIGN.md §4.11). */
+export type MapLayout = 'lanes' | 'group' | 'oneFour' | 'oneThreeOne'
 
 interface Base {
   /** Oyun saniyesi. */
@@ -37,7 +39,16 @@ export type MatchEvent =
       lead: number
       tail: number
     })
-  | (Base & { type: 'siege'; side: Side; lead: number; tail: number })
+  /** lane: kuşatmanın girdiği koridor (§4.11); eski kayıtlarda yok, Nexus'a yürüyüşte null. */
+  | (Base & { type: 'siege'; side: Side; lead: number; tail: number; lane?: Lane | null })
+  | (Base & {
+      /** Harita düzeni (DESIGN.md §4.11), görünmez: takımın kimin hangi koridorda durduğu. Eski kayıtlarda yok. */
+      type: 'layout'
+      side: Side
+      layout: MapLayout
+      /** Yuva sırasıyla (top, jungle, mid, bot, support) koridor; null = ormanında. */
+      posts: (Lane | null)[]
+    })
   | (Base & { type: 'split'; side: Side; lane: Lane; splitter: string; answerer: string | null })
   | (Base & { type: 'dragonSoul'; side: Side })
   | (Base & { type: 'throw'; side: Side; probability: number })
