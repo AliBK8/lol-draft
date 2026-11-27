@@ -1,4 +1,3 @@
-using LolDraft.Engine.Randomness;
 
 namespace LolDraft.Engine.Simulation;
 
@@ -8,6 +7,6 @@ internal sealed class MatchSimulator : IMatchSimulator
     public MatchResult Simulate(MatchInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
-        return new MatchRun(input, new Mulberry32(input.Seed)).Play();
+        return new MatchRun(input).Play();
     }
 }

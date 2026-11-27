@@ -1,5 +1,4 @@
 ﻿using LolDraft.Engine.Events;
-using LolDraft.Engine.Randomness;
 using LolDraft.Engine.Simulation;
 
 namespace LolDraft.Engine.Tests;
@@ -147,7 +146,7 @@ public sealed class GoldTests
         for (var seed = 0u; seed < MatchCount; seed++)
         {
             var input = TestTeams.Stomp(seed);
-            var run = new MatchRun(input, new Mulberry32(input.Seed));
+            var run = new MatchRun(input);
             var frame = run.Play().GoldFrames.First(f => f.Minute == 14);
             var blue = frame.Champions.Take(5).ToList();
             var red = frame.Champions.Skip(5).ToList();
@@ -239,7 +238,7 @@ public sealed class GoldTests
         {
             foreach (var input in (MatchInput[])[TestTeams.Match(seed), TestTeams.Stomp(seed)])
             {
-                var run = new MatchRun(input, new Mulberry32(input.Seed));
+                var run = new MatchRun(input);
                 yield return (input, run, run.Play());
             }
         }

@@ -42,7 +42,7 @@ internal sealed partial class MatchRun
             return;
 
         var fightT = (minute - 1) * 60 + ObjectiveSecond;
-        var catchT = fightT - PreCatchLeadSeconds(_rng.NextDouble());
+        var catchT = fightT - PreCatchLeadSeconds(ObjectiveRng.NextDouble());
         At(catchT, () => PlayPreObjectiveCatch(catchT, objective));
         At(fightT, () => PlayObjective(minute, objective));
     }
@@ -92,7 +92,7 @@ internal sealed partial class MatchRun
 
         var blueProbability = FightProbability(TeamSide.Blue, minute, t, kind, absent,
             report: kind == FightKind.Final ? RuleContext.FinalFight : RuleContext.Objective, objective: objective);
-        var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
+        var winner = ObjectiveRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
 
         // Geri dönüşün ayrı çarpanı yok (eskiden ×1.25): geride olan kazanırsa önde olanları keser, ödülü toplar (§16.4).
@@ -110,7 +110,7 @@ internal sealed partial class MatchRun
         // Savaşa iki takımın yaşayanları gelir (split'tekiler hariç); bir süre koridorlarında değiller.
         var losers = AliveAt(winner.Opponent(), t).Except(absent).ToList();
         MarkAway([.. AliveAt(winner, t).Except(absent), .. losers], t + AwayAfterFightSeconds);
-        ScheduleFightKills(winner, t, MaxKills(objective), absent);
+        ScheduleFightKills(ObjectiveRng, winner, t, MaxKills(objective), absent);
 
         if (objective != Objective.FinalFight)
         {
@@ -130,13 +130,13 @@ internal sealed partial class MatchRun
     // Savaş kill'leri (DESIGN.md §4.5): kazananın yaşayanları kaybedenin yaşayanlarından 1..max kişi keser.
     // Katılımcılar ve kill sayısı savaş anında belirlenir; kill'ler 1.5 sn arayla t+2'den başlar.
     // absent: savaşta olmayanlar (split).
-    private void ScheduleFightKills(TeamSide winner, double t, int maxKills, IReadOnlyCollection<ChampionProfile>? absent = null)
+    private void ScheduleFightKills(IRandomSource rng, TeamSide winner, double t, int maxKills, IReadOnlyCollection<ChampionProfile>? absent = null)
     {
         var winners = AliveAt(winner, t).Except(absent ?? []).ToList();
         var losers = AliveAt(winner.Opponent(), t).Except(absent ?? []).ToList();
-        var killCount = Math.Min(losers.Count, 1 + _rng.NextIndex(maxKills));
+        var killCount = Math.Min(losers.Count, 1 + rng.NextIndex(maxKills));
 
-        ScheduleKills(winner, winners, losers, killCount, t + 2,
+        ScheduleKills(rng, winner, winners, losers, killCount, t + 2,
             (killer, victim) => $"Takım savaşında {victim.Name} düştü, kill {killer.Name} aldı");
     }
 

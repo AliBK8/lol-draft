@@ -81,9 +81,9 @@ internal sealed partial class MatchRun
         _events.Add(new SiegeEvent(t, "", attacker, Lead: 20, Tail: 4));
         MarkAway([.. AliveAt(attacker, t), .. AliveAt(defender, t)], t + AwayAfterFightSeconds);
 
-        if (_rng.NextDouble() < probability)
+        if (SiegeRng.NextDouble() < probability)
         {
-            ScheduleFightKills(attacker, t, SiegeMaxKills);
+            ScheduleFightKills(SiegeRng, attacker, t, SiegeMaxKills);
             At(t + 8, () =>
             {
                 _events.Add(new NexusEvent(t + 8,
@@ -96,7 +96,7 @@ internal sealed partial class MatchRun
         // Throw: savunan kuşatmayı tutar ve kill'leri alır. Önde olanları keser, ödüllerini toplar: fark kendiliğinden
         // kapanır (eskiden sabit +10 puan). Maç sürer.
         // Hızlı bitir planıyla tutulan kuşatma daha pahalı: savunan bir kill fazla alabilir.
-        ScheduleFightKills(defender, t, ThrowMaxKills + tactics.Knobs.ThrowExtraKills);
+        ScheduleFightKills(SiegeRng, defender, t, ThrowMaxKills + tactics.Knobs.ThrowExtraKills);
         At(t + 6, () => _events.Add(new ThrowEvent(t + 6,
             $"{attacker.DisplayName()} bitirmeye gitti ama {defender.DisplayName()} savunmayı tuttu. Throw!", defender, 1 - probability)));
     }

@@ -30,16 +30,16 @@ internal sealed partial class MatchRun
     {
         foreach (var (from, to) in SkirmishWindows)
         {
-            if (minute == from && _rng.NextDouble() < SkirmishChance)
-                _skirmishMinutes.Add(from + _rng.NextIndex(to - from + 1));
+            if (minute == from && SkirmishRng.NextDouble() < SkirmishChance)
+                _skirmishMinutes.Add(from + SkirmishRng.NextIndex(to - from + 1));
         }
 
         if (!_skirmishMinutes.Contains(minute))
             return;
 
-        var blueSize = 1 + _rng.NextIndex(SkirmishMaxSide);
-        var redSize = 1 + _rng.NextIndex(SkirmishMaxSide);
-        var t = (minute - 1) * 60 + 15 + _rng.NextDouble() * 15;
+        var blueSize = 1 + SkirmishRng.NextIndex(SkirmishMaxSide);
+        var redSize = 1 + SkirmishRng.NextIndex(SkirmishMaxSide);
+        var t = (minute - 1) * 60 + 15 + SkirmishRng.NextDouble() * 15;
         At(t, () => PlaySkirmish(minute, blueSize, redSize, t));
     }
 
@@ -64,13 +64,13 @@ internal sealed partial class MatchRun
             d += plan;
         ReportFightRules(rules, RuleContext.Skirmish, d, rules.Sum(e => e.Signed), SkirmishDivisor);
         var blueProbability = Probability.Clamp(Probability.Logistic(d / SkirmishDivisor));
-        var winner = _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
+        var winner = SkirmishRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
         var winnerProbability = winner == TeamSide.Blue ? blueProbability : 1 - blueProbability;
         _scores.Add(ScoreCategory.Skirmish, winner.Sign() * SkirmishValue);
         // Çatışmaya gelenler bir süre koridorlarında değil: koridorları kule fırsatına açılır.
         MarkAway([.. blue, .. red], t + AwayAfterFightSeconds);
 
-        var river = _rng.NextDouble() < 0.5 ? RiverSide.Top : RiverSide.Bottom;
+        var river = SkirmishRng.NextDouble() < 0.5 ? RiverSide.Top : RiverSide.Bottom;
         string[] parts = [.. blue.Select(c => c.Id), .. red.Select(c => c.Id)];
         _events.Add(new MoveEvent(t, "", parts, Lane: null, river, SkirmishMoveLead, SkirmishMoveTail));
         _events.Add(new SkirmishEvent(t, $"Nehirde {blue.Count}v{red.Count} çatışma, {winner.DisplayName()} kazandı",
@@ -79,8 +79,8 @@ internal sealed partial class MatchRun
         // Kaybedenlerden 1-2 kill (kaybeden tek kişiyse 1). Kill'ler 1.5 sn arayla t+1'den başlar.
         var winners = winner == TeamSide.Blue ? blue : red;
         var losers = winner == TeamSide.Blue ? red : blue;
-        var killCount = 1 + _rng.NextIndex(Math.Min(SkirmishMaxKills, losers.Count));
-        ScheduleKills(winner, winners, losers, killCount, t + 1,
+        var killCount = 1 + SkirmishRng.NextIndex(Math.Min(SkirmishMaxKills, losers.Count));
+        ScheduleKills(SkirmishRng, winner, winners, losers, killCount, t + 1,
             (killer, victim) => $"{killer.Name}, {victim.Name} karakterini nehirde yakaladı");
     }
 }

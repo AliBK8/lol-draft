@@ -260,6 +260,10 @@ Her adım: kod → testler → denge aracıyla kısa ölçüm → bir sonraki ad
 - Rol başına ortalama değişim ≈ 0 (ormancı −0,02, top +0,09, mid −0,06, adc −0,03, sup +0,02); saçılma her rolde ±0,7-0,8, hata payı kadar. Aynı profilde ters yönler (Elise erken 9: −1,2; Lee Sin erken 9: +1,5): gürültü, sistematik etki yok.
 - Kenarda, hata payından az (dokunulmadı): Elise %45,9 → %44,7, Master Yi %45,4 → %44,6, Hwei %54,9 → %55,1, Alistar %55,1 → %55,5; Lucian %44,9 → %45,7 banda döndü. Bilinçli: Draven %41,6, Pyke %41,3.
 
+**Zar akışları (2026-11-27, 170'lik havuz, 60.000 draft, §8.47)**
+- Motor değişikliği: alt sistem başına zar akışı (DESIGN.md §4.1); davranış aynı, her maç farklı.
+- Mavi %50,0, süre 29,6, kill 25,5. Kimlikler: Engage %53,6 · Poke %50,7 · Pick %49,6 · Koruma %50,8 · Dive %49,3 · Split %47,2. Erken comp %48,8 / 35'ten önce %30,1 ✓, scale comp kurtarıyor %34,7 ✓. Önceki temelle farklar hata payı içinde. Kenarda: Alistar %56,1, Lucian %44,8; bilinçli Draven %41,8, Pyke %41,9. Yeni temel bu ölçüm.
+
 **Oyun planı turları (2026-11-24, 170'lik havuz, 60.000 draft, `--plans`, §8.35)**
 - Yöntem: her draft çifti rastgele bir plan çiftiyle ayna; hücre başına ~2.400 maç (±2), Dengeli'ye karşı uyum dilimleri ±2,5-3,7.
 - Tur 1 (ilk değerler, bedel hep tam, kazanç ×1,25/×0,75): Split %45,6 (takım savaşı cezası, split olunca bedel iki kez); uyum görünmüyor (uyan/uymayan farkı 1-3 puan); uyum eşikleri havuza göre kaymış (Ejder & late draft'ların %44'üne, Erken baskı %14'üne uyuyordu).

@@ -46,10 +46,10 @@ internal sealed partial class MatchRun
         if (minute != InvadeMinute)
             return;
         var forced = Tactics(TeamSide.Blue).Knobs.ForceInvade || Tactics(TeamSide.Red).Knobs.ForceInvade;
-        if (!forced && _rng.NextDouble() >= InvadeChance)
+        if (!forced && InvadeRng.NextDouble() >= InvadeChance)
             return;
 
-        var t = (minute - 1) * 60 + InvadeMinSecond + _rng.NextDouble() * InvadeSecondSpan;
+        var t = (minute - 1) * 60 + InvadeMinSecond + InvadeRng.NextDouble() * InvadeSecondSpan;
         At(t, () => PlayInvade(minute, t, junglePowerDiff));
     }
 
@@ -63,8 +63,8 @@ internal sealed partial class MatchRun
         var (blueForced, redForced) = (Tactics(TeamSide.Blue).Knobs.ForceInvade, Tactics(TeamSide.Red).Knobs.ForceInvade);
         var side = blueForced != redForced
             ? blueForced ? TeamSide.Blue : TeamSide.Red
-            : _rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
-        var camp = InvadeCamps[_rng.NextIndex(InvadeCamps.Length)];
+            : InvadeRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red;
+        var camp = InvadeCamps[InvadeRng.NextIndex(InvadeCamps.Length)];
         var us = Team(side);
         var them = Team(side.Opponent());
 
@@ -73,7 +73,7 @@ internal sealed partial class MatchRun
             return;
 
         List<ChampionProfile> invaders = [us.Jungle, .. InvadeHelper(us, t)];
-        var answered = IsInLane(them.Jungle, t) && _rng.NextDouble() < InvadeAnswerChance;
+        var answered = IsInLane(them.Jungle, t) && InvadeRng.NextDouble() < InvadeAnswerChance;
         if (!answered)
         {
             // Cevapsız: kamp çalınır. Katılanlar bir süre koridorlarında değil (yardımcı minyon kaçırır).
@@ -99,7 +99,7 @@ internal sealed partial class MatchRun
             d += side.Sign() * Tactics(side).InvadeFightBonus;
         ReportFightRules(rules, RuleContext.Skirmish, d, rules.Sum(e => e.Signed), SkirmishDivisor);
         var blueWins = Probability.Clamp(Probability.Logistic(d / SkirmishDivisor));
-        var winner = _rng.NextDouble() < blueWins ? TeamSide.Blue : TeamSide.Red;
+        var winner = InvadeRng.NextDouble() < blueWins ? TeamSide.Blue : TeamSide.Red;
         var invaderProbability = side == TeamSide.Blue ? blueWins : 1 - blueWins;
         var stolen = winner == side;
 
@@ -122,8 +122,8 @@ internal sealed partial class MatchRun
 
         // Kaybedenlerden 1-2 kill (kaybeden tek kişiyse 1). Kill'ler 1,5 sn arayla t+1'den.
         var (winners, losers) = stolen ? (invaders, defenders) : (defenders, invaders);
-        var killCount = 1 + _rng.NextIndex(Math.Min(InvadeMaxKills, losers.Count));
-        ScheduleKills(winner, winners, losers, killCount, t + 1,
+        var killCount = 1 + InvadeRng.NextIndex(Math.Min(InvadeMaxKills, losers.Count));
+        ScheduleKills(InvadeRng, winner, winners, losers, killCount, t + 1,
             (killer, victim) => $"{killer.Name}, {victim.Name} karakterini ormanda yakaladı");
     }
 
@@ -131,8 +131,8 @@ internal sealed partial class MatchRun
     // (ölü, meşgul) gelmez.
     private IEnumerable<ChampionProfile> InvadeHelper(TeamDraft team, double t)
     {
-        var comes = _rng.NextDouble() < InvadeHelperChance;
-        var helper = _rng.NextIndex(2) == 0 ? team.Mid : team.Support;
+        var comes = InvadeRng.NextDouble() < InvadeHelperChance;
+        var helper = InvadeRng.NextIndex(2) == 0 ? team.Mid : team.Support;
         return comes && IsInLane(helper, t) ? [helper] : [];
     }
 

@@ -49,7 +49,7 @@ internal sealed partial class MatchRun
             var rules = LaneRules.Effects(lane, blue, red, minute);
             var rawDelta = LanePowerFactor * (LanePower(TeamSide.Blue, lane, minute, t0) - LanePower(TeamSide.Red, lane, minute, t0))
                            + rules.Sum(e => e.Signed)
-                           + _rng.NextNormal() * LaneNoiseSigma * Volatility(minute, [.. blue, .. red]);
+                           + LaneRng.NextNormal() * LaneNoiseSigma * Volatility(minute, [.. blue, .. red]);
             // Oyun planı (planın tarafının gözünden, uyumla ölçekli; Tactics.cs): Ejder & late 20. dk'ya kadar her koridorda
             // −0,225; Erken baskı 14. dk'ya kadar her koridorda +0,15; Bot baskısı 14. dk'ya kadar bot +0,25, top −0,25.
             // Sıfırsa eklenmez.
@@ -65,13 +65,13 @@ internal sealed partial class MatchRun
             _laneBudget[(int)lane] += delta;
             _laneDelta[(int)lane] = delta;
 
-            if (_rng.NextDouble() < SurpriseChance && minute >= SurpriseMinMinute)
+            if (LaneRng.NextDouble() < SurpriseChance && minute >= SurpriseMinMinute)
             {
-                var surpriseT = t0 + 5 + _rng.NextDouble() * 20;
+                var surpriseT = t0 + 5 + LaneRng.NextDouble() * 20;
                 At(surpriseT, () => PlaySurprise(lane, surpriseT));
             }
 
-            var narrateT = t0 + 25 + _rng.NextDouble() * 30;
+            var narrateT = t0 + 25 + LaneRng.NextDouble() * 30;
             At(narrateT, () => Narrate(lane, minute, narrateT));
         }
     }
@@ -86,15 +86,15 @@ internal sealed partial class MatchRun
     // Puan (Surprise kategorisi) sadece dökümde (karara girmez). Zar sırası: taraf, değer, tür, kurban.
     private void PlaySurprise(Lane lane, double t)
     {
-        var side = _rng.NextDouble() < 0.5 ? TeamSide.Blue : TeamSide.Red;
+        var side = LaneRng.NextDouble() < 0.5 ? TeamSide.Blue : TeamSide.Red;
         var hero = LaneChampions(side, lane).FirstOrDefault(c => IsInLane(c, t));
         var rivals = LaneChampions(side.Opponent(), lane).Where(c => IsInLane(c, t)).ToList();
         if (hero is null || rivals.Count == 0)
             return;
 
-        var value = 3 + _rng.NextDouble() * 2;
-        var outplay = _rng.NextDouble() < 0.5;
-        var victim = rivals[_rng.NextIndex(rivals.Count)];
+        var value = 3 + LaneRng.NextDouble() * 2;
+        var outplay = LaneRng.NextDouble() < 0.5;
+        var victim = rivals[LaneRng.NextIndex(rivals.Count)];
         _scores.Add(ScoreCategory.Surprise, side.Sign() * value);
 
         var text = outplay
@@ -133,7 +133,7 @@ internal sealed partial class MatchRun
             var rivalsInLane = rivals.Where(c => IsInLane(c, t)).ToList();
             if (size >= SoloKillCost && rivalsInLane.Count > 0)
             {
-                var victim = rivalsInLane[_rng.NextIndex(rivalsInLane.Count)];
+                var victim = rivalsInLane[LaneRng.NextIndex(rivalsInLane.Count)];
                 Kill(side, lead, victim, t, $"{lead.Name} {LaneName(lane)} koridorda öne çıktı, {victim.Name} düştü", lane);
                 budget -= side.Sign() * SoloKillCost;
                 return;

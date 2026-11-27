@@ -85,7 +85,7 @@ internal sealed partial class MatchRun
             if (chance <= 0 || !IsInLane(LaneChampions(side, lane)[0], t) || _towersDestroyed[(int)side, (int)lane] >= TowersPerLane)
                 continue;
 
-            if (_rng.NextDouble() < chance)
+            if (TowerRng.NextDouble() < chance)
             {
                 TakeTower(side, lane, t, $"{side.DisplayName()} poke'la {LaneName(lane)} koridorda", scored: true);
                 return true;

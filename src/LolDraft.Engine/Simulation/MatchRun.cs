@@ -17,7 +17,7 @@ internal sealed partial class MatchRun
 
     private readonly TeamDraft _blue;
     private readonly TeamDraft _red;
-    private readonly IRandomSource _rng;
+    private readonly RandomStreams _random;
     private readonly ScoreSheet _scores = new();
     private readonly List<MatchEvent> _events = [];
     private readonly DeathTracker _deaths = new();
@@ -31,16 +31,27 @@ internal sealed partial class MatchRun
     // Takımların oyun planı (DESIGN.md §4.10, Tactics.cs): [taraf].
     private readonly TeamTactics[] _tactics;
 
-    public MatchRun(MatchInput input, IRandomSource rng)
+    public MatchRun(MatchInput input)
     {
         _blue = input.Blue;
         _red = input.Red;
-        _rng = rng;
+        _random = new RandomStreams(input.Seed);
         _tactics = [new TeamTactics(input.BluePlan, _blue), new TeamTactics(input.RedPlan, _red)];
         AssignRoles();
     }
 
     private TeamTactics Tactics(TeamSide side) => _tactics[(int)side];
+
+    // Alt sistemlerin zar akışları (DESIGN.md §4.1): her dosya kendi akışını kullanır, biri diğerini kaydırmaz.
+    private IRandomSource LaneRng => _random[RandomStream.Lanes];
+    private IRandomSource JungleRng => _random[RandomStream.Jungle];
+    private IRandomSource InvadeRng => _random[RandomStream.Invade];
+    private IRandomSource SkirmishRng => _random[RandomStream.Skirmish];
+    private IRandomSource ObjectiveRng => _random[RandomStream.Objective];
+    private IRandomSource SplitRng => _random[RandomStream.Split];
+    private IRandomSource SiegeRng => _random[RandomStream.Siege];
+    private IRandomSource CatchRng => _random[RandomStream.Catch];
+    private IRandomSource TowerRng => _random[RandomStream.Towers];
 
     public MatchResult Play()
     {
@@ -89,9 +100,9 @@ internal sealed partial class MatchRun
     /// <summary>
     /// Bir savaşın kill'lerini kendi saniyelerine kaydeder: firstT, firstT + 1.5, ...
     /// Her kill kendi anında yaşayan kurban ve katil arasından seçilir; aradaki olaylarda kurbanlar öldüyse kill düşer.
-    /// Zar sırası (her kill için): önce kurban, sonra katil.
+    /// Zar sırası (her kill için): önce kurban, sonra katil; zarlar savaşın sahibi olan alt sistemin akışından (rng).
     /// </summary>
-    private void ScheduleKills(TeamSide winner, IReadOnlyList<ChampionProfile> winners, IReadOnlyList<ChampionProfile> losers,
+    private void ScheduleKills(IRandomSource rng, TeamSide winner, IReadOnlyList<ChampionProfile> winners, IReadOnlyList<ChampionProfile> losers,
         int count, double firstT, Func<ChampionProfile, ChampionProfile, string> text)
     {
         var remaining = losers.ToList();
@@ -106,9 +117,9 @@ internal sealed partial class MatchRun
                 if (victims.Count == 0 || killers.Count == 0)
                     return;
 
-                var victim = victims[_rng.NextIndex(victims.Count)];
+                var victim = victims[rng.NextIndex(victims.Count)];
                 remaining.Remove(victim);
-                var killer = killers[_rng.NextIndex(killers.Count)];
+                var killer = killers[rng.NextIndex(killers.Count)];
                 Kill(winner, killer, victim, t, text(killer, victim), assists: killers.Where(c => c != killer).ToList());
             });
         }

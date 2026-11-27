@@ -664,3 +664,20 @@ Doğrulama: tsc + oxlint + 63 web testi + build; yukarıdaki öykünmeyle 320/36
 
 Doğrulama: Domain 4 yeni test (ban'da ön izlenen ban'lanır, pick'te ön izlenen seçilir, bırakılan ön izleme eski kurala döner, önceki adımın ön izlemesi sonraki adıma taşınmaz); bütün .NET testleri (150 + 104 + 51 + 217) geçti. Uçtan uca: geliştirme rakibinin açtığı lobide telefon öykünmesiyle, şampiyon seçip süre doldurularak: Aatrox seçiliyken süre doldu → Aatrox ban'landı; Ahri sonra Akali seçilip süre doldu → Akali (son seçilen) ban'landı, Ahri havuzda kaldı.
 
+
+### 8.47 Uygulama: alt sistem başına zar akışları (harita düzeni A)
+
+**Sorun:** motor tek bir mulberry32 akışı kullanıyordu (52 çağrı). Bir alt sisteme yeni bir zar eklemek, ondan sonraki bütün zarları kaydırıyordu: harita düzeni (DESIGN.md §4.11) ya da bir F2 kararı, ilgisiz koridor gürültüsünü bile değiştirirdi. Yeni kuralın etkisi aynı seed'le "önce / sonra" ölçülemezdi.
+
+**Kavram:** maç seed'inden alt sistem başına bir alt seed türetilir (seed + (akış + 1) × 0x9E3779B9, sonra murmur3 fmix32); her alt seed kendi mulberry32'sini besler. Örnek: orman akışına 1.000 zar eklense de koridor akışının ilk sayısı aynı kalır (test).
+
+| Konu | Nerede | Karar ve neden |
+|---|---|---|
+| Akışlar | `Randomness/RandomStreams.cs` | `RandomStream`: Lanes, Jungle, Invade, Skirmish, Objective, Split, Siege, Catch, Towers, Layout (sonraki adım için). Numara alt seed'e girer: sıra değişmez, yeni akış sona eklenir. |
+| Dağıtım | `MatchRun.cs` (`LaneRng`, `JungleRng`, …) | Her kural dosyası kendi akışını kullanır (dosya = alt sistem). `MatchRun` artık seed'i `MatchInput`'tan alır, dışarıdan `IRandomSource` almaz. |
+| Savaş kill'leri | `ScheduleKills`, `ScheduleFightKills` | Akışı parametre alır: kurban/katil zarları savaşın sahibinden (istila, çatışma, objektif, kuşatma). |
+| Parmak izi | `BalancedPlanFingerprintTests` | Yenilendi; Dengeli'nin bekçisi olarak kalır (yeni temel bu adım). |
+
+**Ölçüm** (60.000 draft, ±1,0-1,4; önceki temel gank + istila turu, DENGE.md): Mavi %49,8 → %50,0, süre 29,6, kill 25,5 (aynı). Kimlikler Engage %53,3 → %53,6 · Poke %50,5 → %50,7 · Pick %49,8 → %49,6 · Koruma %51,0 → %50,8 · Dive %49,5 → %49,3 · Split %47,3 → %47,2. Erken comp %49,6 → %48,8 / 35'ten önce %31,3 → %30,1 ✓, scale comp kurtarıyor %33,7 → %34,7 ✓. Hepsi hata payı içinde: davranış aynı, sadece zarlar başka. Kenarda: Alistar %56,1, Lucian %44,8 (önceki ölçümlerde de kenardaydılar); bilinçli Draven %41,8, Pyke %41,9.
+
+Doğrulama: 220 motor testi (3 yeni: aynı seed aynı akışlar, bir akış diğerini kaydırmaz, 100 seed × 10 akışta alt seed çakışmaz).

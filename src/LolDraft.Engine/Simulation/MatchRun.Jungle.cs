@@ -53,14 +53,14 @@ internal sealed partial class MatchRun
         // orman += 0.05 × (G_eff_jg_Mavi − G_eff_jg_Kırmızı) + N(0, 0.3) + istila temposu (±1, 3 dk; MatchRun.Invade.cs)
         // Rol dışı ormancı varsa lane fazında gürültü × 1,5 (OffRole).
         _jungleDelta = JunglePowerFactor * powerDiff
-                       + _rng.NextNormal() * JungleNoiseSigma * Volatility(minute, _blue.Jungle, _red.Jungle)
+                       + JungleRng.NextNormal() * JungleNoiseSigma * Volatility(minute, _blue.Jungle, _red.Jungle)
                        + InvadeTempoAt(minute);
         _scores.Add(ScoreCategory.Jungle, _jungleDelta);
 
         foreach (var (from, to) in GankWindows)
         {
             if (minute == from)
-                _gankAt[from + _rng.NextIndex(to - from + 1)] = GankMinSecond + _rng.NextDouble() * GankSecondSpan;
+                _gankAt[from + JungleRng.NextIndex(to - from + 1)] = GankMinSecond + JungleRng.NextDouble() * GankSecondSpan;
         }
 
         ScheduleInvade(minute, powerDiff);
@@ -70,8 +70,8 @@ internal sealed partial class MatchRun
             foreach (var side in (TeamSide[])[TeamSide.Blue, TeamSide.Red])
             {
                 var chance = Tactics(side).ExtraGankChance;
-                if (chance > 0 && _rng.NextDouble() < chance)
-                    ScheduleGank(minute, GankMinSecond + _rng.NextDouble() * GankSecondSpan, powerDiff, side);
+                if (chance > 0 && JungleRng.NextDouble() < chance)
+                    ScheduleGank(minute, GankMinSecond + JungleRng.NextDouble() * GankSecondSpan, powerDiff, side);
             }
         }
 
@@ -95,13 +95,13 @@ internal sealed partial class MatchRun
         // Gank'ı atan taraf: p_Mavi = clamp(1 / (1 + e^(−(G_eff_jg farkı)/4))). Eşit ormancıda %50.
         // Prototipte sıkıştırılmıyordu (fark 9'da ~%90.5); her olay ihtimali gibi %10-%90.
         var blueProbability = Probability.Clamp(Probability.Logistic(powerDiff / GankSideDivisor));
-        var side = forcedSide ?? (_rng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red);
+        var side = forcedSide ?? (JungleRng.NextDouble() < blueProbability ? TeamSide.Blue : TeamSide.Red);
 
         // Koridor: üçü eşit. Bot baskısı planında bot'a ~%73 (uyumla 0,63-0,83), kalan top ve mid'e eşit.
         var botShare = Tactics(side).BotGankShare;
         var lane = botShare > 0
-            ? _rng.NextDouble() < botShare ? Lane.Bot : _rng.NextIndex(2) == 0 ? Lane.Top : Lane.Mid
-            : Lanes[_rng.NextIndex(Lanes.Length)];
+            ? JungleRng.NextDouble() < botShare ? Lane.Bot : JungleRng.NextIndex(2) == 0 ? Lane.Top : Lane.Mid
+            : Lanes[JungleRng.NextIndex(Lanes.Length)];
         var team = Team(side);
         var jungler = team.Jungle;
         var support = team.Support;
@@ -116,7 +116,7 @@ internal sealed partial class MatchRun
         var withSupport = minute < SupportRoamBeforeMinute
                           && lane != Lane.Bot
                           && _deaths.IsAlive(support, t)
-                          && _rng.NextDouble() < SupportRoamChance;
+                          && JungleRng.NextDouble() < SupportRoamChance;
 
         // Gank'a giden support bot koridorundan çıkmış olur.
         if (withSupport)
@@ -134,7 +134,7 @@ internal sealed partial class MatchRun
         // Bot baskısı planı: bot'a gank +%10 (uyumla ölçekli).
         if (lane == Lane.Bot && Tactics(side).BotGankSuccessBonus > 0)
             success += Tactics(side).BotGankSuccessBonus;
-        if (_rng.NextDouble() < success)
+        if (JungleRng.NextDouble() < success)
         {
             _scores.Add(ScoreCategory.Jungle, side.Sign() * (withSupport ? GankWinValueWithSupport : GankWinValueSolo));
             var text = withSupport

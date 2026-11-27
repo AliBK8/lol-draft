@@ -55,6 +55,7 @@ Temel ilkeler:
 | Gank zamanı ve ormancı istilası | Gank sabit dakikaların 40. saniyesinde değil, pencerelerde (dk 4, 6-7, 9-10, 12-13, 17-18, 23-24) 10-55. saniyede. Her maçın %20'sinde 4:05-4:40'ta ormancı istilası: rakibin yeniden doğan küçük kampı, cevap yoksa çalınır, cevap varsa çatışma; kazanan 3 dk orman temposu alır (§4.5, §8.34). (2026-11-24) | Sebep (kullanıcı): gank'lar saat gibi işliyordu (2:40, 5:40, 8:40…), baskınlar hep aynı görünüyordu. İstila Dengeli'de de %20 (kullanıcı); "Ormancı istilası" planı kesinleştirir (§4.10). Kendi altını yok: çalınan kamp farm, "ormancı geride" orman akışına tempo (farm kuralı altına çevirir). |
 | Oyun planının draft'a uyumu | Planın bedeli hep tam; kazancı draft'a uyana ×1,25, nötre ×1, uymayana ×0,75 (§4.10). (2026-11-24) | Kullanıcı: uymayana ×0,5 fazla ezici, simetrik ×0,75 daha adil. Uymayan plan yine net küçük ceza (bedel tam, kazanç eksik); ayrı ceza kuralı gerekmez. |
 | Şampiyon havuzu | Aşamalı büyür: 40 → 80 (rol başına 16, faz H) → 125 (rol başına 25, parti 1) → 170 (parti 2: gerçek oyundaki hepsi, Locke, Zaahen ve Yunara hariç; kitleri bilinmeden etiketlenmez). Etiket taslağı Data Dragon / CommunityDragon'dan Claude çıkarır, güç eğrisi veri hattından, onay kullanıcıda; her aşamadan sonra `--check` ve denge ölçümü. K13 kombo tablosu her aşamada yeni ikililerle büyür. (2026-11-17) | Reddedildi: ~170'i bir kerede eklemek (yüzlerce etiket birden ölçülemez, sorunlu şampiyon gürültüde kaybolur). |
+| Harita düzeni | Motor her takım için düzen seçer (Koridorlar, Grup, 1-4, 1-3-1), görünmez `layout` olayıyla ekrana bildirir; ekran kendi kuralıyla tahmin etmez. 14. dk'dan sonra 2-3 dk'da bir ve her objektif / kuşatmadan sonra değişir. Arkadan kapatma şimdilik basit (geç katılım, ilk hedef carry, küçük ihtimal katkısı), asıl hâli F3'te. Her alt sistemin kendi zar akışı (§4.1, §4.11). (2026-11-27) | Sebep (kullanıcı): bir süre sonra her olay mid'de dönüyordu, alt koridor boş kalıyordu; kule sonrası ilerleme, arkadan kapatma, orman yakalaması yoktu. Düzen F2 karar anlarının da zemini (ejder takası, split / grupla). Reddedildi: ekranda daha akıllı tahmin kuralı (motor ile ekran yine ayrı dünya kalırdı). |
 | Gerçekçilik mi eğlence mi | **Eğlence önce.** Gerçek veri yön verir, hedefi belirlemez: motor "turnuva hissi"nde kalır, geride olan takımın her zaman gerçek bir şansı olur. Önde olanın kazanma oranı %80-85'i geçmez. | Reddedildi: solo kuyruk eğrisine oturtmak (15. dk 5.000+ önde %98,5, 3.000+ geride %8,5 kurtarıyor; §16.13 adım 13). Bu bir web oyunu, ciddi LoL maçı değil: kaybeden taraf için eğlence sıfıra düşmemeli. |
 
 ---
@@ -116,6 +117,7 @@ Saf, yan etkisiz bir fonksiyon: `simulate(draft, seed) → { events, frames, cat
 
 ### 4.1 Rastgelelik
 - RNG: mulberry32(seed). Normal dağılım: Box-Muller.
+- **Zar akışları** (2026-11-27): her alt sistem (koridor, orman, istila, çatışma, objektif, split, kuşatma, yakalanma, kule, düzen) maç seed'inden türetilmiş kendi mulberry32 akışını kullanır (`Randomness/RandomStreams.cs`). Bir alt sisteme zar eklemek ya da bir karar (§4.10 ②) diğerlerinin zarlarını kaydırmaz: yeni kuralın etkisi aynı seed'le "önce / sonra" ölçülebilir. Eskiden tek akıştı; geçişte her maç değişti (istatistik aynı), parmak izi ve denge temeli yenilendi.
 - Sunucu otoriter: zar sunucuda atılır, istemci hesap yapmaz.
 
 ### 4.2 Puan ve kategoriler
@@ -304,7 +306,26 @@ Draft biter → ① oyun planı (iki oyuncu gizli, eşzamanlı)
 
 **Hareketle uyum (§5, §8.26):** hareket katmanı olay türlerini bilmez, sadece "şu saniyede şurada ol" hedeflerine yürür ve yalnız bilinen olaylara bakar. Kararlar yeni olay üretir, güzergâh yeniden kurulur. Tek şart: motor kararın sonucunu karar anından en az yürüme süresi kadar sonraya koyar (ör. karar 4:30, ejder savaşı 5:30); karar anında şampiyonlar yerinde durur, seçimden sonra yürür.
 
-**Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
+**Sıra:** F1 ayar düğmesi altyapısı + oyun planı (mimari değişmez) → harita düzeni (§4.11; karar anlarının çoğu bir düzen seçimi) → F2 karar anı altyapısı + tek karar tipi (ejder) → F3 diğer karar tipleri + mini savaş simülasyonu (savaşın içinde kim girdi, kim kime odaklandı, kim önce düştü; sonuç ihtimali gerçek timeline verisine oturtulur).
+
+### 4.11 Harita düzeni (tasarım 2026-11-27, kullanıcıyla; uygulama sırada)
+
+**Sorun:** kimin nerede durduğunu motor söylemiyordu, ekran sabit kuralla tahmin ediyordu (§5.1: 14. dk'dan sonra bot ikilisi hep mid'de, 25'ten sonra top yanda). Alt koridor boşalıyor, her olay mid'de dönüyordu. Motor ise adc'yi 30. dakikada da bot koridorunda sayıyordu (kule fırsatı): ekran ile motor iki ayrı dünyaydı.
+
+**Karar:** motor her takım için bir **düzen** seçer (kim hangi koridorda) ve görünmez `layout` olayıyla bildirir; ekran tahmin etmez, uygular. Motordaki "koridorda mı" sorusu da düzene bakar.
+
+| Düzen | Kim nerede | Kazanç | Bedel |
+|---|---|---|---|
+| Koridorlar | Standart (14. dk'ya kadar herkes) | Farm, dalgalar dengede | — |
+| Grup | 5 kişi tek koridorda | O koridorda kule hızlı düşer | Diğer koridorlarda dalga birikir, kendi kulen yalnız |
+| 1-4 | Bir splitçi yan koridorda, 4 kişi grup | Yan koridor baskısı | Savaşta 4'e 5 |
+| 1-3-1 | İki yan koridor, 3 kişi mid | Haritanın her yerinde baskı | Savaş 3'e 5 başlar; yanlardakiler arkadan kapatır |
+
+- **Sıklık:** 14. dakikadan sonra 2-3 dakikada bir, ayrıca her objektif ve kuşatmadan sonra (takımlar sürekli koşturmasın). Seçimi varsayılan olarak motor yapar, eğilimi plandan gelir (Split → 1-4 / 1-3-1, Hızlı bitir → Grup); F2'de bazı anlarda oyuncuya sorulur (ejder: savaş = grup çukura, takas = grup karşı koridora; geç oyun: split / grupla).
+- **Kule sonrası ilerleme:** koridordaki kişi farkı itiş baskısıdır; kule düşünce ön hat ilerler, sıradaki kule hedef olur. Kuşatma bir koridordan gider (`siege` olayına koridor).
+- **Arkadan kapatma** (basit hâli; asıl hâli F3 mini savaşta veriyle): yan koridordaki oyuncu savaşa birkaç saniye geç ama rakibin arkasından katılır; ilk hedefi rakibin carry'si, savaş ihtimaline küçük katkı.
+- **Orman yakalaması:** yan koridordan dönen ya da rakip ormanında dolaşan konumlu hedef olur; yakalanma (§16.9) "nerede" bilgisini taşır. Takım arkadaşları yakındaysa cevap gelir, ormanda küçük çatışma çıkar.
+- **Uygulama sırası:** (A) zar akışları (§4.1) → (B) düzen motorda + `layout` olayı, ekran okur, kuşatmaya koridor → (C) kişi sayısı → kule baskısı ve ilerleme → (D) orman yakalaması, ormanda çatışma, arkadan kapatma → F2.
 
 ---
 

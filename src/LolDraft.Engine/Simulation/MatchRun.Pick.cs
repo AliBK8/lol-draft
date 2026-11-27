@@ -32,7 +32,7 @@ internal sealed partial class MatchRun
         if (minute < CatchMinMinute || _objectiveAt.ContainsKey(minute))
             return;
 
-        var t = (minute - 1) * 60 + 5 + _rng.NextDouble() * 35;
+        var t = (minute - 1) * 60 + 5 + CatchRng.NextDouble() * 35;
         At(t, () => PlayCatch(t));
     }
 
@@ -52,7 +52,7 @@ internal sealed partial class MatchRun
 
         var behind = ahead.Opponent();
         var pickTotal = Team(behind).Champions.Sum(c => c.Tags.Pick);
-        if (_rng.NextDouble() >= CatchChance(Math.Abs(lead), pickTotal) || _rng.NextDouble() < EscapeChance(victim))
+        if (CatchRng.NextDouble() >= CatchChance(Math.Abs(lead), pickTotal) || CatchRng.NextDouble() < EscapeChance(victim))
             return;
 
         // Katil: rakibin müsait oyuncuları içinde en yüksek pick'li; eşitlikte nehre yakınlık sırası (sıralama kararlı).
@@ -97,10 +97,10 @@ internal sealed partial class MatchRun
         if (victims.Count == 0 || killer is null)
             return;
 
-        if (_rng.NextDouble() >= PreObjectiveCatchChance(Math.Abs(diff)))
+        if (CatchRng.NextDouble() >= PreObjectiveCatchChance(Math.Abs(diff)))
             return;
-        var victim = victims[_rng.NextIndex(victims.Count)];
-        if (_rng.NextDouble() < EscapeChance(victim))
+        var victim = victims[CatchRng.NextIndex(victims.Count)];
+        if (CatchRng.NextDouble() < EscapeChance(victim))
             return;
 
         Kill(hunter, killer, victim, t,
